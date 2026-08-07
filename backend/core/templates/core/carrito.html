@@ -1,0 +1,69 @@
+{% extends "core/base.html" %}
+
+{% block title %}Carrito | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h3>Carrito</h3>
+
+  {% if not cliente %}
+    <div class="alert alert-warning">
+      No has elegido un cliente todavía. <a href="{% url 'catalogo' %}">Vuelve al catálogo</a> para empezar un pedido.
+    </div>
+  {% else %}
+    <p class="text-muted">Pedido para <strong>{{ cliente.nombre }}</strong></p>
+
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th style="width:140px;">Cantidad</th>
+          <th>Subtotal</th>
+          <th style="width:100px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.producto.nombre }} <span class="text-muted small">(${{ item.producto.precio }} c/u)</span></td>
+          <td>
+            <form method="POST" action="{% url 'carrito_actualizar' item.producto.id %}" class="d-flex gap-1">
+              {% csrf_token %}
+              <input type="number" name="cantidad" value="{{ item.cantidad }}" min="1" class="form-control form-control-sm">
+              <button class="btn btn-sm btn-outline-secondary">Ok</button>
+            </form>
+          </td>
+          <td>${{ item.subtotal }}</td>
+          <td>
+            <form method="POST" action="{% url 'carrito_quitar' item.producto.id %}">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-outline-danger">Quitar</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">El carrito está vacío.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <h5>Total: ${{ total }}</h5>
+      <div class="d-flex gap-2">
+        {% if items %}
+          <form method="POST" action="{% url 'carrito_vaciar' %}">
+            {% csrf_token %}
+            <button class="btn btn-outline-secondary">Vaciar carrito</button>
+          </form>
+          <form method="POST" action="{% url 'carrito_confirmar' %}">
+            {% csrf_token %}
+            <button class="btn btn-success">Confirmar pedido</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <a href="{% url 'catalogo' %}" class="btn btn-link mt-3">Volver al catálogo</a>
+</div>
+{% endblock %}

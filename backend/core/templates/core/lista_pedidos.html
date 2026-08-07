@@ -1,0 +1,51 @@
+{% extends "core/base.html" %}
+
+{% block title %}Pedidos | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Pedidos</h3>
+    <a href="{% url 'catalogo' %}" class="btn btn-primary">Nuevo pedido</a>
+  </div>
+
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Cliente</th>
+        <th>Total</th>
+        <th>Estado</th>
+        <th>Fecha</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.cliente.nombre }}</td>
+        <td>${{ p.total }}</td>
+        <td>
+          {% if p.estado == "PENDIENTE" %}
+            <span class="badge bg-secondary">Pendiente</span>
+          {% elif p.estado == "ASIGNADO" %}
+            <span class="badge bg-info text-dark">Asignado a ruta</span>
+          {% elif p.estado == "ENTREGADO" %}
+            <span class="badge bg-success">Entregado</span>
+          {% else %}
+            <span class="badge bg-dark">Cancelado</span>
+          {% endif %}
+        </td>
+        <td>{{ p.creado_en|date:"d-m-Y H:i" }}</td>
+        <td><a href="{% url 'detalle_pedido' p.id %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">No hay pedidos registrados aún.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% include "core/_pagination.html" %}
+</div>
+{% endblock %}

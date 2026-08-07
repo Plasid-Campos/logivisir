@@ -114,6 +114,64 @@ class Ruta(models.Model):
         return f"{self.nombre} - {self.fecha} - {self.chofer}"
 
 
+class Producto(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="productos")
+    nombre = models.CharField(max_length=150)
+    descripcion = models.CharField(max_length=300, blank=True, null=True)
+    precio = models.DecimalField(max_digits=10, decimal_places=2)
+    unidad = models.CharField(max_length=30, default="unidad")
+    stock_disponible = models.PositiveIntegerField(default=0)
+    disponible = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return f"{self.nombre} (${self.precio})"
+
+
+class Pedido(models.Model):
+    ESTADO_CHOICES = (
+        ("PENDIENTE", "Pendiente"),
+        ("ASIGNADO", "Asignado a ruta"),
+        ("ENTREGADO", "Entregado"),
+        ("CANCELADO", "Cancelado"),
+    )
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="pedidos")
+    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name="pedidos")
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="PENDIENTE")
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    creado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"Pedido #{self.id} - {self.cliente.nombre} ({self.get_estado_display()})"
+
+    def recalcular_total(self):
+        total = sum((item.subtotal for item in self.items.all()), start=0)
+        self.total = total
+        self.save(update_fields=["total"])
+
+
+class PedidoItem(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name="items")
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
+    cantidad = models.PositiveIntegerField()
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.cantidad} x {self.producto.nombre}"
+
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
+
+
 class ParadaRuta(models.Model):
     ESTADO_ENTREGA_CHOICES = (
         ("PENDIENTE", "Pendiente"),
@@ -124,6 +182,9 @@ class ParadaRuta(models.Model):
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name="paradas")
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT)
     orden = models.PositiveIntegerField()
+    pedido = models.ForeignKey(
+        Pedido, on_delete=models.SET_NULL, null=True, blank=True, related_name="paradas_pedido"
+    )
 
     # Compatibilidad con lo que ya existe en vistas/templates
     entregado = models.BooleanField(default=False)

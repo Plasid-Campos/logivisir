@@ -1,0 +1,43 @@
+{% extends "core/base.html" %}
+
+{% block title %}Pedido #{{ pedido.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h3>Pedido #{{ pedido.id }}</h3>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <p class="mb-1"><strong>Cliente:</strong> {{ pedido.cliente.nombre }} ({{ pedido.cliente.rut }})</p>
+      <p class="mb-1"><strong>Dirección:</strong> {{ pedido.cliente.direccion }}{% if pedido.cliente.comuna %}, {{ pedido.cliente.comuna }}{% endif %}</p>
+      <p class="mb-1"><strong>Estado:</strong> {{ pedido.get_estado_display }}</p>
+      <p class="mb-1"><strong>Creado:</strong> {{ pedido.creado_en|date:"d-m-Y H:i" }}</p>
+      <p class="mb-0"><strong>Total:</strong> ${{ pedido.total }}</p>
+    </div>
+  </div>
+
+  <h5>Productos</h5>
+  <table class="table align-middle">
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>Cantidad</th>
+        <th>Precio unitario</th>
+        <th>Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.producto.nombre }}</td>
+        <td>{{ item.cantidad }}</td>
+        <td>${{ item.precio_unitario }}</td>
+        <td>${{ item.subtotal }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <a href="{% url 'lista_pedidos' %}" class="btn btn-link">Volver a pedidos</a>
+</div>
+{% endblock %}

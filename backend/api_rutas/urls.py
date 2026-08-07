@@ -39,6 +39,26 @@ urlpatterns = [
     path("paradas/<int:parada_id>/toggle/", core_views.toggle_parada_entregada_view, name="toggle_parada"),
     path("rutas/<int:ruta_id>/cambiar-estado/", core_views.cambiar_estado_ruta_view, name="cambiar_estado_ruta"),
     path("rutas/<int:ruta_id>/optimizar/", core_views.optimizar_ruta_view, name="optimizar_ruta"),
+    path("rutas/<int:ruta_id>/agregar-pedido/", core_views.agregar_pedido_a_ruta_view, name="agregar_pedido_a_ruta"),
+
+    # --------- PRODUCTOS (catalogo) ---------
+    path("productos/", core_views.lista_productos_view, name="lista_productos"),
+    path("productos/crear/", core_views.crear_producto_view, name="crear_producto"),
+    path("productos/<int:producto_id>/editar/", core_views.editar_producto_view, name="editar_producto"),
+
+    # --------- CATALOGO Y CARRITO ---------
+    path("catalogo/", core_views.catalogo_view, name="catalogo"),
+    path("catalogo/seleccionar-cliente/", core_views.seleccionar_cliente_carrito_view, name="seleccionar_cliente_carrito"),
+    path("carrito/", core_views.carrito_view, name="carrito"),
+    path("carrito/agregar/<int:producto_id>/", core_views.carrito_agregar_view, name="carrito_agregar"),
+    path("carrito/actualizar/<int:producto_id>/", core_views.carrito_actualizar_view, name="carrito_actualizar"),
+    path("carrito/quitar/<int:producto_id>/", core_views.carrito_quitar_view, name="carrito_quitar"),
+    path("carrito/vaciar/", core_views.carrito_vaciar_view, name="carrito_vaciar"),
+    path("carrito/confirmar/", core_views.carrito_confirmar_view, name="carrito_confirmar"),
+
+    # --------- PEDIDOS ---------
+    path("pedidos/", core_views.lista_pedidos_view, name="lista_pedidos"),
+    path("pedidos/<int:pedido_id>/", core_views.detalle_pedido_view, name="detalle_pedido"),
 
     # --------- PANEL DEL CHOFER ---------
     path("chofer/ruta/", core_views.chofer_ruta_hoy_view, name="chofer_ruta_hoy"),

@@ -1,0 +1,52 @@
+{% extends "core/base.html" %}
+
+{% block title %}Productos | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Catálogo de productos</h3>
+    <a href="{% url 'crear_producto' %}" class="btn btn-primary">Nuevo producto</a>
+  </div>
+
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Precio</th>
+        <th>Unidad</th>
+        <th>Stock</th>
+        <th>Disponible</th>
+        <th style="width:120px;">Opciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in productos %}
+      <tr>
+        <td>
+          <strong>{{ p.nombre }}</strong>
+          {% if p.descripcion %}<br><small class="text-muted">{{ p.descripcion }}</small>{% endif %}
+        </td>
+        <td>${{ p.precio }}</td>
+        <td>{{ p.unidad }}</td>
+        <td>{{ p.stock_disponible }}</td>
+        <td>
+          {% if p.disponible %}
+            <span class="badge bg-success">Sí</span>
+          {% else %}
+            <span class="badge bg-secondary">No</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'editar_producto' p.id %}" class="btn btn-sm btn-outline-primary">Editar</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">No hay productos registrados aún.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <a href="{% url 'dashboard' %}" class="btn btn-link">Volver al panel</a>
+</div>
+{% endblock %}

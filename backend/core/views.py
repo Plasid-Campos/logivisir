@@ -16,8 +16,12 @@ from .models import (
     Cliente,
     Ruta,
     ParadaRuta,
+    Producto,
+    Pedido,
+    PedidoItem,
 )
 from .tenancy import get_empresa, get_object_or_404_scoped
+from .cart import Carrito
 
 # =========================================================
 # CONFIG
@@ -394,9 +398,13 @@ def crear_ruta_view(request):
 def detalle_ruta_view(request, ruta_id):
     empresa = get_empresa(request)
     ruta = get_object_or_404_scoped(Ruta, empresa, id=ruta_id)
-    paradas = ruta.paradas.select_related("cliente").all()
+    paradas = ruta.paradas.select_related("cliente", "pedido").all()
     clientes_activos = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
-    return render(request, "core/detalle_ruta.html", {"ruta": ruta, "paradas": paradas, "clientes": clientes_activos})
+    pedidos_pendientes = Pedido.objects.filter(empresa=empresa, estado="PENDIENTE").select_related("cliente")
+    return render(request, "core/detalle_ruta.html", {
+        "ruta": ruta, "paradas": paradas, "clientes": clientes_activos,
+        "pedidos_pendientes": pedidos_pendientes,
+    })
 
 
 @user_passes_test(es_admin_o_owner)
@@ -703,3 +711,240 @@ def chofer_marcar_parada_view(request, parada_id):
     _actualizar_estado_ruta_por_paradas(ruta, progreso)
 
     return redirect("chofer_ruta_hoy")
+
+# =========================================================
+# PRODUCTOS (catálogo, OWNER + ADMIN)
+# =========================================================
+@user_passes_test(es_admin_o_owner)
+def lista_productos_view(request):
+    empresa = get_empresa(request)
+    productos = Producto.objects.filter(empresa=empresa)
+    return render(request, "core/lista_productos.html", {"productos": productos})
+
+
+@user_passes_test(es_admin_o_owner)
+def crear_producto_view(request):
+    mensaje = None
+    error = None
+    empresa = get_empresa(request)
+
+    if request.method == "POST":
+        nombre = request.POST.get("nombre")
+        descripcion = request.POST.get("descripcion")
+        precio = request.POST.get("precio")
+        unidad = request.POST.get("unidad") or "unidad"
+        stock_disponible = request.POST.get("stock_disponible") or 0
+
+        if not (nombre and precio):
+            error = "Nombre y precio son obligatorios."
+        else:
+            try:
+                Producto.objects.create(
+                    empresa=empresa,
+                    nombre=nombre,
+                    descripcion=descripcion,
+                    precio=precio,
+                    unidad=unidad,
+                    stock_disponible=stock_disponible,
+                )
+                mensaje = "Producto creado correctamente."
+            except (ValueError, TypeError):
+                error = "Precio o stock inválido."
+
+    return render(request, "core/crear_producto.html", {"mensaje": mensaje, "error": error})
+
+
+@user_passes_test(es_admin_o_owner)
+def editar_producto_view(request, producto_id):
+    empresa = get_empresa(request)
+    producto = get_object_or_404_scoped(Producto, empresa, id=producto_id)
+    mensaje = None
+
+    if request.method == "POST":
+        producto.nombre = request.POST.get("nombre")
+        producto.descripcion = request.POST.get("descripcion")
+        producto.precio = request.POST.get("precio")
+        producto.unidad = request.POST.get("unidad") or "unidad"
+        producto.stock_disponible = request.POST.get("stock_disponible") or 0
+        producto.disponible = request.POST.get("disponible") == "on"
+        producto.save()
+        mensaje = "Cambios guardados."
+
+    return render(request, "core/editar_producto.html", {"producto": producto, "mensaje": mensaje})
+
+# =========================================================
+# CATÁLOGO Y CARRITO (armado por admin/vendedor para un cliente)
+# =========================================================
+@user_passes_test(es_admin_o_owner)
+def catalogo_view(request):
+    empresa = get_empresa(request)
+    clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
+    productos = Producto.objects.filter(empresa=empresa, disponible=True)
+
+    carrito = Carrito(request)
+    cliente_actual = None
+    if carrito.cliente_id:
+        cliente_actual = Cliente.objects.filter(empresa=empresa, id=carrito.cliente_id).first()
+
+    return render(request, "core/catalogo.html", {
+        "clientes": clientes,
+        "productos": productos,
+        "cliente_actual": cliente_actual,
+        "cantidad_items_carrito": len(carrito.datos["items"]),
+    })
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def seleccionar_cliente_carrito_view(request):
+    empresa = get_empresa(request)
+    cliente_id = request.POST.get("cliente_id")
+    cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
+
+    carrito = Carrito(request)
+    carrito.iniciar_para_cliente(cliente.id)
+    return redirect("catalogo")
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def carrito_agregar_view(request, producto_id):
+    empresa = get_empresa(request)
+    producto = get_object_or_404_scoped(Producto, empresa, id=producto_id)
+
+    carrito = Carrito(request)
+    if not carrito.cliente_id:
+        return redirect("catalogo")
+
+    cantidad = request.POST.get("cantidad") or 1
+    try:
+        cantidad = int(cantidad)
+    except ValueError:
+        cantidad = 1
+
+    carrito.agregar(producto.id, cantidad)
+    return redirect("catalogo")
+
+
+@user_passes_test(es_admin_o_owner)
+def carrito_view(request):
+    empresa = get_empresa(request)
+    carrito = Carrito(request)
+
+    cliente = None
+    if carrito.cliente_id:
+        cliente = Cliente.objects.filter(empresa=empresa, id=carrito.cliente_id).first()
+
+    items = carrito.items(empresa)
+    total = carrito.total(empresa)
+
+    return render(request, "core/carrito.html", {
+        "cliente": cliente,
+        "items": items,
+        "total": total,
+    })
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def carrito_actualizar_view(request, producto_id):
+    carrito = Carrito(request)
+    cantidad = request.POST.get("cantidad") or 0
+    try:
+        cantidad = int(cantidad)
+    except ValueError:
+        cantidad = 0
+    carrito.actualizar_cantidad(producto_id, cantidad)
+    return redirect("carrito")
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def carrito_quitar_view(request, producto_id):
+    carrito = Carrito(request)
+    carrito.quitar(producto_id)
+    return redirect("carrito")
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def carrito_vaciar_view(request):
+    carrito = Carrito(request)
+    carrito.vaciar()
+    return redirect("carrito")
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def carrito_confirmar_view(request):
+    empresa = get_empresa(request)
+    carrito = Carrito(request)
+
+    if not carrito.cliente_id or carrito.esta_vacio():
+        return redirect("carrito")
+
+    cliente = get_object_or_404_scoped(Cliente, empresa, id=carrito.cliente_id)
+    items = carrito.items(empresa)
+
+    pedido = Pedido.objects.create(empresa=empresa, cliente=cliente, creado_por=request.user)
+    for item in items:
+        PedidoItem.objects.create(
+            pedido=pedido,
+            producto=item["producto"],
+            cantidad=item["cantidad"],
+            precio_unitario=item["producto"].precio,
+        )
+    pedido.recalcular_total()
+
+    carrito.vaciar()
+    return redirect("detalle_pedido", pedido_id=pedido.id)
+
+# =========================================================
+# PEDIDOS (OWNER + ADMIN)
+# =========================================================
+@user_passes_test(es_admin_o_owner)
+def lista_pedidos_view(request):
+    empresa = get_empresa(request)
+    pedidos_qs = Pedido.objects.filter(empresa=empresa).select_related("cliente")
+
+    estado = request.GET.get("estado")
+    if estado in dict(Pedido.ESTADO_CHOICES).keys():
+        pedidos_qs = pedidos_qs.filter(estado=estado)
+
+    paginator = Paginator(pedidos_qs, PAGINA_TAMANO)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(request, "core/lista_pedidos.html", {
+        "pedidos": page_obj, "page_obj": page_obj, "estado_filtro": estado,
+    })
+
+
+@user_passes_test(es_admin_o_owner)
+def detalle_pedido_view(request, pedido_id):
+    empresa = get_empresa(request)
+    pedido = get_object_or_404_scoped(Pedido, empresa, id=pedido_id)
+    items = pedido.items.select_related("producto")
+    return render(request, "core/detalle_pedido.html", {"pedido": pedido, "items": items})
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def agregar_pedido_a_ruta_view(request, ruta_id):
+    empresa = get_empresa(request)
+    ruta = get_object_or_404_scoped(Ruta, empresa, id=ruta_id)
+    pedido_id = request.POST.get("pedido_id")
+    pedido = get_object_or_404_scoped(Pedido, empresa, id=pedido_id)
+
+    if pedido.estado != "PENDIENTE":
+        return redirect("detalle_ruta", ruta_id=ruta.id)
+
+    if ruta.paradas.filter(cliente=pedido.cliente).exists():
+        return redirect("detalle_ruta", ruta_id=ruta.id)
+
+    ultimo = ruta.paradas.order_by("-orden").first()
+    orden = (ultimo.orden + 1) if ultimo else 1
+
+    ParadaRuta.objects.create(ruta=ruta, cliente=pedido.cliente, orden=orden, pedido=pedido)
+    pedido.estado = "ASIGNADO"
+    pedido.save(update_fields=["estado"])
+
+    return redirect("detalle_ruta", ruta_id=ruta.id)

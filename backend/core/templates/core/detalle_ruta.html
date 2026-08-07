@@ -75,6 +75,11 @@
             {% if parada.cliente.comuna %}, {{ parada.cliente.comuna }}{% endif %}
             {% if parada.cliente.ciudad %}, {{ parada.cliente.ciudad }}{% endif %}
           </small>
+          {% if parada.pedido %}
+            <br><a href="{% url 'detalle_pedido' parada.pedido.id %}" class="badge bg-info text-dark text-decoration-none">
+              <i class="bi bi-bag-check"></i> Pedido #{{ parada.pedido.id }} (${{ parada.pedido.total }})
+            </a>
+          {% endif %}
         </td>
 
         <td>
@@ -141,6 +146,32 @@
   </table>
 
   <hr>
+
+  {% if pedidos_pendientes %}
+    <h5>Pedidos pendientes por asignar</h5>
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr><th>#</th><th>Cliente</th><th>Total</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for pedido in pedidos_pendientes %}
+        <tr>
+          <td>{{ pedido.id }}</td>
+          <td>{{ pedido.cliente.nombre }}</td>
+          <td>${{ pedido.total }}</td>
+          <td>
+            <form method="POST" action="{% url 'agregar_pedido_a_ruta' ruta.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
+              <button class="btn btn-sm btn-outline-success">Agregar a esta ruta</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <hr>
+  {% endif %}
 
   <h5>Agregar parada a la ruta</h5>
 

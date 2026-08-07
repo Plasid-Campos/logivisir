@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Empresa, PerfilUsuario, Chofer, Cliente, Ruta, ParadaRuta
+from .models import Empresa, PerfilUsuario, Chofer, Cliente, Ruta, ParadaRuta, Producto, Pedido, PedidoItem
 
 
 @admin.register(Empresa)
@@ -59,6 +59,26 @@ class RutaAdmin(admin.ModelAdmin):
     list_filter = ("estado", "activa", "empresa", "fecha")
     search_fields = ("nombre", "chofer__perfil__user__first_name", "chofer__perfil__user__last_name")
     inlines = [ParadaRutaInline]
+
+
+@admin.register(Producto)
+class ProductoAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "empresa", "precio", "unidad", "stock_disponible", "disponible")
+    list_filter = ("empresa", "disponible")
+    search_fields = ("nombre",)
+
+
+class PedidoItemInline(admin.TabularInline):
+    model = PedidoItem
+    extra = 0
+
+
+@admin.register(Pedido)
+class PedidoAdmin(admin.ModelAdmin):
+    list_display = ("id", "empresa", "cliente", "estado", "total", "creado_en")
+    list_filter = ("empresa", "estado")
+    search_fields = ("cliente__nombre",)
+    inlines = [PedidoItemInline]
 
 
 @admin.register(ParadaRuta)
