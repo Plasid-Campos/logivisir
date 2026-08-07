@@ -141,6 +141,11 @@
 
       {% if request.user.is_authenticated %}
         <div class="d-flex align-items-center ms-lg-3 navbar-user">
+          {% if USER_EMPRESA %}
+            <span class="badge text-bg-light border me-2 small">
+              <i class="bi bi-building me-1"></i>{{ USER_EMPRESA.nombre }}
+            </span>
+          {% endif %}
           <span class="navbar-text me-2 small text-muted">
             {{ request.user.get_full_name|default:request.user.username }}
           </span>
@@ -157,6 +162,19 @@
   </div>
 </nav>
 </header>
+
+<!-- MENSAJES -->
+{% if messages %}
+  <div class="container mt-3">
+    {% for message in messages %}
+      <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show"
+           role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
 
 <!-- CONTENIDO DE CADA PÁGINA -->
 {% block content %}{% endblock %}

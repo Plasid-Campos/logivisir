@@ -108,11 +108,14 @@
                   </a>
 
                   {% if c.activo %}
-                    <a href="{% url 'eliminar_chofer' c.id %}"
-                       class="btn btn-outline-secondary btn-sm btn-saas"
-                       onclick="return confirm('¿Desactivar/eliminar chofer?');">
-                      <i class="bi bi-slash-circle me-1"></i>Eliminar
-                    </a>
+                    <form method="POST" action="{% url 'eliminar_chofer' c.id %}"
+                          onsubmit="return confirm('¿Eliminar este chofer? Esta acción no se puede deshacer.');"
+                          class="d-inline">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-secondary btn-sm btn-saas">
+                        <i class="bi bi-slash-circle me-1"></i>Eliminar
+                      </button>
+                    </form>
                   {% endif %}
                 </div>
               </td>
@@ -127,6 +130,8 @@
           </tbody>
         </table>
       </div>
+
+      {% include "core/_pagination.html" %}
 
     </div>
 

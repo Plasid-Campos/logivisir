@@ -88,16 +88,23 @@
                   </a>
 
                   {% if c.activo %}
-                    <a href="{% url 'desactivar_cliente' c.id %}" class="btn btn-outline-secondary btn-sm btn-saas">
-                      <i class="bi bi-slash-circle me-1"></i>Desactivar
-                    </a>
+                    <form method="POST" action="{% url 'desactivar_cliente' c.id %}" class="d-inline">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-secondary btn-sm btn-saas">
+                        <i class="bi bi-slash-circle me-1"></i>Desactivar
+                      </button>
+                    </form>
                   {% endif %}
 
                   {% if request.user.perfilusuario.rol == "OWNER" %}
-                    <a href="{% url 'eliminar_cliente' c.id %}" class="btn btn-outline-danger btn-sm btn-saas"
-                       onclick="return confirm('¿Eliminar cliente definitivamente?');">
-                      <i class="bi bi-trash3 me-1"></i>Eliminar
-                    </a>
+                    <form method="POST" action="{% url 'eliminar_cliente' c.id %}"
+                          onsubmit="return confirm('¿Eliminar cliente definitivamente?');"
+                          class="d-inline">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-danger btn-sm btn-saas">
+                        <i class="bi bi-trash3 me-1"></i>Eliminar
+                      </button>
+                    </form>
                   {% endif %}
                 </div>
               </td>
@@ -112,6 +119,8 @@
           </tbody>
         </table>
       </div>
+
+      {% include "core/_pagination.html" %}
 
     </div>
 

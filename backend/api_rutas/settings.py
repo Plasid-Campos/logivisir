@@ -142,6 +142,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Ruta de login personalizada
 LOGIN_URL = '/login/'
 
+# Bootstrap 5 usa "alert-danger", no "alert-error" (default de Django)
+from django.contrib.messages import constants as message_constants
+MESSAGE_TAGS = {
+    message_constants.ERROR: "danger",
+}
+
 # -------------------------------
 # CONFIGURACIÓN DE EMAIL (DESARROLLO LOCAL)
 # -------------------------------

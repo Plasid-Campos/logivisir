@@ -38,6 +38,7 @@ urlpatterns = [
     path("paradas/<int:parada_id>/eliminar/", core_views.eliminar_parada_view, name="eliminar_parada"),
     path("paradas/<int:parada_id>/toggle/", core_views.toggle_parada_entregada_view, name="toggle_parada"),
     path("rutas/<int:ruta_id>/cambiar-estado/", core_views.cambiar_estado_ruta_view, name="cambiar_estado_ruta"),
+    path("rutas/<int:ruta_id>/optimizar/", core_views.optimizar_ruta_view, name="optimizar_ruta"),
 
     # --------- PANEL DEL CHOFER ---------
     path("chofer/ruta/", core_views.chofer_ruta_hoy_view, name="chofer_ruta_hoy"),

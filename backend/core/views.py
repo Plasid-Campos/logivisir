@@ -2,6 +2,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -14,12 +17,13 @@ from .models import (
     Ruta,
     ParadaRuta,
 )
+from .tenancy import get_empresa, get_object_or_404_scoped
 
 # =========================================================
 # CONFIG
 # =========================================================
-ORIGEN_FIJO = "Salesianos 768, San Miguel, Chile"
 MAX_WAYPOINTS_MAPS = 20  # evita que Maps falle
+PAGINA_TAMANO = 25
 
 # =========================================================
 # HOME / LANDING
@@ -90,17 +94,19 @@ def es_chofer(user):
 @login_required
 def dashboard_view(request):
     perfil = getattr(request.user, "perfilusuario", None)
+    empresa = get_empresa(request)
 
-    clientes_activos = Cliente.objects.filter(activo=True).count()
-    choferes_activos = Chofer.objects.filter(activo=True).count()
+    clientes_activos = Cliente.objects.filter(empresa=empresa, activo=True).count()
+    choferes_activos = Chofer.objects.filter(perfil__empresa=empresa, activo=True).count()
 
     hoy = timezone.localdate()
-    rutas_hoy_qs = Ruta.objects.filter(fecha=hoy, activa=True)
+    rutas_hoy_qs = Ruta.objects.filter(empresa=empresa, fecha=hoy, activa=True)
 
     rutas_pendientes = rutas_hoy_qs.exclude(estado="COMPLETADA").count()
 
     return render(request, "core/dashboard.html", {
         "perfil": perfil,
+        "empresa": empresa,
         "resumen": {
             "clientes_activos": clientes_activos,
             "choferes_activos": choferes_activos,
@@ -112,10 +118,14 @@ def dashboard_view(request):
 # =========================================================
 # CREAR USUARIO (solo OWNER)
 # =========================================================
+ROLES_CREABLES = ("ADMIN", "CHOFER")
+
+
 @user_passes_test(es_owner)
 def crear_usuario_view(request):
     mensaje = None
     error = None
+    empresa = get_empresa(request)
 
     if request.method == "POST":
         username = request.POST.get("username")
@@ -125,9 +135,19 @@ def crear_usuario_view(request):
         rol = request.POST.get("rol")
         email = request.POST.get("email")
 
-        if User.objects.filter(username=username).exists():
+        if rol not in ROLES_CREABLES:
+            error = "Rol inválido."
+        elif User.objects.filter(username=username).exists():
             error = f"El nombre de usuario '{username}' ya existe. Elige otro."
+        elif not password:
+            error = "La contraseña es obligatoria."
         else:
+            try:
+                validate_password(password)
+            except ValidationError as e:
+                error = " ".join(e.messages)
+
+        if not error:
             user = User.objects.create_user(
                 username=username,
                 password=password,
@@ -135,7 +155,7 @@ def crear_usuario_view(request):
                 last_name=apellido,
                 email=email,
             )
-            PerfilUsuario.objects.create(user=user, rol=rol)
+            PerfilUsuario.objects.create(user=user, rol=rol, empresa=empresa)
             mensaje = f"Usuario '{username}' creado correctamente."
 
     return render(request, "core/crear_usuario.html", {"mensaje": mensaje, "error": error})
@@ -145,7 +165,8 @@ def crear_usuario_view(request):
 # =========================================================
 @user_passes_test(es_admin_o_owner)
 def lista_choferes_view(request):
-    choferes = Chofer.objects.select_related("perfil", "perfil__user").all()
+    empresa = get_empresa(request)
+    choferes = Chofer.objects.filter(perfil__empresa=empresa).select_related("perfil", "perfil__user")
     return render(request, "core/lista_choferes.html", {"choferes": choferes})
 
 
@@ -153,6 +174,7 @@ def lista_choferes_view(request):
 def crear_chofer_view(request):
     mensaje = None
     error = None
+    empresa = get_empresa(request)
 
     if request.method == "POST":
         username = request.POST.get("username")
@@ -170,7 +192,15 @@ def crear_chofer_view(request):
             error = f"El nombre de usuario '{username}' ya existe. Usa otro."
         elif Chofer.objects.filter(rut=rut).exists():
             error = f"Ya existe un chofer con el RUT {rut}."
+        elif not password:
+            error = "La contraseña es obligatoria."
         else:
+            try:
+                validate_password(password)
+            except ValidationError as e:
+                error = " ".join(e.messages)
+
+        if not error:
             try:
                 user = User.objects.create_user(
                     username=username,
@@ -179,7 +209,7 @@ def crear_chofer_view(request):
                     last_name=apellido,
                     email=email,
                 )
-                perfil = PerfilUsuario.objects.create(user=user, rol="CHOFER")
+                perfil = PerfilUsuario.objects.create(user=user, rol="CHOFER", empresa=empresa)
                 Chofer.objects.create(
                     perfil=perfil,
                     rut=rut,
@@ -196,7 +226,8 @@ def crear_chofer_view(request):
 
 @user_passes_test(es_admin_o_owner)
 def editar_chofer_view(request, chofer_id):
-    chofer = get_object_or_404(Chofer, id=chofer_id)
+    empresa = get_empresa(request)
+    chofer = get_object_or_404_scoped(Chofer, empresa, lookup_field="perfil__empresa", id=chofer_id)
     mensaje = None
 
     if request.method == "POST":
@@ -212,8 +243,10 @@ def editar_chofer_view(request, chofer_id):
 
 
 @user_passes_test(es_admin_o_owner)
+@require_POST
 def eliminar_chofer_view(request, chofer_id):
-    chofer = get_object_or_404(Chofer, id=chofer_id)
+    empresa = get_empresa(request)
+    chofer = get_object_or_404_scoped(Chofer, empresa, lookup_field="perfil__empresa", id=chofer_id)
     usuario = chofer.perfil.user
     usuario.delete()
     return redirect("lista_choferes")
@@ -223,14 +256,18 @@ def eliminar_chofer_view(request, chofer_id):
 # =========================================================
 @user_passes_test(es_admin_o_owner)
 def lista_clientes_view(request):
-    clientes = Cliente.objects.all().order_by("nombre")
-    return render(request, "core/lista_clientes.html", {"clientes": clientes})
+    empresa = get_empresa(request)
+    clientes_qs = Cliente.objects.filter(empresa=empresa).order_by("nombre")
+    paginator = Paginator(clientes_qs, PAGINA_TAMANO)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(request, "core/lista_clientes.html", {"clientes": page_obj, "page_obj": page_obj})
 
 
 @user_passes_test(es_admin_o_owner)
 def crear_cliente_view(request):
     mensaje = None
     error = None
+    empresa = get_empresa(request)
 
     if request.method == "POST":
         rut = request.POST.get("rut")
@@ -241,24 +278,34 @@ def crear_cliente_view(request):
         telefono = request.POST.get("telefono")
         email = request.POST.get("email")
 
-        if Cliente.objects.filter(rut=rut).exists():
+        if Cliente.objects.filter(empresa=empresa, rut=rut).exists():
             error = f"Ya existe un cliente con el RUT {rut}."
         else:
-            Cliente.objects.create(
+            cliente = Cliente.objects.create(
+                empresa=empresa,
                 rut=rut, nombre=nombre, direccion=direccion,
                 comuna=comuna, ciudad=ciudad, telefono=telefono, email=email
             )
             mensaje = "Cliente creado correctamente."
+            from .geocoding import geocodificar_cliente
+            if not geocodificar_cliente(cliente):
+                mensaje += (
+                    " No se pudo ubicar la dirección automáticamente; "
+                    "revisa que esté bien escrita para que la ruta pueda optimizarse."
+                )
 
     return render(request, "core/crear_cliente.html", {"mensaje": mensaje, "error": error})
 
 
 @user_passes_test(es_admin_o_owner)
 def editar_cliente_view(request, cliente_id):
-    cliente = get_object_or_404(Cliente, id=cliente_id)
+    empresa = get_empresa(request)
+    cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
     mensaje = None
 
     if request.method == "POST":
+        direccion_anterior = (cliente.direccion, cliente.comuna, cliente.ciudad)
+
         cliente.rut = request.POST.get("rut")
         cliente.nombre = request.POST.get("nombre")
         cliente.direccion = request.POST.get("direccion")
@@ -272,15 +319,23 @@ def editar_cliente_view(request, cliente_id):
         if cliente.activo:
             cliente.motivo_inactivo = ""
 
+        direccion_nueva = (cliente.direccion, cliente.comuna, cliente.ciudad)
         cliente.save()
         mensaje = "Cambios guardados."
+
+        if direccion_nueva != direccion_anterior:
+            from .geocoding import geocodificar_cliente
+            if not geocodificar_cliente(cliente):
+                mensaje += " No se pudo re-ubicar la nueva dirección automáticamente."
 
     return render(request, "core/editar_cliente.html", {"cliente": cliente, "mensaje": mensaje})
 
 
 @user_passes_test(es_admin_o_owner)
+@require_POST
 def desactivar_cliente_view(request, cliente_id):
-    cliente = get_object_or_404(Cliente, id=cliente_id)
+    empresa = get_empresa(request)
+    cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
     cliente.activo = False
     if not cliente.motivo_inactivo:
         cliente.motivo_inactivo = "Inactivado manualmente."
@@ -289,8 +344,10 @@ def desactivar_cliente_view(request, cliente_id):
 
 
 @user_passes_test(es_owner)
+@require_POST
 def eliminar_cliente_view(request, cliente_id):
-    cliente = get_object_or_404(Cliente, id=cliente_id)
+    empresa = get_empresa(request)
+    cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
     cliente.delete()
     return redirect("lista_clientes")
 
@@ -299,15 +356,21 @@ def eliminar_cliente_view(request, cliente_id):
 # =========================================================
 @user_passes_test(es_admin_o_owner)
 def lista_rutas_view(request):
-    rutas = Ruta.objects.select_related("chofer", "chofer__perfil__user").order_by("-fecha", "-creada_en")
-    return render(request, "core/lista_rutas.html", {"rutas": rutas})
+    empresa = get_empresa(request)
+    rutas_qs = Ruta.objects.filter(empresa=empresa).select_related(
+        "chofer", "chofer__perfil__user"
+    ).order_by("-fecha", "-creada_en")
+    paginator = Paginator(rutas_qs, PAGINA_TAMANO)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(request, "core/lista_rutas.html", {"rutas": page_obj, "page_obj": page_obj})
 
 
 @user_passes_test(es_admin_o_owner)
 def crear_ruta_view(request):
     mensaje = None
     error = None
-    choferes = Chofer.objects.filter(activo=True).select_related("perfil__user")
+    empresa = get_empresa(request)
+    choferes = Chofer.objects.filter(perfil__empresa=empresa, activo=True).select_related("perfil__user")
 
     if request.method == "POST":
         nombre = request.POST.get("nombre")
@@ -318,8 +381,8 @@ def crear_ruta_view(request):
             error = "Todos los campos son obligatorios."
         else:
             try:
-                chofer = Chofer.objects.get(id=chofer_id)
-                ruta = Ruta.objects.create(nombre=nombre, fecha=fecha, chofer=chofer)
+                chofer = Chofer.objects.get(id=chofer_id, perfil__empresa=empresa)
+                ruta = Ruta.objects.create(nombre=nombre, fecha=fecha, chofer=chofer, empresa=empresa)
                 return redirect("detalle_ruta", ruta_id=ruta.id)
             except Chofer.DoesNotExist:
                 error = "El chofer seleccionado no existe."
@@ -329,15 +392,17 @@ def crear_ruta_view(request):
 
 @user_passes_test(es_admin_o_owner)
 def detalle_ruta_view(request, ruta_id):
-    ruta = get_object_or_404(Ruta, id=ruta_id)
+    empresa = get_empresa(request)
+    ruta = get_object_or_404_scoped(Ruta, empresa, id=ruta_id)
     paradas = ruta.paradas.select_related("cliente").all()
-    clientes_activos = Cliente.objects.filter(activo=True).order_by("nombre")
+    clientes_activos = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
     return render(request, "core/detalle_ruta.html", {"ruta": ruta, "paradas": paradas, "clientes": clientes_activos})
 
 
 @user_passes_test(es_admin_o_owner)
 def agregar_parada_view(request, ruta_id):
-    ruta = get_object_or_404(Ruta, id=ruta_id)
+    empresa = get_empresa(request)
+    ruta = get_object_or_404_scoped(Ruta, empresa, id=ruta_id)
 
     if request.method == "POST":
         cliente_id = request.POST.get("cliente_id")
@@ -347,7 +412,7 @@ def agregar_parada_view(request, ruta_id):
         if not cliente_id:
             return redirect("detalle_ruta", ruta_id=ruta.id)
 
-        cliente = get_object_or_404(Cliente, id=cliente_id)
+        cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
 
         if not orden:
             ultimo = ruta.paradas.order_by("-orden").first()
@@ -367,16 +432,20 @@ def agregar_parada_view(request, ruta_id):
 
 
 @user_passes_test(es_admin_o_owner)
+@require_POST
 def eliminar_parada_view(request, parada_id):
-    parada = get_object_or_404(ParadaRuta, id=parada_id)
+    empresa = get_empresa(request)
+    parada = get_object_or_404_scoped(ParadaRuta, empresa, lookup_field="ruta__empresa", id=parada_id)
     ruta_id = parada.ruta.id
     parada.delete()
     return redirect("detalle_ruta", ruta_id=ruta_id)
 
 
 @user_passes_test(es_admin_o_owner)
+@require_POST
 def toggle_parada_entregada_view(request, parada_id):
-    parada = get_object_or_404(ParadaRuta, id=parada_id)
+    empresa = get_empresa(request)
+    parada = get_object_or_404_scoped(ParadaRuta, empresa, lookup_field="ruta__empresa", id=parada_id)
 
     # Toggle compatibilidad
     parada.entregado = not parada.entregado
@@ -397,7 +466,8 @@ def toggle_parada_entregada_view(request, parada_id):
 
 @user_passes_test(es_admin_o_owner)
 def cambiar_estado_ruta_view(request, ruta_id):
-    ruta = get_object_or_404(Ruta, id=ruta_id)
+    empresa = get_empresa(request)
+    ruta = get_object_or_404_scoped(Ruta, empresa, id=ruta_id)
 
     if request.method == "POST":
         nuevo_estado = request.POST.get("estado")
@@ -406,6 +476,32 @@ def cambiar_estado_ruta_view(request, ruta_id):
             ruta.save()
 
     return redirect("detalle_ruta", ruta_id=ruta.id)
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def optimizar_ruta_view(request, ruta_id):
+    empresa = get_empresa(request)
+    ruta = get_object_or_404_scoped(Ruta, empresa, id=ruta_id)
+
+    from .optimizer import optimizar_paradas
+    resultado = optimizar_paradas(ruta)
+
+    if resultado.get("optimizado"):
+        mensaje = f"Ruta optimizada: {resultado['cantidad']} paradas reordenadas."
+        if resultado.get("sin_coordenadas"):
+            mensaje += (
+                f" {len(resultado['sin_coordenadas'])} cliente(s) sin coordenadas "
+                "quedaron al final sin optimizar: " + ", ".join(resultado["sin_coordenadas"])
+            )
+    else:
+        mensaje = resultado.get("motivo", "No fue posible optimizar la ruta.")
+
+    from django.contrib import messages as django_messages
+    django_messages.info(request, mensaje)
+
+    return redirect("detalle_ruta", ruta_id=ruta.id)
+
 
 def _actualizar_estado_ruta_por_paradas(ruta, progreso):
     """
@@ -458,15 +554,19 @@ def _actualizar_estado_ruta_por_paradas(ruta, progreso):
 def chofer_ruta_hoy_view(request):
     hoy = timezone.localdate()
     chofer = get_object_or_404(Chofer, perfil__user=request.user)
+    empresa = chofer.perfil.empresa
 
     ruta = Ruta.objects.filter(chofer=chofer, fecha=hoy, activa=True).order_by("-creada_en").first()
 
     paradas = []
     paradas_ui = []
     maps_url = ""
+    aviso_maps = ""
     progreso = {"total": 0, "entregadas": 0, "no_entregadas": 0, "pendientes": 0}
     siguiente_parada_id = None
-    porcentaje_entregadas = 0  # ✅ nuevo
+    porcentaje_entregadas = 0
+
+    origen_fijo = empresa.direccion_origen_completa() or "Origen no configurado"
 
     if ruta:
         paradas = ruta.paradas.select_related("cliente").order_by("orden")
@@ -517,10 +617,12 @@ def chofer_ruta_hoy_view(request):
             })
 
         # Ruta completa: origen fijo -> waypoints clientes -> destino fijo
-        if 1 <= len(direcciones) <= MAX_WAYPOINTS_MAPS:
+        if len(direcciones) == 0:
+            maps_url = ""
+        elif len(direcciones) <= MAX_WAYPOINTS_MAPS:
             base = "https://www.google.com/maps/dir/?api=1"
-            origin = ORIGEN_FIJO
-            destination = ORIGEN_FIJO
+            origin = origen_fijo
+            destination = origen_fijo
             waypoints = direcciones[:]
 
             params = f"&origin={quote_plus(origin)}&destination={quote_plus(destination)}"
@@ -529,6 +631,11 @@ def chofer_ruta_hoy_view(request):
             maps_url = base + params
         else:
             maps_url = ""
+            aviso_maps = (
+                f"Esta ruta tiene {len(direcciones)} paradas y Google Maps solo admite "
+                f"{MAX_WAYPOINTS_MAPS} puntos en un enlace. Divide la ruta o navega "
+                "parada por parada con el botón 'Ir a cliente' de cada una."
+            )
 
     return render(request, "core/chofer_ruta.html", {
         "ruta": ruta,
@@ -536,9 +643,10 @@ def chofer_ruta_hoy_view(request):
         "paradas_ui": paradas_ui,
         "hoy": hoy,
         "maps_url": maps_url,
-        "origen_fijo": ORIGEN_FIJO,
+        "aviso_maps": aviso_maps,
+        "origen_fijo": origen_fijo,
         "progreso": progreso,
-        "porcentaje_entregadas": porcentaje_entregadas,  # ✅ nuevo
+        "porcentaje_entregadas": porcentaje_entregadas,
         "siguiente_parada_id": siguiente_parada_id,
     })
 
@@ -566,7 +674,6 @@ def chofer_marcar_parada_view(request, parada_id):
     elif accion == "NO_ENTREGADO":
         # motivo obligatorio para NO_ENTREGADO
         if not motivo:
-            # Sin mensajes todavía (no importaste messages). Simple: volver.
             return redirect("chofer_ruta_hoy")
 
         parada.estado_entrega = "NO_ENTREGADO"
