@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Optimización de rutas | LogiVisir Solutions{% endblock %}
+{% block title %}Optimización de rutas para pymes | LogiVisir Solutions{% endblock %}
 
 {% block content %}
 
@@ -9,259 +9,201 @@
      HERO SECTION
 ============================ -->
 <section class="hero-section">
-  <div class="container py-5">
+  <div class="container">
     <div class="row align-items-center">
 
       <!-- TEXTO DEL HERO -->
-      <div class="col-lg-6 mb-4 mb-lg-0">
-        <span class="hero-kicker">Plataforma SaaS para logística</span>
+      <div class="col-lg-6 mb-5 mb-lg-0">
+        <span class="hero-kicker">Software de rutas para pymes de reparto</span>
 
-        <h1 class="hero-title mb-3">
-          Centraliza tus rutas,<br>
-          mejora el servicio y reduce<br>
-          costos.
+        <h1 class="hero-title">
+          Tus rutas, ordenadas.<br>
+          Tus entregas, a tiempo.
         </h1>
 
-        <p class="hero-subtitle mb-4">
-          LogiVisir Solutions ayuda a empresas como <strong>Panadería Macarrón</strong>
-          a optimizar la planificación de rutas, gestionar choferes y monitorear
-          su operación diaria de manera simple y eficiente.
+        <p class="hero-subtitle">
+          Logivisir reemplaza la planilla y el mapa mental de "quién va primero" por
+          rutas optimizadas automáticamente, choferes con su propio panel y
+          visibilidad completa de cada entrega, todos los días.
         </p>
 
-        <div class="d-flex gap-3 flex-wrap">
-          <a href="{% url 'solicitar_cuenta' %}" class="btn btn-primary px-4 py-2">Comenzar ahora</a>
-          <a href="#como-funciona" class="btn btn-outline-primary px-4 py-2">Ver cómo funciona</a>
+        <div class="hero-actions">
+          <a href="{% url 'solicitar_cuenta' %}" class="btn btn-hero-primary">Comenzar ahora</a>
+          <a href="#como-funciona" class="btn btn-hero-ghost">Ver cómo funciona</a>
         </div>
 
-        <p class="hero-note mt-3">
-          Sin instalaciones complejas. Tu cuenta queda activa en menos de 24 horas.
-        </p>
+        <p class="hero-note">Sin instalaciones. Tu cuenta queda activa en menos de 24 horas.</p>
       </div>
 
-      <!-- IMAGEN DEL HERO (TU GRÁFICO) -->
-      <div class="col-lg-6 d-flex justify-content-center">
-        <div class="hero-demo-box">
-          <img src="{% static 'core/img/grafico_prueba.png' %}"
-               alt="Dashboard Logístico"
-               class="hero-demo-image">
+      <!-- PANEL DE PRODUCTO (mock hecho en CSS, no una captura) -->
+      <div class="col-lg-6">
+        <div class="product-preview">
+          <div class="product-preview-bar">
+            <span></span><span></span><span></span>
+            <div class="product-preview-url">app.logivisir.com/rutas/hoy</div>
+          </div>
+          <div class="product-preview-body">
+            <div class="pp-row pp-row-head">
+              <span>Ruta de hoy · Manuel C.</span>
+              <span class="pp-chip">En proceso</span>
+            </div>
+
+            <div class="pp-stop pp-stop-done">
+              <span class="pp-stop-num"><i class="bi bi-check-lg"></i></span>
+              <div>
+                <div class="pp-stop-name">Coffe &amp; Tea SPA</div>
+                <div class="pp-stop-meta">Entregado · 09:14</div>
+              </div>
+            </div>
+            <div class="pp-stop pp-stop-active">
+              <span class="pp-stop-num">2</span>
+              <div>
+                <div class="pp-stop-name">Todo Coffe</div>
+                <div class="pp-stop-meta">Siguiente parada · 1.2 km</div>
+              </div>
+            </div>
+            <div class="pp-stop">
+              <span class="pp-stop-num">3</span>
+              <div>
+                <div class="pp-stop-name">Marcelo</div>
+                <div class="pp-stop-meta">Pendiente</div>
+              </div>
+            </div>
+
+            <div class="pp-stats">
+              <div class="pp-stat">
+                <div class="pp-stat-value">18%</div>
+                <div class="pp-stat-label">menos km por ruta</div>
+              </div>
+              <div class="pp-stat">
+                <div class="pp-stat-value">3/5</div>
+                <div class="pp-stat-label">entregas de hoy</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
     </div>
   </div>
 </section>
-
-<!-- SEPARADOR -->
-<div class="section-divider"></div>
 
 
 <!-- =========================
-     LOGOS CLIENTES / CASOS REALES
+     ORIGEN (prueba social honesta, sin logos inventados)
 ========================= -->
-<section class="logos-clientes" id="clientes">
+<section class="origin-band">
   <div class="container">
-
-    <div class="text-center mb-5">
-      <span class="logos-kicker">
-        Casos reales en operación logística diaria
-      </span>
-
-      <h2 class="logos-title mb-2">
-        Empresas que confían en <span>LogiVisir</span>
-      </h2>
-
-      <p class="logos-subtitle">
-        Plataforma diseñada junto a panaderías y distribuidores urbanos de la Región Metropolitana.
-      </p>
-    </div>
-
-    <div class="logos-grid">
-
-      <div class="logo-card">
-        <img src="{% static 'core/img/logo_andes.png' %}" alt="Los Andes Distribuidora">
-        <p>Los Andes Distribuidora</p>
-      </div>
-
-      <div class="logo-card">
-        <img src="{% static 'core/img/macarron.png' %}" alt="Panadería Macarrón">
-        <p>Panadería Macarrón</p>
-      </div>
-
-      <div class="logo-card">
-        <img src="{% static 'core/img/centrosur.png' %}" alt="Fedecam Centro Sur">
-        <p>Fedecam Centro Sur</p>
-      </div>
-
-      <div class="logo-card">
-        <img src="{% static 'core/img/delipan.png' %}" alt="Delipan Express">
-        <p>Delipan Express</p>
-      </div>
-
-    </div>
-
-    <!-- Franja tipo aurora boreal (toque nórdico) -->
-    <div class="logos-aurora mt-5"></div>
-
+    <p>
+      <i class="bi bi-quote"></i>
+      Logivisir nació resolviendo el reparto diario de
+      <strong>Panadería Macarrón</strong>, que antes se planificaba a mano.
+      Hoy está construido para que cualquier pyme de reparto pueda usarlo.
+    </p>
   </div>
 </section>
-
-<!-- SEPARADOR -->
-<div class="section-divider"></div>
 
 
 <!-- ======================================
      SECCIÓN: ¿Qué soluciona LogiVisir?
 ====================================== -->
-<section id="soluciones" class="solutions-section py-5 py-md-6">
+<section id="soluciones" class="solutions-section">
   <div class="container">
 
-    <!-- Encabezado de sección -->
-    <div class="text-center mb-5">
-      <span class="section-badge">
-        Pensado para panaderías y reparto urbano
-      </span>
-      <h2 class="section-title mt-3">
-        ¿Qué soluciona <span>LogiVisir?</span>
-      </h2>
-      <p class="section-subtitle mx-auto">
-        Diseñado para reemplazar planillas manuales y dar visibilidad total a la
-        operación diaria de reparto, desde la planificación hasta el seguimiento
-        de choferes y clientes.
+    <div class="section-head">
+      <h2 class="section-title">Todo lo que hoy haces a mano, en un solo lugar</h2>
+      <p class="section-subtitle">
+        Reemplaza planillas, grupos de WhatsApp y llamadas de "¿dónde vas?" por
+        una operación de reparto que se ve y se controla desde un solo panel.
       </p>
     </div>
 
-    <!-- Tarjetas de soluciones -->
     <div class="row g-4">
-      <!-- Card 1 -->
       <div class="col-md-4">
         <div class="solution-card">
-          <div class="solution-icon icon-1">
-            <i class="bi bi-signpost-split"></i>
-          </div>
-          <h5>Planificación de rutas</h5>
+          <div class="solution-icon icon-1"><i class="bi bi-signpost-split"></i></div>
+          <h5>Rutas que se optimizan solas</h5>
           <p>
-            Crea rutas diarias considerando comunas, horarios de entrega,
-            prioridad de clientes y capacidad del vehículo.
+            Agregas los clientes del día y el sistema calcula el orden que menos
+            kilómetros recorre, saliendo y volviendo desde tu negocio.
           </p>
-          <ul class="solution-list">
-            <li>Menos kilómetros recorridos</li>
-            <li>Menos tiempo de planificación</li>
-            <li>Mejores tiempos de respuesta al cliente</li>
-          </ul>
         </div>
       </div>
 
-      <!-- Card 2 -->
       <div class="col-md-4">
         <div class="solution-card">
-          <div class="solution-icon icon-2">
-            <i class="bi bi-person-lines-fill"></i>
-          </div>
-          <h5>Gestión de choferes</h5>
+          <div class="solution-icon icon-2"><i class="bi bi-person-lines-fill"></i></div>
+          <h5>Choferes con su propio panel</h5>
           <p>
-            Administra choferes, licencias, patentes y estados de actividad.
-            Cada chofer ve solo su ruta y sus entregas.
+            Cada chofer entra desde su celular, ve solo su ruta del día y marca
+            entregado o no entregado con el motivo, sin llamadas de por medio.
           </p>
-          <ul class="solution-list">
-            <li>Control de disponibilidad</li>
-            <li>Asignación clara de rutas</li>
-            <li>Historial de entregas por chofer</li>
-          </ul>
         </div>
       </div>
 
-      <!-- Card 3 -->
       <div class="col-md-4">
         <div class="solution-card">
-          <div class="solution-icon icon-3">
-            <i class="bi bi-speedometer2"></i>
-          </div>
-          <h5>Panel operativo</h5>
+          <div class="solution-icon icon-3"><i class="bi bi-speedometer2"></i></div>
+          <h5>Visibilidad de toda la operación</h5>
           <p>
-            Visualiza el estado de las rutas del día, clientes activos e
-            indicadores clave para tomar decisiones rápidas.
+            Sabes cuántas rutas van hoy, cuáles están pendientes y qué clientes
+            quedaron sin entrega, sin tener que llamar a nadie a preguntar.
           </p>
-          <ul class="solution-list">
-            <li>Rutas de hoy y pendientes</li>
-            <li>Clientes activos / inactivos</li>
-            <li>Visión general de la operación</li>
-          </ul>
         </div>
       </div>
     </div>
 
   </div>
 </section>
-
-<!-- SEPARADOR -->
-<div class="section-divider"></div>
 
 
 <!-- ======================================
      SECCIÓN: ¿CÓMO FUNCIONA?
 ====================================== -->
-<section id="como-funciona" class="steps-section py-5 py-md-6">
+<section id="como-funciona" class="steps-section">
   <div class="container">
 
-    <div class="text-center mb-5">
-      <span class="section-badge">Empieza en 4 pasos</span>
-      <h2 class="section-title mt-3">¿Cómo funciona <span>Logivisir?</span></h2>
-      <p class="section-subtitle mx-auto">
-        Sin contratos eternos ni instalaciones complicadas. Solicitas, pagas,
-        validamos y empiezas a operar.
-      </p>
+    <div class="section-head">
+      <h2 class="section-title">De solicitud a cuenta activa, en 4 pasos</h2>
+      <p class="section-subtitle">Sin contratos eternos ni instalaciones complicadas.</p>
     </div>
 
-    <div class="row g-4">
-      <div class="col-md-6 col-lg-3">
-        <div class="step-card">
-          <span class="step-number">1</span>
-          <h5>Solicitas tu cuenta</h5>
-          <p>Completa un formulario simple con los datos de tu negocio y el plan que más te acomoda.</p>
-        </div>
+    <div class="steps-track">
+      <div class="step-card">
+        <span class="step-number">1</span>
+        <h5>Solicitas tu cuenta</h5>
+        <p>Completa un formulario con los datos de tu negocio y el plan que más te acomoda.</p>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="step-card">
-          <span class="step-number">2</span>
-          <h5>Recibes instrucciones de pago</h5>
-          <p>Te mostramos los datos para transferir y un código de referencia único para identificarte.</p>
-        </div>
+      <div class="step-card">
+        <span class="step-number">2</span>
+        <h5>Recibes instrucciones de pago</h5>
+        <p>Te mostramos los datos para transferir y un código de referencia único.</p>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="step-card">
-          <span class="step-number">3</span>
-          <h5>Validamos tu pago</h5>
-          <p>Nuestro equipo confirma la transferencia y crea tu cuenta y espacio propio en la plataforma.</p>
-        </div>
+      <div class="step-card">
+        <span class="step-number">3</span>
+        <h5>Validamos tu pago</h5>
+        <p>Confirmamos la transferencia y creamos tu cuenta con tu propio espacio aislado.</p>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="step-card">
-          <span class="step-number">4</span>
-          <h5>Recibes tus accesos</h5>
-          <p>Te enviamos tu usuario y contraseña por correo. Inicias sesión y empiezas a optimizar tus rutas.</p>
-        </div>
+      <div class="step-card">
+        <span class="step-number">4</span>
+        <h5>Recibes tus accesos</h5>
+        <p>Te enviamos usuario y contraseña por correo. Inicias sesión y listo.</p>
       </div>
     </div>
 
   </div>
 </section>
 
-<!-- SEPARADOR -->
-<div class="section-divider"></div>
-
 
 <!-- ======================================
      SECCIÓN: PLANES Y PRECIOS
 ====================================== -->
-<section id="planes" class="pricing-section py-5 py-md-6">
+<section id="planes" class="pricing-section">
   <div class="container">
 
-    <div class="text-center mb-5">
-      <span class="section-badge">Planes simples, sin letra chica</span>
-      <h2 class="section-title mt-3">Elige el plan para tu negocio</h2>
-      <p class="section-subtitle mx-auto">
-        Valores referenciales — ajustamos el plan a la realidad de tu operación diaria.
-      </p>
+    <div class="section-head">
+      <h2 class="section-title">Un plan para cada tamaño de operación</h2>
+      <p class="section-subtitle">Valores referenciales — los ajustamos a tu operación real.</p>
     </div>
 
     <div class="row g-4 justify-content-center align-items-stretch">
@@ -278,7 +220,7 @@
             <li><i class="bi bi-check2"></i> Optimización de rutas</li>
             <li><i class="bi bi-check2"></i> Soporte por correo</li>
           </ul>
-          <a href="{% url 'solicitar_cuenta' %}?plan=BASICO" class="btn btn-outline-primary w-100">Elegir Básico</a>
+          <a href="{% url 'solicitar_cuenta' %}?plan=BASICO" class="btn btn-plan-outline">Elegir Básico</a>
         </div>
       </div>
 
@@ -296,7 +238,7 @@
             <li><i class="bi bi-check2"></i> Catálogo de productos y pedidos</li>
             <li><i class="bi bi-check2"></i> Soporte prioritario</li>
           </ul>
-          <a href="{% url 'solicitar_cuenta' %}?plan=PRO" class="btn btn-primary w-100">Elegir Pro</a>
+          <a href="{% url 'solicitar_cuenta' %}?plan=PRO" class="btn btn-plan-solid">Elegir Pro</a>
         </div>
       </div>
 
@@ -311,21 +253,16 @@
             <li><i class="bi bi-check2"></i> Reportes avanzados</li>
             <li><i class="bi bi-check2"></i> Soporte dedicado</li>
           </ul>
-          <a href="{% url 'solicitar_cuenta' %}?plan=EMPRESARIAL" class="btn btn-outline-primary w-100">Conversemos</a>
+          <a href="{% url 'solicitar_cuenta' %}?plan=EMPRESARIAL" class="btn btn-plan-outline">Conversemos</a>
         </div>
       </div>
 
     </div>
 
-    <p class="text-center text-muted small mt-4 mb-0">
-      * Precios de referencia. El valor final depende del tamaño de tu operación.
-    </p>
+    <p class="pricing-note">* Precios de referencia. El valor final depende del tamaño de tu operación.</p>
 
   </div>
 </section>
-
-<!-- SEPARADOR -->
-<div class="section-divider"></div>
 
 
 <!-- ======================================
@@ -333,47 +270,30 @@
 ====================================== -->
 <section id="quienes-somos" class="about-section">
   <div class="container">
-    <div class="row align-items-center g-4">
+    <div class="row align-items-center g-5">
 
-      <!-- Texto principal -->
       <div class="col-lg-6">
-        <span class="section-badge">Historia y propósito</span>
-        <h2 class="section-title mt-3">
-          ¿Quiénes somos?
-        </h2>
+        <h2 class="section-title text-start">Nacimos resolviendo un problema real</h2>
         <p class="about-text">
-          LogiVisir Solutions nace como un proyecto académico aplicado a la realidad
-          de <strong>Panadería Macarrón</strong>, una empresa que necesitaba optimizar
-          la planificación manual de sus rutas de reparto.
+          Logivisir empezó como respuesta a un problema concreto de
+          <strong>Panadería Macarrón</strong>: planificar rutas de reparto a mano,
+          con mapas y memoria, sin visibilidad de qué se entregó y qué no.
         </p>
         <p class="about-text">
-          Nuestro objetivo es ofrecer una plataforma clara, simple y escalable
-          para que negocios similares puedan profesionalizar su logística sin
-          grandes inversiones ni sistemas complejos.
-        </p>
-        <p class="about-text">
-          Este proyecto integra buenas prácticas de desarrollo web, experiencia
-          de usuario y operación logística real.
+          Hoy es una plataforma multiempresa: cada negocio que se suma tiene su
+          propio espacio, sus propios clientes y choferes, completamente aislado
+          del resto.
         </p>
       </div>
 
-      <!-- Tarjeta lateral tipo “insights” -->
       <div class="col-lg-6">
         <div class="about-card">
-          <h6 class="about-card-title">
-            Pensado para reparto diario real
-          </h6>
-          <p class="about-card-text">
-            Inspirado en la experiencia de una panadería real y en la
-            logística nórdica de rutas claras y eficientes.
-          </p>
-
+          <h6 class="about-card-title">Pensado para reparto diario real</h6>
           <ul class="about-list">
             <li>Menos rutas improvisadas, más planificación.</li>
             <li>Visibilidad de choferes y entregas en un solo panel.</li>
-            <li>Base para escalar a otras panaderías y distribuidores.</li>
+            <li>Cada empresa con su propio espacio, aislado del resto.</li>
           </ul>
-
           <div class="about-metric-grid">
             <div class="about-metric">
               <span class="about-metric-value">+60</span>
@@ -391,19 +311,15 @@
   </div>
 </section>
 
-<!-- SEPARADOR -->
-<div class="section-divider"></div>
-
 
 <!-- ======================================
      SECCIÓN: PREGUNTAS FRECUENTES
 ====================================== -->
-<section id="faq" class="faq-section py-5 py-md-6">
+<section id="faq" class="faq-section">
   <div class="container">
 
-    <div class="text-center mb-5">
-      <span class="section-badge">Dudas frecuentes</span>
-      <h2 class="section-title mt-3">Preguntas frecuentes</h2>
+    <div class="section-head">
+      <h2 class="section-title">Preguntas frecuentes</h2>
     </div>
 
     <div class="row justify-content-center">
@@ -502,100 +418,35 @@
   </div>
 </section>
 
-<!-- SEPARADOR -->
-<div class="section-divider"></div>
-
-
-<!-- ======================================
-     SECCIÓN: CONTACTO + DEMO
-====================================== -->
-<section id="contacto" class="contact-section">
-  <div class="container">
-    <div class="row g-4 align-items-start">
-
-      <!-- Columna Contacto -->
-      <div class="col-lg-5">
-        <h3 class="contact-title">Contacto</h3>
-        <p class="contact-text">
-          ¿Tienes dudas antes de solicitar tu cuenta? Escríbenos por cualquiera
-          de estos canales:
-        </p>
-
-        <ul class="contact-list">
-          <li>
-            <span class="contact-icon"><i class="bi bi-envelope-fill"></i></span>
-            <div>
-              <div class="contact-label">Email</div>
-              <div class="contact-value">contacto@logivisir.com</div>
-            </div>
-          </li>
-          <li>
-            <span class="contact-icon"><i class="bi bi-whatsapp"></i></span>
-            <div>
-              <div class="contact-label">WhatsApp</div>
-              <div class="contact-value">+56 9 1234 5678</div>
-            </div>
-          </li>
-          <li>
-            <span class="contact-icon"><i class="bi bi-geo-alt-fill"></i></span>
-            <div>
-              <div class="contact-label">Ubicación</div>
-              <div class="contact-value">Santiago, Chile</div>
-            </div>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Columna CTA -->
-      <div class="col-lg-7">
-        <div class="cta-box">
-          <span class="cta-badge">Empieza hoy</span>
-          <h3 class="cta-title">
-            ¿Listo para ordenar tu reparto?
-          </h3>
-          <p class="cta-text">
-            Solicita tu cuenta, valida tu pago y en menos de 24 horas tu equipo
-            ya está planificando rutas optimizadas y siguiendo entregas en tiempo real.
-          </p>
-          <a href="{% url 'solicitar_cuenta' %}" class="btn btn-primary cta-btn">
-            Solicitar mi cuenta
-          </a>
-          <p class="cta-note">
-            ¿Ya tienes cuenta? <a href="{% url 'login' %}">Inicia sesión aquí</a>.
-          </p>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- SEPARADOR -->
-<div class="section-divider"></div>
-
 
 <!-- ===========================
-     CTA FINAL
+     CTA FINAL + CONTACTO
 ============================ -->
-<section class="cta-section py-5">
+<section id="contacto" class="final-cta-section">
   <div class="container">
-
-    <div class="cta-box">
-      <div>
-        <h4 class="fw-bold">¿Tu negocio todavía planifica rutas a mano?</h4>
-        <p class="text-muted mb-0">
-          Logivisir ya optimiza el reparto diario de negocios como el tuyo.
-          Súmate y deja de improvisar rutas.
-        </p>
-      </div>
-
-      <div>
-        <a href="{% url 'solicitar_cuenta' %}" class="btn btn-primary btn-lg">
-          Solicitar mi cuenta
-        </a>
+    <div class="final-cta-box">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+          <span class="final-cta-badge">Empieza hoy</span>
+          <h2 class="final-cta-title">¿Tu negocio todavía planifica rutas a mano?</h2>
+          <p class="final-cta-text">
+            Solicita tu cuenta, valida tu pago y en menos de 24 horas tu equipo
+            ya está repartiendo con rutas optimizadas.
+          </p>
+          <div class="d-flex flex-wrap gap-3 align-items-center">
+            <a href="{% url 'solicitar_cuenta' %}" class="btn btn-hero-primary">Solicitar mi cuenta</a>
+            <a href="{% url 'login' %}" class="final-cta-link">¿Ya tienes cuenta? Inicia sesión</a>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <ul class="final-cta-contact">
+            <li><i class="bi bi-envelope-fill"></i> contacto@logivisir.com</li>
+            <li><i class="bi bi-whatsapp"></i> +56 9 1234 5678</li>
+            <li><i class="bi bi-geo-alt-fill"></i> Santiago, Chile</li>
+          </ul>
+        </div>
       </div>
     </div>
-
   </div>
 </section>
 
