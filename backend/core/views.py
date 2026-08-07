@@ -389,7 +389,7 @@ def crear_cliente_view(request):
     empresa = get_empresa(request)
 
     if request.method == "POST":
-        rut = request.POST.get("rut")
+        rut = (request.POST.get("rut") or "").strip() or None
         nombre = request.POST.get("nombre")
         direccion = request.POST.get("direccion")
         comuna = request.POST.get("comuna")
@@ -397,7 +397,7 @@ def crear_cliente_view(request):
         telefono = request.POST.get("telefono")
         email = request.POST.get("email")
 
-        if Cliente.objects.filter(empresa=empresa, rut=rut).exists():
+        if rut and Cliente.objects.filter(empresa=empresa, rut=rut).exists():
             error = f"Ya existe un cliente con el RUT {rut}."
         else:
             cliente = Cliente.objects.create(
@@ -425,7 +425,7 @@ def editar_cliente_view(request, cliente_id):
     if request.method == "POST":
         direccion_anterior = (cliente.direccion, cliente.comuna, cliente.ciudad)
 
-        cliente.rut = request.POST.get("rut")
+        cliente.rut = (request.POST.get("rut") or "").strip() or None
         cliente.nombre = request.POST.get("nombre")
         cliente.direccion = request.POST.get("direccion")
         cliente.comuna = request.POST.get("comuna")

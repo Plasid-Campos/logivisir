@@ -113,7 +113,7 @@ class Cliente(models.Model):
     empresa = models.ForeignKey(
         Empresa, on_delete=models.CASCADE, related_name="clientes",
     )
-    rut = models.CharField(max_length=20)
+    rut = models.CharField(max_length=20, blank=True, null=True)
     nombre = models.CharField(max_length=120)
     direccion = models.CharField(max_length=200)
     comuna = models.CharField(max_length=100, blank=True, null=True)

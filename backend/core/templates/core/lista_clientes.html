@@ -58,7 +58,7 @@
                   <span class="table-ico soft-blue"><i class="bi bi-person-circle"></i></span>
                   <div>
                     <div>{{ c.nombre }}</div>
-                    <small class="text-muted">RUT: {{ c.rut }}</small>
+                    <small class="text-muted">RUT: {{ c.rut|default:"—" }}</small>
                   </div>
                 </div>
               </td>

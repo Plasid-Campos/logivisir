@@ -183,7 +183,7 @@
         <select name="cliente_id" class="form-select" required>
           <option value="">Seleccione...</option>
           {% for c in clientes %}
-            <option value="{{ c.id }}">{{ c.nombre }} ({{ c.rut }})</option>
+            <option value="{{ c.id }}">{{ c.nombre }}{% if c.rut %} ({{ c.rut }}){% endif %}</option>
           {% endfor %}
         </select>
       </div>

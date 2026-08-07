@@ -1,16 +1,22 @@
 {% extends "core/base.html" %}
 
-{% block title %}Crear Usuario | API Rutas{% endblock %}
+{% block title %}Crear usuario | LogiVisir Solutions{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
     <div class="col-md-6 mx-auto">
         <div class="card shadow">
             <div class="card-body">
-                <h3 class="mb-4">Crear Usuario del Sistema</h3>
+                <h3 class="mb-2">Nuevo administrador o chofer</h3>
+                <p class="text-muted small mb-4">
+                    Solo puedes crear cuentas de Administrador o Chofer dentro de tu empresa.
+                </p>
 
                 {% if mensaje %}
                     <div class="alert alert-success">{{ mensaje }}</div>
+                {% endif %}
+                {% if error %}
+                    <div class="alert alert-danger">{{ error }}</div>
                 {% endif %}
 
                 <form method="POST">

@@ -15,7 +15,7 @@
 
         <div class="mb-3">
             <label>RUT</label>
-            <input type="text" name="rut" class="form-control" value="{{ cliente.rut }}" required>
+            <input type="text" name="rut" class="form-control" value="{{ cliente.rut|default:'' }}">
         </div>
 
         <div class="mb-3">

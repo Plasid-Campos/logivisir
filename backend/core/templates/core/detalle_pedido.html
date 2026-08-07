@@ -8,7 +8,7 @@
 
   <div class="card mb-3">
     <div class="card-body">
-      <p class="mb-1"><strong>Cliente:</strong> {{ pedido.cliente.nombre }} ({{ pedido.cliente.rut }})</p>
+      <p class="mb-1"><strong>Cliente:</strong> {{ pedido.cliente.nombre }}{% if pedido.cliente.rut %} ({{ pedido.cliente.rut }}){% endif %}</p>
       <p class="mb-1"><strong>Dirección:</strong> {{ pedido.cliente.direccion }}{% if pedido.cliente.comuna %}, {{ pedido.cliente.comuna }}{% endif %}</p>
       <p class="mb-1"><strong>Estado:</strong> {{ pedido.get_estado_display }}</p>
       <p class="mb-1"><strong>Creado:</strong> {{ pedido.creado_en|date:"d-m-Y H:i" }}</p>
