@@ -1,0 +1,67 @@
+{% extends "core/base.html" %}
+
+{% block title %}Solicitudes de cuenta | Staff LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4">
+    <div class="saas-card p-4 mb-4">
+      <h1 class="panel-title mb-1">Solicitudes de cuenta</h1>
+      <p class="panel-subtitle mb-0">Revisa nuevas solicitudes, valida pagos y crea las cuentas de los clientes.</p>
+    </div>
+
+    <div class="saas-card p-3 p-md-4">
+      <div class="d-flex gap-2 flex-wrap mb-3">
+        <a href="{% url 'lista_solicitudes' %}" class="btn btn-sm {% if not estado_filtro %}btn-primary{% else %}btn-outline-secondary{% endif %}">Todas</a>
+        <a href="?estado=NUEVA" class="btn btn-sm {% if estado_filtro == 'NUEVA' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Nuevas</a>
+        <a href="?estado=PAGO_VALIDADO" class="btn btn-sm {% if estado_filtro == 'PAGO_VALIDADO' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Pago validado</a>
+        <a href="?estado=CUENTA_CREADA" class="btn btn-sm {% if estado_filtro == 'CUENTA_CREADA' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Cuenta creada</a>
+        <a href="?estado=RECHAZADA" class="btn btn-sm {% if estado_filtro == 'RECHAZADA' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Rechazadas</a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table saas-table align-middle">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Empresa</th>
+              <th>Contacto</th>
+              <th>Plan</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in solicitudes %}
+            <tr>
+              <td class="fw-semibold">{{ s.codigo_referencia }}</td>
+              <td>{{ s.nombre_empresa }}</td>
+              <td>{{ s.nombre_contacto }}<br><small class="text-muted">{{ s.email_contacto }}</small></td>
+              <td>{{ s.get_plan_solicitado_display }}</td>
+              <td>
+                {% if s.estado == "NUEVA" %}
+                  <span class="badge-soft warning">Nueva</span>
+                {% elif s.estado == "PAGO_VALIDADO" %}
+                  <span class="badge-soft info">Pago validado</span>
+                {% elif s.estado == "CUENTA_CREADA" %}
+                  <span class="badge-soft success">Cuenta creada</span>
+                {% else %}
+                  <span class="badge-soft">Rechazada</span>
+                {% endif %}
+              </td>
+              <td>{{ s.creada_en|date:"d-m-Y H:i" }}</td>
+              <td class="text-end">
+                <a href="{% url 'detalle_solicitud' s.id %}" class="btn btn-sm btn-outline-primary">Ver</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No hay solicitudes todavía.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

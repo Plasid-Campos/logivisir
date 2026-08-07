@@ -1,0 +1,84 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Solicita tu cuenta | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<section class="request-section">
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+
+        <div class="text-center mb-4">
+          <span class="section-badge">Contratar Logivisir</span>
+          <h1 class="section-title mt-3">Solicita tu cuenta</h1>
+          <p class="section-subtitle mx-auto">
+            Cuéntanos de tu negocio y qué plan te interesa. Nuestro equipo validará
+            tu pago y te enviaremos tus accesos por correo en menos de 24 horas.
+          </p>
+        </div>
+
+        <div class="request-card">
+          {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+          {% endif %}
+
+          <form method="POST">
+            {% csrf_token %}
+
+            <label class="form-label fw-semibold mb-2">Elige un plan</label>
+            <div class="row g-2 mb-4">
+              {% for valor, texto in planes %}
+              <div class="col-md-4">
+                <input type="radio" class="btn-check" name="plan_solicitado" id="plan_{{ valor }}"
+                       value="{{ valor }}" {% if plan_preseleccionado == valor %}checked{% endif %} required>
+                <label class="plan-radio-card w-100" for="plan_{{ valor }}">{{ texto }}</label>
+              </div>
+              {% endfor %}
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Nombre de tu empresa</label>
+                <input type="text" name="nombre_empresa" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Rubro</label>
+                <input type="text" name="rubro" class="form-control" placeholder="Panadería, distribuidora, repostería...">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Tu nombre (contacto)</label>
+                <input type="text" name="nombre_contacto" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Teléfono</label>
+                <input type="text" name="telefono_contacto" class="form-control" required>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Correo electrónico</label>
+                <input type="email" name="email_contacto" class="form-control" required>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Cuéntanos brevemente qué necesitas (opcional)</label>
+                <textarea name="mensaje" rows="3" class="form-control"
+                          placeholder="Ej: repartimos 40 pedidos diarios en 3 comunas..."></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 mt-4">
+              Enviar solicitud
+            </button>
+            <p class="text-muted small text-center mt-3 mb-0">
+              Al enviar, te mostraremos los datos para pagar y un código de referencia único.
+            </p>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

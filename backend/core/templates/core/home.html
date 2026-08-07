@@ -28,13 +28,13 @@
           su operación diaria de manera simple y eficiente.
         </p>
 
-        <div class="d-flex gap-3">
-          <a href="#soluciones" class="btn btn-primary px-4 py-2">Ver soluciones</a>
-          <a href="{% url 'login' %}" class="btn btn-outline-primary px-4 py-2">Acceso clientes</a>
+        <div class="d-flex gap-3 flex-wrap">
+          <a href="{% url 'solicitar_cuenta' %}" class="btn btn-primary px-4 py-2">Comenzar ahora</a>
+          <a href="#como-funciona" class="btn btn-outline-primary px-4 py-2">Ver cómo funciona</a>
         </div>
 
         <p class="hero-note mt-3">
-          Sin instalaciones complejas. Ideal para panaderías, distribuidoras y logística urbana.
+          Sin instalaciones complejas. Tu cuenta queda activa en menos de 24 horas.
         </p>
       </div>
 
@@ -198,6 +198,137 @@
 
 
 <!-- ======================================
+     SECCIÓN: ¿CÓMO FUNCIONA?
+====================================== -->
+<section id="como-funciona" class="steps-section py-5 py-md-6">
+  <div class="container">
+
+    <div class="text-center mb-5">
+      <span class="section-badge">Empieza en 4 pasos</span>
+      <h2 class="section-title mt-3">¿Cómo funciona <span>Logivisir?</span></h2>
+      <p class="section-subtitle mx-auto">
+        Sin contratos eternos ni instalaciones complicadas. Solicitas, pagas,
+        validamos y empiezas a operar.
+      </p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="step-card">
+          <span class="step-number">1</span>
+          <h5>Solicitas tu cuenta</h5>
+          <p>Completa un formulario simple con los datos de tu negocio y el plan que más te acomoda.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="step-card">
+          <span class="step-number">2</span>
+          <h5>Recibes instrucciones de pago</h5>
+          <p>Te mostramos los datos para transferir y un código de referencia único para identificarte.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="step-card">
+          <span class="step-number">3</span>
+          <h5>Validamos tu pago</h5>
+          <p>Nuestro equipo confirma la transferencia y crea tu cuenta y espacio propio en la plataforma.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="step-card">
+          <span class="step-number">4</span>
+          <h5>Recibes tus accesos</h5>
+          <p>Te enviamos tu usuario y contraseña por correo. Inicias sesión y empiezas a optimizar tus rutas.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SEPARADOR -->
+<div class="section-divider"></div>
+
+
+<!-- ======================================
+     SECCIÓN: PLANES Y PRECIOS
+====================================== -->
+<section id="planes" class="pricing-section py-5 py-md-6">
+  <div class="container">
+
+    <div class="text-center mb-5">
+      <span class="section-badge">Planes simples, sin letra chica</span>
+      <h2 class="section-title mt-3">Elige el plan para tu negocio</h2>
+      <p class="section-subtitle mx-auto">
+        Valores referenciales — ajustamos el plan a la realidad de tu operación diaria.
+      </p>
+    </div>
+
+    <div class="row g-4 justify-content-center align-items-stretch">
+
+      <div class="col-md-6 col-lg-4">
+        <div class="pricing-card">
+          <span class="pricing-plan">Básico</span>
+          <div class="pricing-price">$29.990<span>/mes</span></div>
+          <p class="pricing-desc">Para negocios que están partiendo a ordenar su reparto.</p>
+          <ul class="pricing-features">
+            <li><i class="bi bi-check2"></i> 1 ruta activa por día</li>
+            <li><i class="bi bi-check2"></i> Hasta 50 clientes</li>
+            <li><i class="bi bi-check2"></i> 1 chofer</li>
+            <li><i class="bi bi-check2"></i> Optimización de rutas</li>
+            <li><i class="bi bi-check2"></i> Soporte por correo</li>
+          </ul>
+          <a href="{% url 'solicitar_cuenta' %}?plan=BASICO" class="btn btn-outline-primary w-100">Elegir Básico</a>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="pricing-card pricing-featured">
+          <span class="pricing-badge">Más elegido</span>
+          <span class="pricing-plan">Pro</span>
+          <div class="pricing-price">$59.990<span>/mes</span></div>
+          <p class="pricing-desc">Para operaciones con varias rutas y choferes en movimiento.</p>
+          <ul class="pricing-features">
+            <li><i class="bi bi-check2"></i> Rutas activas ilimitadas</li>
+            <li><i class="bi bi-check2"></i> Clientes ilimitados</li>
+            <li><i class="bi bi-check2"></i> Choferes ilimitados</li>
+            <li><i class="bi bi-check2"></i> Optimización automática de rutas</li>
+            <li><i class="bi bi-check2"></i> Catálogo de productos y pedidos</li>
+            <li><i class="bi bi-check2"></i> Soporte prioritario</li>
+          </ul>
+          <a href="{% url 'solicitar_cuenta' %}?plan=PRO" class="btn btn-primary w-100">Elegir Pro</a>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="pricing-card">
+          <span class="pricing-plan">Empresarial</span>
+          <div class="pricing-price">A medida</div>
+          <p class="pricing-desc">Para cadenas o distribuidoras con múltiples sucursales.</p>
+          <ul class="pricing-features">
+            <li><i class="bi bi-check2"></i> Todo lo incluido en Pro</li>
+            <li><i class="bi bi-check2"></i> Múltiples sucursales</li>
+            <li><i class="bi bi-check2"></i> Reportes avanzados</li>
+            <li><i class="bi bi-check2"></i> Soporte dedicado</li>
+          </ul>
+          <a href="{% url 'solicitar_cuenta' %}?plan=EMPRESARIAL" class="btn btn-outline-primary w-100">Conversemos</a>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="text-center text-muted small mt-4 mb-0">
+      * Precios de referencia. El valor final depende del tamaño de tu operación.
+    </p>
+
+  </div>
+</section>
+
+<!-- SEPARADOR -->
+<div class="section-divider"></div>
+
+
+<!-- ======================================
      SECCIÓN: ¿QUIÉNES SOMOS?
 ====================================== -->
 <section id="quienes-somos" class="about-section">
@@ -265,6 +396,117 @@
 
 
 <!-- ======================================
+     SECCIÓN: PREGUNTAS FRECUENTES
+====================================== -->
+<section id="faq" class="faq-section py-5 py-md-6">
+  <div class="container">
+
+    <div class="text-center mb-5">
+      <span class="section-badge">Dudas frecuentes</span>
+      <h2 class="section-title mt-3">Preguntas frecuentes</h2>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="accordion" id="faqAccordion">
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                ¿Cómo pago mi plan?
+              </button>
+            </h2>
+            <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">
+                Al solicitar tu cuenta te mostramos los datos para hacer una transferencia
+                bancaria con un código de referencia único. Cuando confirmamos que el pago
+                llegó, activamos tu cuenta.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                ¿Cuánto demora la activación?
+              </button>
+            </h2>
+            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">
+                Validamos los pagos y creamos tu cuenta dentro de 24 horas hábiles.
+                Te enviamos tu usuario y contraseña por correo apenas está lista.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                ¿Qué pasa si mi pago no se valida?
+              </button>
+            </h2>
+            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">
+                Te contactamos directamente al correo o teléfono que dejaste en la
+                solicitud para resolverlo antes de activar tu cuenta.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                ¿Mis datos están separados de los de otras empresas?
+              </button>
+            </h2>
+            <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">
+                Sí. Cada empresa tiene su propio espacio aislado: tus clientes, choferes y
+                rutas nunca se mezclan ni son visibles para otras cuentas de la plataforma.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                ¿Mis choferes necesitan instalar algo?
+              </button>
+            </h2>
+            <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">
+                No. Cada chofer entra desde el navegador de su celular con su propio usuario
+                y ve solo la ruta del día, con navegación directa a Google Maps.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                ¿Puedo cambiar de plan más adelante?
+              </button>
+            </h2>
+            <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">
+                Sí, escríbenos cuando tu operación crezca y ajustamos tu plan sin perder
+                tu historial de clientes ni de rutas.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SEPARADOR -->
+<div class="section-divider"></div>
+
+
+<!-- ======================================
      SECCIÓN: CONTACTO + DEMO
 ====================================== -->
 <section id="contacto" class="contact-section">
@@ -275,8 +517,8 @@
       <div class="col-lg-5">
         <h3 class="contact-title">Contacto</h3>
         <p class="contact-text">
-          Si quieres más información sobre la plataforma o estás evaluando
-          aplicarla en una empresa real, puedes usar estos datos de ejemplo:
+          ¿Tienes dudas antes de solicitar tu cuenta? Escríbenos por cualquiera
+          de estos canales:
         </p>
 
         <ul class="contact-list">
@@ -304,23 +546,22 @@
         </ul>
       </div>
 
-      <!-- Columna CTA Demo -->
+      <!-- Columna CTA -->
       <div class="col-lg-7">
         <div class="cta-box">
-          <span class="cta-badge">Demo del panel</span>
+          <span class="cta-badge">Empieza hoy</span>
           <h3 class="cta-title">
-            ¿Quieres ver el sistema en acción?
+            ¿Listo para ordenar tu reparto?
           </h3>
           <p class="cta-text">
-            Puedes acceder con un usuario de prueba y explorar la creación de
-            rutas, el panel operativo y la vista de chofer con enlaces a
-            Google Maps.
+            Solicita tu cuenta, valida tu pago y en menos de 24 horas tu equipo
+            ya está planificando rutas optimizadas y siguiendo entregas en tiempo real.
           </p>
-          <a href="{% url 'login' %}" class="btn btn-primary cta-btn">
-            Ir al acceso de clientes
+          <a href="{% url 'solicitar_cuenta' %}" class="btn btn-primary cta-btn">
+            Solicitar mi cuenta
           </a>
           <p class="cta-note">
-            Ideal para mostrar el prototipo en la presentación de tu proyecto.
+            ¿Ya tienes cuenta? <a href="{% url 'login' %}">Inicia sesión aquí</a>.
           </p>
         </div>
       </div>
@@ -341,16 +582,16 @@
 
     <div class="cta-box">
       <div>
-        <h4 class="fw-bold">¿Te gustaría aplicar esto en tu empresa?</h4>
+        <h4 class="fw-bold">¿Tu negocio todavía planifica rutas a mano?</h4>
         <p class="text-muted mb-0">
-          LogiVisir Solutions ya funciona para Panadería Macarrón.
-          Puede adaptarse a tu negocio de reparto.
+          Logivisir ya optimiza el reparto diario de negocios como el tuyo.
+          Súmate y deja de improvisar rutas.
         </p>
       </div>
 
       <div>
-        <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
-          Acceso clientes
+        <a href="{% url 'solicitar_cuenta' %}" class="btn btn-primary btn-lg">
+          Solicitar mi cuenta
         </a>
       </div>
     </div>

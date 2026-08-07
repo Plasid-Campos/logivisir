@@ -9,10 +9,15 @@ urlpatterns = [
     # --------- HOME / LANDING PÚBLICA ---------
     path("", core_views.home_view, name="home"),
 
+    # --------- SOLICITUD DE CUENTA (venta del servicio) ---------
+    path("solicitar-cuenta/", core_views.solicitar_cuenta_view, name="solicitar_cuenta"),
+    path("solicitar-cuenta/<int:solicitud_id>/confirmacion/", core_views.solicitud_confirmacion_view, name="solicitud_confirmacion"),
+
     # --------- AUTENTICACIÓN ---------
     path("login/", core_views.login_view, name="login"),
     path("dashboard/", core_views.dashboard_view, name="dashboard"),
     path("logout/", core_views.logout_view, name="logout"),
+    path("cambiar-password/", core_views.cambiar_password_obligatorio_view, name="cambiar_password_obligatorio"),
 
     # --------- USUARIOS / PERFILES ---------
     path("crear-usuario/", core_views.crear_usuario_view, name="crear_usuario"),
@@ -59,6 +64,13 @@ urlpatterns = [
     # --------- PEDIDOS ---------
     path("pedidos/", core_views.lista_pedidos_view, name="lista_pedidos"),
     path("pedidos/<int:pedido_id>/", core_views.detalle_pedido_view, name="detalle_pedido"),
+
+    # --------- STAFF LOGIVISIR (solicitudes de cuenta) ---------
+    path("staff/solicitudes/", core_views.lista_solicitudes_view, name="lista_solicitudes"),
+    path("staff/solicitudes/<int:solicitud_id>/", core_views.detalle_solicitud_view, name="detalle_solicitud"),
+    path("staff/solicitudes/<int:solicitud_id>/marcar-pago/", core_views.marcar_pago_validado_view, name="marcar_pago_validado"),
+    path("staff/solicitudes/<int:solicitud_id>/crear-cuenta/", core_views.crear_cuenta_solicitud_view, name="crear_cuenta_solicitud"),
+    path("staff/solicitudes/<int:solicitud_id>/rechazar/", core_views.rechazar_solicitud_view, name="rechazar_solicitud"),
 
     # --------- PANEL DEL CHOFER ---------
     path("chofer/ruta/", core_views.chofer_ruta_hoy_view, name="chofer_ruta_hoy"),

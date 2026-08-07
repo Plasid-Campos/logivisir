@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Empresa, PerfilUsuario, Chofer, Cliente, Ruta, ParadaRuta, Producto, Pedido, PedidoItem
+from .models import (
+    Empresa, PerfilUsuario, Chofer, Cliente, Ruta, ParadaRuta,
+    Producto, Pedido, PedidoItem, SolicitudCuenta,
+)
 
 
 @admin.register(Empresa)
@@ -9,9 +12,16 @@ class EmpresaAdmin(admin.ModelAdmin):
     list_filter = ("activa",)
 
 
+@admin.register(SolicitudCuenta)
+class SolicitudCuentaAdmin(admin.ModelAdmin):
+    list_display = ("nombre_empresa", "email_contacto", "plan_solicitado", "estado", "creada_en")
+    list_filter = ("estado", "plan_solicitado")
+    search_fields = ("nombre_empresa", "email_contacto", "nombre_contacto")
+
+
 @admin.register(PerfilUsuario)
 class PerfilUsuarioAdmin(admin.ModelAdmin):
-    list_display = ("user", "rol", "empresa")
+    list_display = ("user", "rol", "empresa", "debe_cambiar_password")
     list_filter = ("empresa", "rol")
     search_fields = (
         "user__username",

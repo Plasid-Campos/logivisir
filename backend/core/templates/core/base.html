@@ -29,31 +29,6 @@
 
 <header class="site-header">
 
-  <!-- TOPBAR -->
-  <div class="topbar d-none d-md-flex px-4">
-    <div class="topbar-left">
-      <a href="#" class="topbar-icon" title="LinkedIn">
-        <i class="bi bi-linkedin"></i>
-      </a>
-      <a href="#" class="topbar-icon" title="Facebook">
-        <i class="bi bi-facebook"></i>
-      </a>
-      <a href="#" class="topbar-icon" title="Instagram">
-        <i class="bi bi-instagram"></i>
-      </a>
-      <a href="#" class="topbar-icon" title="YouTube">
-        <i class="bi bi-youtube"></i>
-      </a>
-    </div>
-    <div class="topbar-right">
-      <a href="#" class="topbar-link">Español</a>
-      <span class="mx-1">·</span>
-      <a href="#" class="topbar-link">English</a>
-      <span class="mx-1">·</span>
-      <a href="#" class="topbar-link">Português</a>
-    </div>
-  </div>
-
 <!-- NAVBAR PRINCIPAL -->
 <nav class="navbar navbar-expand-lg main-navbar">
   <div class="container">
@@ -130,6 +105,14 @@
                 Pedidos
               </a>
             </li>
+
+          {# ====== STAFF LOGIVISIR (equipo interno, no es un tenant) ====== #}
+          {% elif request.user.is_staff %}
+            <li class="nav-item">
+              <a class="nav-link nav-link-main" href="{% url 'lista_solicitudes' %}">
+                Solicitudes
+              </a>
+            </li>
           {% endif %}
 
         {% else %}
@@ -137,13 +120,16 @@
             <a class="nav-link nav-link-main" href="{% url 'home' %}">Inicio</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link nav-link-main" href="#soluciones">Soluciones</a>
+            <a class="nav-link nav-link-main" href="{% url 'home' %}#soluciones">Soluciones</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link nav-link-main" href="#quienes-somos">Quiénes somos</a>
+            <a class="nav-link nav-link-main" href="{% url 'home' %}#como-funciona">Cómo funciona</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link nav-link-main" href="#contacto">Contacto</a>
+            <a class="nav-link nav-link-main" href="{% url 'home' %}#planes">Planes</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link nav-link-main" href="{% url 'home' %}#contacto">Contacto</a>
           </li>
         {% endif %}
 
@@ -164,9 +150,14 @@
           </a>
         </div>
       {% else %}
-        <a href="{% url 'login' %}" class="btn btn-acceso-clientes ms-lg-3">
-          Acceso clientes
-        </a>
+        <div class="d-flex align-items-center gap-2 ms-lg-3">
+          <a href="{% url 'login' %}" class="nav-link nav-link-main">
+            Iniciar sesión
+          </a>
+          <a href="{% url 'solicitar_cuenta' %}" class="btn btn-acceso-clientes">
+            Comenzar ahora
+          </a>
+        </div>
       {% endif %}
     </div>
   </div>
@@ -199,17 +190,18 @@
                alt="LogiVisir Solutions" class="footer-logo-img">
         </div>
         <p class="small text-muted mb-1">
-          LogiVisir Solutions es una plataforma académica para optimizar
-          las rutas de reparto de Panadería Macarrón y negocios similares.
+          LogiVisir Solutions optimiza rutas de reparto para panaderías,
+          distribuidoras y negocios de logística urbana en Chile.
         </p>
       </div>
 
-      <div class="col-6 col-md-2">
+      <div class="col-6 col-md-3">
         <h6 class="footer-title">Plataforma</h6>
         <ul class="list-unstyled footer-links">
-          <li><a href="#soluciones">Soluciones</a></li>
-          <li><a href="#quienes-somos">Quiénes somos</a></li>
-          <li><a href="#contacto">Contacto</a></li>
+          <li><a href="{% url 'home' %}#soluciones">Soluciones</a></li>
+          <li><a href="{% url 'home' %}#como-funciona">Cómo funciona</a></li>
+          <li><a href="{% url 'home' %}#planes">Planes y precios</a></li>
+          <li><a href="{% url 'home' %}#faq">Preguntas frecuentes</a></li>
         </ul>
       </div>
 
@@ -222,19 +214,17 @@
         </ul>
       </div>
 
-      <div class="col-md-3">
-        <h6 class="footer-title">Síguenos</h6>
-        <div class="d-flex gap-2">
-          <a href="#" class="footer-social"><i class="bi bi-linkedin"></i></a>
-          <a href="#" class="footer-social"><i class="bi bi-facebook"></i></a>
-          <a href="#" class="footer-social"><i class="bi bi-instagram"></i></a>
-          <a href="#" class="footer-social"><i class="bi bi-youtube"></i></a>
-        </div>
+      <div class="col-md-2">
+        <h6 class="footer-title">Acceso</h6>
+        <ul class="list-unstyled footer-links">
+          <li><a href="{% url 'solicitar_cuenta' %}">Solicitar cuenta</a></li>
+          <li><a href="{% url 'login' %}">Iniciar sesión</a></li>
+        </ul>
       </div>
     </div>
 
     <div class="footer-bottom border-top pt-3 mt-4 d-flex flex-column flex-md-row justify-content-between small text-muted">
-      <span>© {{ now|date:"Y" }} LogiVisir Solutions. Proyecto académico sin fines de lucro.</span>
+      <span>© {{ now|date:"Y" }} LogiVisir Solutions. Todos los derechos reservados.</span>
       <span>Hecho con ❤ en Santiago de Chile.</span>
     </div>
   </div>

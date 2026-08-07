@@ -1,12 +1,18 @@
+from django.conf import settings
+from django.contrib import messages
+from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.crypto import get_random_string
+from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 from urllib.parse import quote_plus
 
@@ -19,6 +25,8 @@ from .models import (
     Producto,
     Pedido,
     PedidoItem,
+    Empresa,
+    SolicitudCuenta,
 )
 from .tenancy import get_empresa, get_object_or_404_scoped
 from .cart import Carrito
@@ -36,6 +44,54 @@ def home_view(request):
     return render(request, "core/home.html")
 
 # =========================================================
+# SOLICITUD DE CUENTA (venta del servicio, público)
+# =========================================================
+PLANES_VALIDOS = dict(SolicitudCuenta.PLAN_CHOICES).keys()
+
+
+def solicitar_cuenta_view(request):
+    error = None
+    plan_preseleccionado = request.GET.get("plan", "")
+    if plan_preseleccionado not in PLANES_VALIDOS:
+        plan_preseleccionado = ""
+
+    if request.method == "POST":
+        nombre_empresa = (request.POST.get("nombre_empresa") or "").strip()
+        nombre_contacto = (request.POST.get("nombre_contacto") or "").strip()
+        email_contacto = (request.POST.get("email_contacto") or "").strip()
+        telefono_contacto = (request.POST.get("telefono_contacto") or "").strip()
+        rubro = (request.POST.get("rubro") or "").strip()
+        plan_solicitado = request.POST.get("plan_solicitado")
+        mensaje = (request.POST.get("mensaje") or "").strip()
+
+        if not (nombre_empresa and nombre_contacto and email_contacto and telefono_contacto):
+            error = "Completa nombre de la empresa, contacto, correo y teléfono."
+        elif plan_solicitado not in PLANES_VALIDOS:
+            error = "Selecciona un plan válido."
+        else:
+            solicitud = SolicitudCuenta.objects.create(
+                nombre_empresa=nombre_empresa,
+                nombre_contacto=nombre_contacto,
+                email_contacto=email_contacto,
+                telefono_contacto=telefono_contacto,
+                rubro=rubro,
+                plan_solicitado=plan_solicitado,
+                mensaje=mensaje,
+            )
+            return redirect("solicitud_confirmacion", solicitud_id=solicitud.id)
+
+    return render(request, "core/solicitar_cuenta.html", {
+        "error": error,
+        "plan_preseleccionado": plan_preseleccionado,
+        "planes": SolicitudCuenta.PLAN_CHOICES,
+    })
+
+
+def solicitud_confirmacion_view(request, solicitud_id):
+    solicitud = get_object_or_404(SolicitudCuenta, id=solicitud_id)
+    return render(request, "core/solicitud_confirmacion.html", {"solicitud": solicitud})
+
+# =========================================================
 # LOGIN / LOGOUT
 # =========================================================
 def login_view(request):
@@ -51,11 +107,23 @@ def login_view(request):
             login(request, usuario)
             perfil = getattr(usuario, "perfilusuario", None)
 
+            # Cuentas recien aprovisionadas por el staff deben cambiar su
+            # password temporal antes de hacer cualquier otra cosa. Este
+            # chequeo va antes de mirar next_url a proposito, para que no
+            # se pueda saltar con un ?next= manual.
+            if perfil and perfil.debe_cambiar_password:
+                return redirect("cambiar_password_obligatorio")
+
             if next_url:
                 return redirect(next_url)
 
             if perfil and perfil.rol == "CHOFER":
                 return redirect("chofer_ruta_hoy")
+
+            # Staff de Logivisir no es un tenant: no tiene PerfilUsuario ni
+            # empresa, asi que no puede ir al dashboard normal.
+            if not perfil and usuario.is_staff:
+                return redirect("lista_solicitudes")
 
             return redirect("dashboard")
 
@@ -91,6 +159,53 @@ def es_chofer(user):
         return user.perfilusuario.rol == "CHOFER"
     except Exception:
         return False
+
+
+def es_staff_logivisir(user):
+    """
+    Equipo interno de Logivisir (no es un tenant): usa el flag nativo de
+    Django is_staff, separado de los roles OWNER/ADMIN/CHOFER que viven
+    dentro de una Empresa cliente.
+    """
+    return user.is_authenticated and user.is_staff
+
+# =========================================================
+# CAMBIO DE PASSWORD OBLIGATORIO (cuentas recien creadas por staff)
+# =========================================================
+@login_required
+def cambiar_password_obligatorio_view(request):
+    perfil = getattr(request.user, "perfilusuario", None)
+    error = None
+
+    if request.method == "POST":
+        nueva = request.POST.get("nueva_password") or ""
+        confirmacion = request.POST.get("confirmar_password") or ""
+
+        if nueva != confirmacion:
+            error = "Las contraseñas no coinciden."
+        else:
+            try:
+                validate_password(nueva, user=request.user)
+            except ValidationError as e:
+                error = " ".join(e.messages)
+
+        if not error:
+            request.user.set_password(nueva)
+            request.user.save()
+
+            if perfil:
+                perfil.debe_cambiar_password = False
+                perfil.save(update_fields=["debe_cambiar_password"])
+
+            # Sin esto, cambiar la password invalida la sesion actual y
+            # el usuario queda expulsado justo despues de guardar.
+            update_session_auth_hash(request, request.user)
+
+            if perfil and perfil.rol == "CHOFER":
+                return redirect("chofer_ruta_hoy")
+            return redirect("dashboard")
+
+    return render(request, "core/cambiar_password_obligatorio.html", {"error": error})
 
 # =========================================================
 # DASHBOARD
@@ -505,8 +620,7 @@ def optimizar_ruta_view(request, ruta_id):
     else:
         mensaje = resultado.get("motivo", "No fue posible optimizar la ruta.")
 
-    from django.contrib import messages as django_messages
-    django_messages.info(request, mensaje)
+    messages.info(request, mensaje)
 
     return redirect("detalle_ruta", ruta_id=ruta.id)
 
@@ -948,3 +1062,114 @@ def agregar_pedido_a_ruta_view(request, ruta_id):
     pedido.save(update_fields=["estado"])
 
     return redirect("detalle_ruta", ruta_id=ruta.id)
+
+# =========================================================
+# STAFF LOGIVISIR: revisar solicitudes, validar pago, aprovisionar cuenta
+# =========================================================
+TEMP_PASSWORD_CHARS = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%"
+
+
+def _generar_username(nombre_empresa):
+    base = slugify(nombre_empresa)[:20].replace("-", "") or "empresa"
+    username = base
+    sufijo = 1
+    while User.objects.filter(username=username).exists():
+        sufijo += 1
+        username = f"{base}{sufijo}"
+    return username
+
+
+@user_passes_test(es_staff_logivisir)
+def lista_solicitudes_view(request):
+    solicitudes = SolicitudCuenta.objects.all()
+    estado = request.GET.get("estado")
+    if estado in dict(SolicitudCuenta.ESTADO_CHOICES).keys():
+        solicitudes = solicitudes.filter(estado=estado)
+    return render(request, "core/staff_lista_solicitudes.html", {
+        "solicitudes": solicitudes, "estado_filtro": estado,
+    })
+
+
+@user_passes_test(es_staff_logivisir)
+def detalle_solicitud_view(request, solicitud_id):
+    solicitud = get_object_or_404(SolicitudCuenta, id=solicitud_id)
+    return render(request, "core/staff_detalle_solicitud.html", {"solicitud": solicitud})
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def marcar_pago_validado_view(request, solicitud_id):
+    solicitud = get_object_or_404(SolicitudCuenta, id=solicitud_id)
+    if solicitud.estado == "NUEVA":
+        solicitud.estado = "PAGO_VALIDADO"
+        solicitud.save(update_fields=["estado"])
+        messages.success(request, "Pago marcado como validado.")
+    return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def crear_cuenta_solicitud_view(request, solicitud_id):
+    solicitud = get_object_or_404(SolicitudCuenta, id=solicitud_id)
+
+    if solicitud.empresa_creada_id:
+        messages.info(request, "Esta solicitud ya tiene una cuenta creada.")
+        return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+    if solicitud.estado != "PAGO_VALIDADO":
+        messages.error(request, "Primero debes marcar el pago como validado.")
+        return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+    username = _generar_username(solicitud.nombre_empresa)
+    temp_password = get_random_string(14, allowed_chars=TEMP_PASSWORD_CHARS)
+
+    usuario = User.objects.create_user(
+        username=username,
+        password=temp_password,
+        email=solicitud.email_contacto,
+        first_name=solicitud.nombre_contacto,
+    )
+    empresa = Empresa.objects.create(nombre=solicitud.nombre_empresa, owner=usuario)
+    PerfilUsuario.objects.create(
+        user=usuario, empresa=empresa, rol="OWNER", debe_cambiar_password=True,
+    )
+
+    solicitud.empresa_creada = empresa
+    solicitud.estado = "CUENTA_CREADA"
+    solicitud.save(update_fields=["empresa_creada", "estado"])
+
+    login_url = request.build_absolute_uri(reverse("login"))
+    send_mail(
+        subject="Tu cuenta de LogiVisir Solutions está lista",
+        message=(
+            f"Hola {solicitud.nombre_contacto},\n\n"
+            f"Validamos tu pago y creamos tu cuenta para {solicitud.nombre_empresa}.\n\n"
+            f"Ingresa en: {login_url}\n"
+            f"Usuario: {username}\n"
+            f"Contraseña temporal: {temp_password}\n\n"
+            "Por seguridad, te pediremos cambiarla en tu primer inicio de sesión.\n\n"
+            "Equipo LogiVisir Solutions"
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[solicitud.email_contacto],
+        fail_silently=True,
+    )
+
+    messages.success(request, f"Cuenta creada y credenciales enviadas a {solicitud.email_contacto}.")
+    return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def rechazar_solicitud_view(request, solicitud_id):
+    solicitud = get_object_or_404(SolicitudCuenta, id=solicitud_id)
+    motivo = (request.POST.get("motivo") or "").strip()
+
+    solicitud.estado = "RECHAZADA"
+    if motivo:
+        nota = f"Rechazada: {motivo}"
+        solicitud.notas_internas = f"{solicitud.notas_internas}\n{nota}" if solicitud.notas_internas else nota
+    solicitud.save(update_fields=["estado", "notas_internas"])
+
+    messages.info(request, "Solicitud rechazada.")
+    return redirect("detalle_solicitud", solicitud_id=solicitud.id)

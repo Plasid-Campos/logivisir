@@ -1,0 +1,98 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ solicitud.codigo_referencia }} | Staff LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4">
+
+    <div class="saas-card p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <h1 class="panel-title mb-1">{{ solicitud.codigo_referencia }}</h1>
+          <p class="panel-subtitle mb-0">{{ solicitud.nombre_empresa }} — {{ solicitud.get_plan_solicitado_display }}</p>
+        </div>
+        <div>
+          {% if solicitud.estado == "NUEVA" %}
+            <span class="badge-soft warning">Nueva</span>
+          {% elif solicitud.estado == "PAGO_VALIDADO" %}
+            <span class="badge-soft info">Pago validado</span>
+          {% elif solicitud.estado == "CUENTA_CREADA" %}
+            <span class="badge-soft success">Cuenta creada</span>
+          {% else %}
+            <span class="badge-soft">Rechazada</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-7">
+        <div class="saas-card p-4 mb-3">
+          <h5 class="section-mini-title mb-3">Datos del prospecto</h5>
+          <p class="mb-1"><strong>Empresa:</strong> {{ solicitud.nombre_empresa }}</p>
+          <p class="mb-1"><strong>Rubro:</strong> {{ solicitud.rubro|default:"—" }}</p>
+          <p class="mb-1"><strong>Contacto:</strong> {{ solicitud.nombre_contacto }}</p>
+          <p class="mb-1"><strong>Correo:</strong> {{ solicitud.email_contacto }}</p>
+          <p class="mb-1"><strong>Teléfono:</strong> {{ solicitud.telefono_contacto }}</p>
+          <p class="mb-1"><strong>Plan solicitado:</strong> {{ solicitud.get_plan_solicitado_display }}</p>
+          <p class="mb-1"><strong>Fecha:</strong> {{ solicitud.creada_en|date:"d-m-Y H:i" }}</p>
+          {% if solicitud.mensaje %}
+            <p class="mb-0 mt-2"><strong>Mensaje:</strong><br>{{ solicitud.mensaje }}</p>
+          {% endif %}
+        </div>
+
+        {% if solicitud.notas_internas %}
+        <div class="saas-card p-4">
+          <h5 class="section-mini-title mb-2">Notas internas</h5>
+          <p class="mb-0" style="white-space: pre-line;">{{ solicitud.notas_internas }}</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="col-lg-5">
+        <div class="saas-card p-4">
+          <h5 class="section-mini-title mb-3">Acciones</h5>
+
+          {% if solicitud.estado == "NUEVA" %}
+            <form method="POST" action="{% url 'marcar_pago_validado' solicitud.id %}" class="mb-2">
+              {% csrf_token %}
+              <button class="btn btn-success w-100">
+                <i class="bi bi-check-circle me-1"></i> Marcar pago validado
+              </button>
+            </form>
+
+            <form method="POST" action="{% url 'rechazar_solicitud' solicitud.id %}"
+                  onsubmit="return confirm('¿Rechazar esta solicitud?');">
+              {% csrf_token %}
+              <input type="text" name="motivo" class="form-control form-control-sm mb-2" placeholder="Motivo (opcional)">
+              <button class="btn btn-outline-danger w-100">Rechazar solicitud</button>
+            </form>
+
+          {% elif solicitud.estado == "PAGO_VALIDADO" %}
+            <form method="POST" action="{% url 'crear_cuenta_solicitud' solicitud.id %}"
+                  onsubmit="return confirm('¿Crear la cuenta y enviar las credenciales por correo?');">
+              {% csrf_token %}
+              <button class="btn btn-primary w-100">
+                <i class="bi bi-send-check me-1"></i> Crear cuenta y enviar credenciales
+              </button>
+            </form>
+
+          {% elif solicitud.estado == "CUENTA_CREADA" %}
+            <div class="alert alert-success mb-0">
+              Cuenta creada
+              {% if solicitud.empresa_creada %}para <strong>{{ solicitud.empresa_creada.nombre }}</strong>{% endif %}.
+              Las credenciales fueron enviadas a {{ solicitud.email_contacto }}.
+            </div>
+
+          {% else %}
+            <div class="alert alert-secondary mb-0">Esta solicitud fue rechazada.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <a href="{% url 'lista_solicitudes' %}" class="btn btn-link mt-3">Volver a solicitudes</a>
+  </div>
+</section>
+{% endblock %}

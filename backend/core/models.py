@@ -33,6 +33,52 @@ class Empresa(models.Model):
         return ", ".join([p for p in partes if p])
 
 
+class SolicitudCuenta(models.Model):
+    """
+    Solicitud de contratación del servicio hecha desde el sitio público por
+    un prospecto (aún no es cliente). No tiene FK obligatoria a Empresa
+    porque la Empresa recién se crea cuando el equipo Logivisir valida el
+    pago y aprovisiona la cuenta (ver crear_cuenta_solicitud_view).
+    """
+    PLAN_CHOICES = (
+        ("BASICO", "Básico"),
+        ("PRO", "Pro"),
+        ("EMPRESARIAL", "Empresarial"),
+    )
+    ESTADO_CHOICES = (
+        ("NUEVA", "Nueva"),
+        ("PAGO_VALIDADO", "Pago validado"),
+        ("CUENTA_CREADA", "Cuenta creada"),
+        ("RECHAZADA", "Rechazada"),
+    )
+
+    nombre_empresa = models.CharField(max_length=150)
+    nombre_contacto = models.CharField(max_length=150)
+    email_contacto = models.EmailField()
+    telefono_contacto = models.CharField(max_length=20)
+    rubro = models.CharField(max_length=100, blank=True, null=True)
+    plan_solicitado = models.CharField(max_length=20, choices=PLAN_CHOICES)
+    mensaje = models.TextField(blank=True, null=True)
+
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="NUEVA")
+    notas_internas = models.TextField(blank=True, null=True)
+    creada_en = models.DateTimeField(auto_now_add=True)
+    empresa_creada = models.ForeignKey(
+        Empresa, on_delete=models.SET_NULL, blank=True, null=True,
+        related_name="solicitud_origen",
+    )
+
+    class Meta:
+        ordering = ["-creada_en"]
+
+    @property
+    def codigo_referencia(self):
+        return f"SOL-{self.id:06d}"
+
+    def __str__(self):
+        return f"{self.codigo_referencia} - {self.nombre_empresa}"
+
+
 class PerfilUsuario(models.Model):
     ROL_CHOICES = (
         ('OWNER', 'Dueño / Creador'),
@@ -44,6 +90,7 @@ class PerfilUsuario(models.Model):
         Empresa, on_delete=models.CASCADE, related_name="perfiles",
     )
     rol = models.CharField(max_length=10, choices=ROL_CHOICES)
+    debe_cambiar_password = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.username} - {self.rol}"
