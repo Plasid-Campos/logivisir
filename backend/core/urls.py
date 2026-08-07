@@ -1,0 +1,70 @@
+from django.contrib import admin
+from django.urls import path
+from core import views as core_views
+from django.contrib.auth import views as auth_views
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+
+    # Home / login / logout / dashboard
+    path("", core_views.login_view, name="login"),
+    path("dashboard/", core_views.dashboard_view, name="dashboard"),
+    path("logout/", core_views.logout_view, name="logout"),
+
+    # Usuarios (solo OWNER)
+    path("crear-usuario/", core_views.crear_usuario_view, name="crear_usuario"),
+
+    # Choferes
+    path("choferes/", core_views.lista_choferes_view, name="lista_choferes"),
+    path("choferes/crear/", core_views.crear_chofer_view, name="crear_chofer"),
+    path("choferes/<int:chofer_id>/editar/", core_views.editar_chofer_view, name="editar_chofer"),
+    path("choferes/<int:chofer_id>/eliminar/", core_views.eliminar_chofer_view, name="eliminar_chofer"),
+
+    # Clientes
+    path("clientes/", core_views.lista_clientes_view, name="lista_clientes"),
+    path("clientes/crear/", core_views.crear_cliente_view, name="crear_cliente"),
+    path("clientes/<int:cliente_id>/editar/", core_views.editar_cliente_view, name="editar_cliente"),
+    path("clientes/<int:cliente_id>/eliminar/", core_views.eliminar_cliente_view, name="eliminar_cliente"),
+    path("clientes/<int:cliente_id>/desactivar/", core_views.desactivar_cliente_view, name="desactivar_cliente"),
+
+    # Rutas (admin/owner)
+    path("rutas/", core_views.lista_rutas_view, name="lista_rutas"),
+    path("rutas/crear/", core_views.crear_ruta_view, name="crear_ruta"),
+    path("rutas/<int:ruta_id>/", core_views.detalle_ruta_view, name="detalle_ruta"),
+    path("rutas/<int:ruta_id>/agregar-parada/", core_views.agregar_parada_view, name="agregar_parada"),
+    path("parada/<int:parada_id>/eliminar/", core_views.eliminar_parada_view, name="eliminar_parada"),
+    path("parada/<int:parada_id>/toggle/", core_views.toggle_parada_entregada_view, name="toggle_parada"),
+    path("rutas/<int:ruta_id>/cambiar-estado/", core_views.cambiar_estado_ruta_view, name="cambiar_estado_ruta"),
+
+    # Panel chofer
+    path("chofer/ruta-hoy/", core_views.chofer_ruta_hoy_view, name="chofer_ruta_hoy"),
+
+    # ✅ ESTA ES LA RUTA CORRECTA PARA MARCAR/NO ENTREGAR/REVERTIR (POST)
+    path(
+        "chofer/parada/<int:parada_id>/marcar/",
+        core_views.chofer_marcar_parada_view,
+        name="chofer_marcar_parada"
+    ),
+
+    # 🔐 Recuperación de contraseña
+    path(
+        "password-reset/",
+        auth_views.PasswordResetView.as_view(template_name="core/password_reset_form.html"),
+        name="password_reset"
+    ),
+    path(
+        "password-reset/done/",
+        auth_views.PasswordResetDoneView.as_view(template_name="core/password_reset_done.html"),
+        name="password_reset_done"
+    ),
+    path(
+        "reset/<uidb64>/<token>/",
+        auth_views.PasswordResetConfirmView.as_view(template_name="core/password_reset_confirm.html"),
+        name="password_reset_confirm"
+    ),
+    path(
+        "reset/done/",
+        auth_views.PasswordResetCompleteView.as_view(template_name="core/password_reset_complete.html"),
+        name="password_reset_complete"
+    ),
+]

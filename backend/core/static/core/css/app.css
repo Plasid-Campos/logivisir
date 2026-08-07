@@ -1,0 +1,317 @@
+/* =========================================
+   APP (solo usuarios logueados)
+   Dashboard + Tablas estilo SaaS
+========================================= */
+
+:root{
+  --ink: #0f172a;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --card:#ffffff;
+  --shadow: 0 18px 45px rgba(15,23,42,.10);
+  --shadow2: 0 24px 60px rgba(15,23,42,.14);
+  --grad: linear-gradient(90deg,#0f766e,#2563eb);
+}
+
+/* Contenedor general de pantallas internas */
+.app-section{
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+/* Card base SaaS */
+.saas-card{
+  background: var(--card);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(148,163,184,.22);
+}
+
+/* Botón estilo SaaS (mejora visual con bootstrap) */
+.btn-saas{
+  border-radius: 12px;
+  padding: .55rem .95rem;
+  font-weight: 600;
+}
+
+/* =========================
+   HERO PANEL
+========================= */
+.panel-hero{
+  padding: 1.25rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-hero::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  background: radial-gradient(circle at 12% 18%, rgba(56,189,248,.22), rgba(99,102,241,.12), transparent 60%);
+  pointer-events:none;
+}
+
+.panel-hero > *{
+  position: relative;
+  z-index: 1;
+}
+
+.panel-title{
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  font-size: 1.65rem;
+}
+
+.panel-subtitle{
+  color: var(--muted);
+  max-width: 58ch;
+}
+
+/* Pills */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.28rem .75rem;
+  border-radius:999px;
+  font-size:.78rem;
+  font-weight:700;
+  border: 1px solid rgba(148,163,184,.28);
+  background:#fff;
+  color: var(--ink);
+}
+
+.pill-primary{
+  background: rgba(37,99,235,.08);
+  border-color: rgba(37,99,235,.18);
+  color:#1d4ed8;
+}
+
+.pill-neutral{
+  background: rgba(15,23,42,.04);
+  color: #334155;
+}
+
+/* =========================
+   KPI cards
+========================= */
+.kpi-card{
+  padding: 1.1rem 1.1rem;
+  height: 100%;
+}
+
+.kpi-top{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.kpi-label{
+  font-size:.85rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.kpi-value{
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--ink);
+  margin-top: .45rem;
+  line-height: 1;
+}
+
+.kpi-sub{
+  font-size:.8rem;
+  color: var(--muted);
+  margin-top: .35rem;
+}
+
+.kpi-link{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  margin-top:.75rem;
+  font-weight:800;
+  font-size:.85rem;
+  text-decoration:none;
+  color:#1d4ed8;
+}
+
+.kpi-link:hover{ text-decoration: underline; }
+
+.kpi-icon{
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 1.2rem;
+  color: var(--ink);
+  border: 1px solid rgba(148,163,184,.22);
+}
+
+.soft-blue{ background: radial-gradient(circle at 30% 20%, #e0f2fe, #bfdbfe); }
+.soft-green{ background: radial-gradient(circle at 30% 20%, #dcfce7, #bbf7d0); }
+.soft-violet{ background: radial-gradient(circle at 30% 20%, #ede9fe, #ddd6fe); }
+.soft-amber{ background: radial-gradient(circle at 30% 20%, #fef3c7, #fde68a); }
+
+/* =========================
+   Accesos rápidos
+========================= */
+.section-mini-title{
+  font-weight: 900;
+  color: var(--ink);
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.quick-actions{
+  display:flex;
+  flex-direction:column;
+  gap:.6rem;
+  margin-top:.5rem;
+}
+
+.quick-btn{
+  display:flex;
+  align-items:center;
+  gap:.65rem;
+  padding:.75rem .85rem;
+  border-radius: 14px;
+  text-decoration:none;
+  color: var(--ink);
+  background: rgba(15,23,42,.03);
+  border: 1px solid rgba(148,163,184,.22);
+  font-weight: 700;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.quick-btn i{
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: var(--grad);
+  color:#fff;
+  box-shadow: 0 14px 30px rgba(37,99,235,.22);
+}
+
+.quick-btn:hover{
+  transform: translateY(-2px);
+  box-shadow: var(--shadow2);
+  background: rgba(37,99,235,.06);
+}
+
+.quick-btn-dark i{
+  background: linear-gradient(90deg,#111827,#334155);
+}
+
+.mini-divider{
+  height:1px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,.25), transparent);
+  margin: 1rem 0;
+}
+
+/* =========================
+   Tabla SaaS
+========================= */
+.saas-table{
+  margin:0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.saas-table thead th{
+  font-size:.78rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  padding: .85rem .75rem;
+  background: rgba(15,23,42,.02);
+}
+
+.saas-table tbody td{
+  padding: .95rem .75rem;
+  border-bottom: 1px solid rgba(229,231,235,.85);
+  vertical-align: middle;
+}
+
+.table-ico{
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border: 1px solid rgba(148,163,184,.22);
+  color: var(--ink);
+}
+
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  padding:.22rem .65rem;
+  border-radius:999px;
+  font-size:.78rem;
+  font-weight: 900;
+  border: 1px solid rgba(148,163,184,.22);
+}
+
+.status-pill.ok{
+  background: rgba(34,197,94,.10);
+  color:#166534;
+  border-color: rgba(34,197,94,.22);
+}
+
+.status-pill.warn{
+  background: rgba(245,158,11,.12);
+  color:#92400e;
+  border-color: rgba(245,158,11,.25);
+}
+
+/* =========================
+   Ajustes responsive
+========================= */
+@media (max-width: 991.98px){
+  .panel-title{ font-size: 1.45rem; }
+  .kpi-value{ font-size: 1.75rem; }
+}
+
+/* Inactivo más claro visualmente */
+.status-pill.warn{
+  background: rgba(245,158,11,.18);
+  color: #92400e;
+}
+
+/* Más separación y “aire” entre paradas */
+.driver-stop {
+  margin-bottom: 14px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, .25);
+  background: rgba(255,255,255,.70);
+}
+
+/* Que la columna de acciones no se vea gigante */
+.driver-actions {
+  min-width: 320px;
+}
+
+/* Caja del colapsable “No entregado” */
+.no-entrega-box {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(239, 68, 68, .25);
+  background: rgba(239, 68, 68, .06);
+}
+
+.next-stop {
+  border: 2px solid rgba(59, 130, 246, .35) !important;
+  background: rgba(59, 130, 246, .06) !important;
+}

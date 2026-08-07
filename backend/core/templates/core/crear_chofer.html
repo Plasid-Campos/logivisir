@@ -1,0 +1,71 @@
+{% extends "core/base.html" %}
+
+{% block title %}Crear Chofer{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Crear Chofer</h3>
+
+    {% if mensaje %}
+        <div class="alert alert-success">{{ mensaje }}</div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label>Nombre</label>
+            <input type="text" name="nombre" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Apellido</label>
+            <input type="text" name="apellido" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Nombre de usuario</label>
+            <input type="text" name="username" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Contraseña</label>
+            <input type="password" name="password" class="form-control" required>
+        </div>
+
+        <hr>
+
+        <div class="mb-3">
+            <label>RUT</label>
+            <input type="text" name="rut" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="email" class="form-label">Correo electrónico</label>
+            <input type="email" class="form-control" id="email" name="email"
+                    placeholder="correo@empresa.cl" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Teléfono</label>
+            <input type="text" name="telefono" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label>Licencia</label>
+            <input type="text" name="licencia" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label>Patente</label>
+            <input type="text" name="patente" class="form-control">
+        </div>
+
+        <button class="btn btn-primary">Crear Chofer</button>
+        <a href="{% url 'lista_choferes' %}" class="btn btn-link">Volver</a>
+    </form>
+</div>
+{% endblock %}

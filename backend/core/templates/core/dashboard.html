@@ -1,0 +1,232 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Panel operativo | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+{% now "Y-m-d" as hoy %}
+<section class="app-section">
+  <div class="container py-4">
+
+    <!-- HERO DEL PANEL -->
+    <div class="panel-hero saas-card mb-4">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
+        <div>
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span class="pill pill-primary"><i class="bi bi-lightning-charge-fill me-1"></i>Panel operativo</span>
+            {% if perfil %}
+              <span class="pill pill-neutral">Rol: {{ perfil.get_rol_display|default:"—" }}</span>
+            {% endif %}
+          </div>
+
+          <h1 class="panel-title mb-1">
+            Hola, {{ request.user.get_full_name|default:request.user.username }}
+          </h1>
+          <p class="panel-subtitle mb-0">
+            Gestión centralizada de rutas, clientes y choferes. Controla la operación diaria con una vista clara y rápida.
+          </p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-primary btn-saas" href="{% url 'lista_rutas' %}">
+            <i class="bi bi-signpost-2 me-1"></i> Ver rutas
+          </a>
+          <a class="btn btn-outline-primary btn-saas" href="{% url 'crear_ruta' %}">
+            <i class="bi bi-plus-circle me-1"></i> Nueva ruta
+          </a>
+
+          {% if perfil and perfil.rol == "OWNER" %}
+            <a class="btn btn-outline-dark btn-saas" href="{% url 'crear_usuario' %}">
+              <i class="bi bi-person-plus me-1"></i> Crear usuario
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Clientes activos</div>
+            <div class="kpi-icon soft-blue"><i class="bi bi-people-fill"></i></div>
+          </div>
+          <div class="kpi-value">{{ resumen.clientes_activos|default:"0" }}</div>
+          <div class="kpi-sub">Visión general</div>
+          <a class="kpi-link" href="{% url 'lista_clientes' %}">Ir a clientes <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Choferes activos</div>
+            <div class="kpi-icon soft-green"><i class="bi bi-person-badge-fill"></i></div>
+          </div>
+          <div class="kpi-value">{{ resumen.choferes_activos|default:"0" }}</div>
+          <div class="kpi-sub">Disponibilidad</div>
+          <a class="kpi-link" href="{% url 'lista_choferes' %}">Ir a choferes <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Rutas de hoy</div>
+            <div class="kpi-icon soft-violet"><i class="bi bi-calendar-check-fill"></i></div>
+          </div>
+          <div class="kpi-value">{{ resumen.rutas_hoy|default:"0" }}</div>
+          <div class="kpi-sub">En operación</div>
+          <a class="kpi-link" href="{% url 'lista_rutas' %}">Ir a rutas <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Pendientes</div>
+            <div class="kpi-icon soft-amber"><i class="bi bi-exclamation-triangle-fill"></i></div>
+          </div>
+          <div class="kpi-value">{{ resumen.rutas_hoy_pendientes|default:"0" }}</div>
+          <div class="kpi-sub">Por confirmar</div>
+          <a class="kpi-link" href="{% url 'lista_rutas' %}">Revisar <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- BLOQUE INFERIOR -->
+    <div class="row g-3">
+      <!-- Accesos rápidos -->
+      <div class="col-lg-4">
+        <div class="saas-card p-4 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="section-mini-title mb-0"><i class="bi bi-lightning-fill me-2"></i>Accesos rápidos</h3>
+            <span class="pill pill-neutral">Operación</span>
+          </div>
+
+          <div class="quick-actions">
+            <a href="{% url 'crear_ruta' %}" class="quick-btn">
+              <i class="bi bi-plus-circle"></i>
+              <span>Crear nueva ruta</span>
+            </a>
+
+            <a href="{% url 'crear_cliente' %}" class="quick-btn">
+              <i class="bi bi-person-plus"></i>
+              <span>Crear cliente</span>
+            </a>
+
+            <a href="{% url 'crear_chofer' %}" class="quick-btn">
+              <i class="bi bi-person-badge"></i>
+              <span>Crear chofer</span>
+            </a>
+
+            {% if perfil and perfil.rol == "OWNER" %}
+              <a href="{% url 'crear_usuario' %}" class="quick-btn quick-btn-dark">
+                <i class="bi bi-shield-lock"></i>
+                <span>Crear usuario (Owner)</span>
+              </a>
+            {% endif %}
+          </div>
+
+          <div class="mini-divider"></div>
+          <p class="text-muted small mb-0">
+            Consejo: usa el botón <strong>“Nueva ruta”</strong> para crear el día y luego agrega paradas desde el detalle.
+          </p>
+        </div>
+      </div>
+
+      <!-- Tabla resumen -->
+      <div class="col-lg-8">
+        <div class="saas-card p-4 h-100">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-3">
+            <div>
+              <h3 class="section-mini-title mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Estado operativo</h3>
+              <p class="text-muted small mb-0">Resumen rápido del panel (diseño SaaS listo).</p>
+            </div>
+
+            <div class="d-flex gap-2">
+              <a class="btn btn-outline-secondary btn-sm btn-saas" href="{% url 'lista_rutas' %}">
+                <i class="bi bi-list-task me-1"></i> Ver listado
+              </a>
+              <a class="btn btn-primary btn-sm btn-saas" href="{% url 'crear_ruta' %}">
+                <i class="bi bi-plus me-1"></i> Nueva ruta
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table saas-table align-middle">
+              <thead>
+                <tr>
+                  <th>Módulo</th>
+                  <th>Qué puedes hacer</th>
+                  <th>Estado</th>
+                  <th class="text-end">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-semibold">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="table-ico soft-blue"><i class="bi bi-signpost-2"></i></span>
+                      <div>
+                        <div>Rutas</div>
+                        <small class="text-muted">Planificación diaria</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-muted">Crear rutas, asignar chofer, ver estado y acceder al detalle.</td>
+                  <td><span class="status-pill ok">Listo</span></td>
+                  <td class="text-end">
+                    <a class="btn btn-outline-primary btn-sm btn-saas" href="{% url 'lista_rutas' %}">Abrir <i class="bi bi-arrow-right"></i></a>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="fw-semibold">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="table-ico soft-green"><i class="bi bi-people"></i></span>
+                      <div>
+                        <div>Clientes</div>
+                        <small class="text-muted">Base de despacho</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-muted">Mantener clientes activos/inactivos y datos de contacto.</td>
+                  <td><span class="status-pill warn">Operativo</span></td>
+                  <td class="text-end">
+                    <a class="btn btn-outline-primary btn-sm btn-saas" href="{% url 'lista_clientes' %}">Abrir <i class="bi bi-arrow-right"></i></a>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="fw-semibold">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="table-ico soft-violet"><i class="bi bi-person-badge"></i></span>
+                      <div>
+                        <div>Choferes</div>
+                        <small class="text-muted">Operación</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-muted">Control de choferes, licencias y patentes asociadas.</td>
+                  <td><span class="status-pill warn">Operativo</span></td>
+                  <td class="text-end">
+                    <a class="btn btn-outline-primary btn-sm btn-saas" href="{% url 'lista_choferes' %}">Abrir <i class="bi bi-arrow-right"></i></a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="text-muted small mt-3 mb-0">
+            *Cuando conectemos métricas reales (counts y rutas de hoy), este panel queda 100% “SaaS de verdad”.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

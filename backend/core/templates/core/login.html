@@ -1,0 +1,89 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Iniciar sesión | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="card card-login shadow-lg border-0">
+
+        <!-- CABECERA CON LOGO Y TEXTO -->
+        <div class="card-login-header text-center mb-2">
+          <div class="logo-wrapper mb-3">
+            <img src="{% static 'core/img/logivisir_logo.png' %}"
+                 alt="LogiVisir Solutions"
+                 class="navbar-logo">
+          </div>
+          <div class="brand-title">LogiVisir Solutions</div>
+          <div class="brand-subtitle">
+            Plataforma de optimización de rutas para Panadería Macarrón
+          </div>
+        </div>
+
+        <!-- CONTENIDO DEL FORMULARIO -->
+        <div class="card-body p-4">
+
+          {% if mensaje_error %}
+            <div class="alert alert-danger py-2">
+              {{ mensaje_error }}
+            </div>
+          {% endif %}
+
+          <form method="POST" autocomplete="off">
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label for="username" class="form-label">Usuario</label>
+              <input
+                type="text"
+                class="form-control"
+                id="username"
+                name="username"
+                placeholder="Ingresa tu usuario"
+                required
+              >
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">Contraseña</label>
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                name="password"
+                placeholder="Ingresa tu contraseña"
+                required
+              >
+            <div class="text-end mb-3">
+              <a href="{% url 'password_reset' %}" class="small">
+                    ¿Olvidaste tu contraseña?
+              </a>
+            </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mb-3">
+              Iniciar sesión
+            </button>
+          </form>
+
+          <div class="info-box mt-2 small text-center">
+            <strong>¿No tienes usuario?</strong><br>
+            Este sistema es de uso privado.  
+            Si necesitas acceso, <span class="fw-semibold">contacta con nuestro staff</span><br>
+            y te atenderemos dentro de los próximos
+            <strong>15 minutos</strong> para validar tus datos.
+            <div class="mt-2">
+              📧 Correo: <a href="mailto:contacto@apirutas.com">contacto@apirutas.com</a><br>
+              📱 WhatsApp: +56 9 1234 5678
+            </div>
+          </div>
+
+        </div> <!-- /card-body -->
+
+      </div> <!-- /card -->
+    </div>
+  </div>
+</div>
+{% endblock %}

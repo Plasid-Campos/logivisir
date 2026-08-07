@@ -1,0 +1,135 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Choferes | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4">
+
+    <!-- Header -->
+    <div class="saas-card p-4 mb-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+        <div>
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span class="pill pill-primary">
+              <i class="bi bi-person-badge-fill me-1"></i>Choferes
+            </span>
+            <span class="pill pill-neutral">Operación</span>
+          </div>
+
+          <h1 class="panel-title mb-1">Listado de choferes</h1>
+          <p class="panel-subtitle mb-0">
+            Control de choferes, licencias, patentes y estado operativo.
+          </p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{% url 'crear_chofer' %}" class="btn btn-primary btn-saas">
+            <i class="bi bi-person-plus me-1"></i> Nuevo chofer
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="saas-card p-3 p-md-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-3">
+        <div>
+          <h3 class="section-mini-title mb-0">
+            <i class="bi bi-list-check me-2"></i>Choferes registrados
+          </h3>
+          <p class="text-muted small mb-0">
+            Vista general del equipo de reparto.
+          </p>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table saas-table align-middle">
+          <thead>
+            <tr>
+              <th>Chofer</th>
+              <th>Contacto</th>
+              <th>Vehículo</th>
+              <th>Estado</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in choferes %}
+            <tr>
+              <td class="fw-semibold">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="table-ico soft-green">
+                    <i class="bi bi-person-circle"></i>
+                  </span>
+                  <div>
+                    <div>
+                      {{ c.perfil.user.get_full_name|default:c.perfil.user.username }}
+                    </div>
+                    <small class="text-muted">RUT: {{ c.rut }}</small>
+                  </div>
+                </div>
+              </td>
+
+              <td class="text-muted">
+                {% if c.telefono %}
+                  <div><i class="bi bi-telephone me-1"></i>{{ c.telefono }}</div>
+                {% else %}
+                  <div>—</div>
+                {% endif %}
+                {% if c.perfil.user.email %}
+                  <div><i class="bi bi-envelope me-1"></i>{{ c.perfil.user.email }}</div>
+                {% endif %}
+              </td>
+
+              <td class="text-muted">
+                <div><strong>Licencia:</strong> {{ c.licencia|default:"—" }}</div>
+                <div><strong>Patente:</strong> {{ c.patente|default:"—" }}</div>
+              </td>
+
+              <td>
+                {% if c.activo %}
+                  <span class="status-pill ok">
+                    <i class="bi bi-check-circle-fill me-1"></i>Activo
+                  </span>
+                {% else %}
+                  <span class="status-pill warn">
+                    <i class="bi bi-pause-circle-fill me-1"></i>Inactivo
+                  </span>
+                {% endif %}
+              </td>
+
+              <td class="text-end">
+                <div class="d-inline-flex gap-2">
+                  <a href="{% url 'editar_chofer' c.id %}" class="btn btn-outline-primary btn-sm btn-saas">
+                    <i class="bi bi-pencil-square me-1"></i>Editar
+                  </a>
+
+                  {% if c.activo %}
+                    <a href="{% url 'eliminar_chofer' c.id %}"
+                       class="btn btn-outline-secondary btn-sm btn-saas"
+                       onclick="return confirm('¿Desactivar/eliminar chofer?');">
+                      <i class="bi bi-slash-circle me-1"></i>Eliminar
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                No hay choferes registrados aún.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+{% endblock %}

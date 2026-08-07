@@ -1,0 +1,165 @@
+{% extends "core/base.html" %}
+
+{% block title %}Detalle Ruta{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h3>Detalle de Ruta</h3>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">{{ ruta.nombre }}</h5>
+      <p class="mb-1"><strong>Fecha:</strong> {{ ruta.fecha }}</p>
+      <p class="mb-1">
+        <strong>Chofer:</strong>
+        {{ ruta.chofer.perfil.user.first_name }} {{ ruta.chofer.perfil.user.last_name }}
+        ({{ ruta.chofer.patente }})
+      </p>
+      <p class="mb-1"><strong>Estado actual:</strong> {{ ruta.get_estado_display }}</p>
+
+      <form method="POST" action="{% url 'cambiar_estado_ruta' ruta.id %}" class="mt-2">
+        {% csrf_token %}
+        <div class="row g-2 align-items-center">
+          <div class="col-auto">
+            <label class="col-form-label">Cambiar estado:</label>
+          </div>
+          <div class="col-auto">
+            <select name="estado" class="form-select form-select-sm">
+              {% for valor, texto in ruta.ESTADO_CHOICES %}
+                <option value="{{ valor }}" {% if ruta.estado == valor %}selected{% endif %}>{{ texto }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-sm btn-primary">Actualizar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <h5>Paradas de la ruta</h5>
+
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th style="width:80px;">Orden</th>
+        <th>Cliente</th>
+        <th>Dirección</th>
+        <th style="width:140px;">Estado entrega</th>
+        <th style="width:160px;">Hora</th>
+        <th>Comentario (admin)</th>
+        <th>Motivo / Comentario chofer</th>
+        <th style="width:210px;">Opciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for parada in paradas %}
+      <tr>
+        <td>{{ parada.orden }}</td>
+
+        <td>
+          <strong>{{ parada.cliente.nombre }}</strong><br>
+          <small class="text-muted">
+            {{ parada.cliente.direccion }}
+            {% if parada.cliente.comuna %}, {{ parada.cliente.comuna }}{% endif %}
+            {% if parada.cliente.ciudad %}, {{ parada.cliente.ciudad }}{% endif %}
+          </small>
+        </td>
+
+        <td>
+          {{ parada.cliente.direccion }}
+          {% if parada.cliente.comuna %}, {{ parada.cliente.comuna }}{% endif %}
+          {% if parada.cliente.ciudad %}, {{ parada.cliente.ciudad }}{% endif %}
+        </td>
+
+        <td>
+          {% if parada.estado_entrega == "ENTREGADO" %}
+            <span class="badge bg-success">Entregado</span>
+          {% elif parada.estado_entrega == "NO_ENTREGADO" %}
+            <span class="badge bg-danger">No entregado</span>
+          {% else %}
+            <span class="badge bg-secondary">Pendiente</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if parada.hora_entrega %}
+            {{ parada.hora_entrega|date:"H:i" }}
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if parada.comentario %}
+            {{ parada.comentario }}
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if parada.estado_entrega == "NO_ENTREGADO" %}
+            <div><strong>Motivo:</strong> {{ parada.motivo_no_entrega|default:"—" }}</div>
+            {% if parada.comentario_chofer %}
+              <div><strong>Chofer:</strong> {{ parada.comentario_chofer }}</div>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+
+        <td class="d-flex gap-2">
+          <a href="{% url 'toggle_parada' parada.id %}" class="btn btn-sm btn-success">
+            {% if parada.entregado %}Revertir{% else %}Marcar entregado{% endif %}
+          </a>
+          <a href="{% url 'eliminar_parada' parada.id %}" class="btn btn-sm btn-danger"
+             onclick="return confirm('¿Eliminar esta parada de la ruta?');">
+            Eliminar
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8">No hay paradas definidas para esta ruta.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h5>Agregar parada a la ruta</h5>
+
+  <form method="POST" action="{% url 'agregar_parada' ruta.id %}">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-5">
+        <label>Cliente</label>
+        <select name="cliente_id" class="form-select" required>
+          <option value="">Seleccione...</option>
+          {% for c in clientes %}
+            <option value="{{ c.id }}">{{ c.nombre }} ({{ c.rut }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label>Orden (opcional)</label>
+        <input type="number" name="orden" class="form-control" min="1" placeholder="Auto si vacío">
+      </div>
+
+      <div class="col-md-3">
+        <label>Comentario (opcional)</label>
+        <input type="text" name="comentario" class="form-control" placeholder="Ej: entrega parcial, cerrado...">
+      </div>
+
+      <div class="col-md-1 d-flex align-items-end">
+        <button class="btn btn-primary w-100">Agregar</button>
+      </div>
+    </div>
+  </form>
+
+  <a href="{% url 'lista_rutas' %}" class="btn btn-link mt-3">Volver</a>
+</div>
+{% endblock %}

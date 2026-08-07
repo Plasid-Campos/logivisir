@@ -1,0 +1,67 @@
+{% extends "core/base.html" %}
+
+{% block title %}Editar Cliente{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Editar Cliente</h3>
+
+    {% if mensaje %}
+        <div class="alert alert-success">{{ mensaje }}</div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label>RUT</label>
+            <input type="text" name="rut" class="form-control" value="{{ cliente.rut }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Nombre</label>
+            <input type="text" name="nombre" class="form-control" value="{{ cliente.nombre }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Dirección</label>
+            <input type="text" name="direccion" class="form-control" value="{{ cliente.direccion }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Comuna</label>
+            <input type="text" name="comuna" class="form-control" value="{{ cliente.comuna }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Ciudad</label>
+            <input type="text" name="ciudad" class="form-control" value="{{ cliente.ciudad }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Teléfono</label>
+            <input type="text" name="telefono" class="form-control" value="{{ cliente.telefono }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Email</label>
+            <input type="email" name="email" class="form-control" value="{{ cliente.email }}">
+        </div>
+
+        <div class="form-check mb-2">
+            <input type="checkbox" name="activo" class="form-check-input" {% if cliente.activo %}checked{% endif %}>
+            <label class="form-check-label">Activo</label>
+        </div>
+
+        <div class="mb-3">
+            <label>Motivo de inactividad (si está inactivo)</label>
+            <input type="text" name="motivo_inactivo" class="form-control"
+                value="{{ cliente.motivo_inactivo }}">
+        </div>
+
+        <button class="btn btn-primary">Guardar cambios</button>
+        <a href="{% url 'lista_clientes' %}" class="btn btn-link">Volver</a>
+    </form>
+
+</div>
+{% endblock %}

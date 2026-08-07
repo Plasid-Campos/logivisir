@@ -1,0 +1,45 @@
+{% extends "core/base.html" %}
+
+{% block title %}Crear Ruta{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Crear Ruta</h3>
+
+    {% if mensaje %}
+        <div class="alert alert-success">{{ mensaje }}</div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label>Nombre de la ruta</label>
+            <input type="text" name="nombre" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Fecha</label>
+            <input type="date" name="fecha" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Chofer</label>
+            <select name="chofer_id" class="form-select" required>
+                <option value="">-- Selecciona un chofer --</option>
+                {% for ch in choferes %}
+                    <option value="{{ ch.id }}">
+                        {{ ch.perfil.user.first_name }} {{ ch.perfil.user.last_name }} ({{ ch.patente }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button class="btn btn-primary">Crear Ruta</button>
+        <a href="{% url 'lista_rutas' %}" class="btn btn-link">Volver</a>
+    </form>
+</div>
+{% endblock %}

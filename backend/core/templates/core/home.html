@@ -1,0 +1,361 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Optimización de rutas | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+
+<!-- ===========================
+     HERO SECTION
+============================ -->
+<section class="hero-section">
+  <div class="container py-5">
+    <div class="row align-items-center">
+
+      <!-- TEXTO DEL HERO -->
+      <div class="col-lg-6 mb-4 mb-lg-0">
+        <span class="hero-kicker">Plataforma SaaS para logística</span>
+
+        <h1 class="hero-title mb-3">
+          Centraliza tus rutas,<br>
+          mejora el servicio y reduce<br>
+          costos.
+        </h1>
+
+        <p class="hero-subtitle mb-4">
+          LogiVisir Solutions ayuda a empresas como <strong>Panadería Macarrón</strong>
+          a optimizar la planificación de rutas, gestionar choferes y monitorear
+          su operación diaria de manera simple y eficiente.
+        </p>
+
+        <div class="d-flex gap-3">
+          <a href="#soluciones" class="btn btn-primary px-4 py-2">Ver soluciones</a>
+          <a href="{% url 'login' %}" class="btn btn-outline-primary px-4 py-2">Acceso clientes</a>
+        </div>
+
+        <p class="hero-note mt-3">
+          Sin instalaciones complejas. Ideal para panaderías, distribuidoras y logística urbana.
+        </p>
+      </div>
+
+      <!-- IMAGEN DEL HERO (TU GRÁFICO) -->
+      <div class="col-lg-6 d-flex justify-content-center">
+        <div class="hero-demo-box">
+          <img src="{% static 'core/img/grafico_prueba.png' %}"
+               alt="Dashboard Logístico"
+               class="hero-demo-image">
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- SEPARADOR -->
+<div class="section-divider"></div>
+
+
+<!-- =========================
+     LOGOS CLIENTES / CASOS REALES
+========================= -->
+<section class="logos-clientes" id="clientes">
+  <div class="container">
+
+    <div class="text-center mb-5">
+      <span class="logos-kicker">
+        Casos reales en operación logística diaria
+      </span>
+
+      <h2 class="logos-title mb-2">
+        Empresas que confían en <span>LogiVisir</span>
+      </h2>
+
+      <p class="logos-subtitle">
+        Plataforma diseñada junto a panaderías y distribuidores urbanos de la Región Metropolitana.
+      </p>
+    </div>
+
+    <div class="logos-grid">
+
+      <div class="logo-card">
+        <img src="{% static 'core/img/logo_andes.png' %}" alt="Los Andes Distribuidora">
+        <p>Los Andes Distribuidora</p>
+      </div>
+
+      <div class="logo-card">
+        <img src="{% static 'core/img/macarron.png' %}" alt="Panadería Macarrón">
+        <p>Panadería Macarrón</p>
+      </div>
+
+      <div class="logo-card">
+        <img src="{% static 'core/img/centrosur.png' %}" alt="Fedecam Centro Sur">
+        <p>Fedecam Centro Sur</p>
+      </div>
+
+      <div class="logo-card">
+        <img src="{% static 'core/img/delipan.png' %}" alt="Delipan Express">
+        <p>Delipan Express</p>
+      </div>
+
+    </div>
+
+    <!-- Franja tipo aurora boreal (toque nórdico) -->
+    <div class="logos-aurora mt-5"></div>
+
+  </div>
+</section>
+
+<!-- SEPARADOR -->
+<div class="section-divider"></div>
+
+
+<!-- ======================================
+     SECCIÓN: ¿Qué soluciona LogiVisir?
+====================================== -->
+<section id="soluciones" class="solutions-section py-5 py-md-6">
+  <div class="container">
+
+    <!-- Encabezado de sección -->
+    <div class="text-center mb-5">
+      <span class="section-badge">
+        Pensado para panaderías y reparto urbano
+      </span>
+      <h2 class="section-title mt-3">
+        ¿Qué soluciona <span>LogiVisir?</span>
+      </h2>
+      <p class="section-subtitle mx-auto">
+        Diseñado para reemplazar planillas manuales y dar visibilidad total a la
+        operación diaria de reparto, desde la planificación hasta el seguimiento
+        de choferes y clientes.
+      </p>
+    </div>
+
+    <!-- Tarjetas de soluciones -->
+    <div class="row g-4">
+      <!-- Card 1 -->
+      <div class="col-md-4">
+        <div class="solution-card">
+          <div class="solution-icon icon-1">
+            <i class="bi bi-signpost-split"></i>
+          </div>
+          <h5>Planificación de rutas</h5>
+          <p>
+            Crea rutas diarias considerando comunas, horarios de entrega,
+            prioridad de clientes y capacidad del vehículo.
+          </p>
+          <ul class="solution-list">
+            <li>Menos kilómetros recorridos</li>
+            <li>Menos tiempo de planificación</li>
+            <li>Mejores tiempos de respuesta al cliente</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="col-md-4">
+        <div class="solution-card">
+          <div class="solution-icon icon-2">
+            <i class="bi bi-person-lines-fill"></i>
+          </div>
+          <h5>Gestión de choferes</h5>
+          <p>
+            Administra choferes, licencias, patentes y estados de actividad.
+            Cada chofer ve solo su ruta y sus entregas.
+          </p>
+          <ul class="solution-list">
+            <li>Control de disponibilidad</li>
+            <li>Asignación clara de rutas</li>
+            <li>Historial de entregas por chofer</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="col-md-4">
+        <div class="solution-card">
+          <div class="solution-icon icon-3">
+            <i class="bi bi-speedometer2"></i>
+          </div>
+          <h5>Panel operativo</h5>
+          <p>
+            Visualiza el estado de las rutas del día, clientes activos e
+            indicadores clave para tomar decisiones rápidas.
+          </p>
+          <ul class="solution-list">
+            <li>Rutas de hoy y pendientes</li>
+            <li>Clientes activos / inactivos</li>
+            <li>Visión general de la operación</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SEPARADOR -->
+<div class="section-divider"></div>
+
+
+<!-- ======================================
+     SECCIÓN: ¿QUIÉNES SOMOS?
+====================================== -->
+<section id="quienes-somos" class="about-section">
+  <div class="container">
+    <div class="row align-items-center g-4">
+
+      <!-- Texto principal -->
+      <div class="col-lg-6">
+        <span class="section-badge">Historia y propósito</span>
+        <h2 class="section-title mt-3">
+          ¿Quiénes somos?
+        </h2>
+        <p class="about-text">
+          LogiVisir Solutions nace como un proyecto académico aplicado a la realidad
+          de <strong>Panadería Macarrón</strong>, una empresa que necesitaba optimizar
+          la planificación manual de sus rutas de reparto.
+        </p>
+        <p class="about-text">
+          Nuestro objetivo es ofrecer una plataforma clara, simple y escalable
+          para que negocios similares puedan profesionalizar su logística sin
+          grandes inversiones ni sistemas complejos.
+        </p>
+        <p class="about-text">
+          Este proyecto integra buenas prácticas de desarrollo web, experiencia
+          de usuario y operación logística real.
+        </p>
+      </div>
+
+      <!-- Tarjeta lateral tipo “insights” -->
+      <div class="col-lg-6">
+        <div class="about-card">
+          <h6 class="about-card-title">
+            Pensado para reparto diario real
+          </h6>
+          <p class="about-card-text">
+            Inspirado en la experiencia de una panadería real y en la
+            logística nórdica de rutas claras y eficientes.
+          </p>
+
+          <ul class="about-list">
+            <li>Menos rutas improvisadas, más planificación.</li>
+            <li>Visibilidad de choferes y entregas en un solo panel.</li>
+            <li>Base para escalar a otras panaderías y distribuidores.</li>
+          </ul>
+
+          <div class="about-metric-grid">
+            <div class="about-metric">
+              <span class="about-metric-value">+60</span>
+              <span class="about-metric-label">puntos de entrega (ejemplo)</span>
+            </div>
+            <div class="about-metric">
+              <span class="about-metric-value">-25%</span>
+              <span class="about-metric-label">km recorridos en ruta</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- SEPARADOR -->
+<div class="section-divider"></div>
+
+
+<!-- ======================================
+     SECCIÓN: CONTACTO + DEMO
+====================================== -->
+<section id="contacto" class="contact-section">
+  <div class="container">
+    <div class="row g-4 align-items-start">
+
+      <!-- Columna Contacto -->
+      <div class="col-lg-5">
+        <h3 class="contact-title">Contacto</h3>
+        <p class="contact-text">
+          Si quieres más información sobre la plataforma o estás evaluando
+          aplicarla en una empresa real, puedes usar estos datos de ejemplo:
+        </p>
+
+        <ul class="contact-list">
+          <li>
+            <span class="contact-icon"><i class="bi bi-envelope-fill"></i></span>
+            <div>
+              <div class="contact-label">Email</div>
+              <div class="contact-value">contacto@logivisir.com</div>
+            </div>
+          </li>
+          <li>
+            <span class="contact-icon"><i class="bi bi-whatsapp"></i></span>
+            <div>
+              <div class="contact-label">WhatsApp</div>
+              <div class="contact-value">+56 9 1234 5678</div>
+            </div>
+          </li>
+          <li>
+            <span class="contact-icon"><i class="bi bi-geo-alt-fill"></i></span>
+            <div>
+              <div class="contact-label">Ubicación</div>
+              <div class="contact-value">Santiago, Chile</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Columna CTA Demo -->
+      <div class="col-lg-7">
+        <div class="cta-box">
+          <span class="cta-badge">Demo del panel</span>
+          <h3 class="cta-title">
+            ¿Quieres ver el sistema en acción?
+          </h3>
+          <p class="cta-text">
+            Puedes acceder con un usuario de prueba y explorar la creación de
+            rutas, el panel operativo y la vista de chofer con enlaces a
+            Google Maps.
+          </p>
+          <a href="{% url 'login' %}" class="btn btn-primary cta-btn">
+            Ir al acceso de clientes
+          </a>
+          <p class="cta-note">
+            Ideal para mostrar el prototipo en la presentación de tu proyecto.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- SEPARADOR -->
+<div class="section-divider"></div>
+
+
+<!-- ===========================
+     CTA FINAL
+============================ -->
+<section class="cta-section py-5">
+  <div class="container">
+
+    <div class="cta-box">
+      <div>
+        <h4 class="fw-bold">¿Te gustaría aplicar esto en tu empresa?</h4>
+        <p class="text-muted mb-0">
+          LogiVisir Solutions ya funciona para Panadería Macarrón.
+          Puede adaptarse a tu negocio de reparto.
+        </p>
+      </div>
+
+      <div>
+        <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+          Acceso clientes
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+{% endblock %}
