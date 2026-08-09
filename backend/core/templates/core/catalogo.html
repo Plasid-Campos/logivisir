@@ -18,17 +18,13 @@
         {% csrf_token %}
         <div class="col-md-8">
           <label class="form-label">Cliente para este pedido</label>
-          <select name="cliente_id" class="form-select" required>
-            <option value="">Seleccione un cliente...</option>
-            {% for c in clientes %}
-              <option value="{{ c.id }}" {% if cliente_actual and cliente_actual.id == c.id %}selected{% endif %}>
-                {{ c.nombre }}{% if c.rut %} ({{ c.rut }}){% endif %}
-              </option>
-            {% endfor %}
-          </select>
+          {% include "core/_buscador_cliente.html" with input_id="buscar-cliente-carrito" hidden_id="cliente-id-carrito" dropdown_id="dropdown-cliente-carrito" data_id="data-clientes-carrito" hidden_name="cliente_id" placeholder="Escribe el nombre del cliente..." submit_selector="#btn-usar-cliente" clientes_json=clientes_json %}
+          {% if cliente_actual %}
+            <div class="form-text">Cliente actual: {{ cliente_actual.nombre }}{% if cliente_actual.comuna %} ({{ cliente_actual.comuna }}){% endif %}</div>
+          {% endif %}
         </div>
         <div class="col-md-4">
-          <button class="btn btn-primary w-100">Usar este cliente</button>
+          <button id="btn-usar-cliente" class="btn btn-primary w-100" disabled>Usar este cliente</button>
         </div>
       </form>
 

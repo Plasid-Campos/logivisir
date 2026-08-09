@@ -110,9 +110,15 @@ class Chofer(models.Model):
 
 
 class Cliente(models.Model):
+    TIPO_CHOICES = (
+        ("NORMAL", "Cliente regular"),
+        ("DELIVERY", "Delivery a domicilio"),
+    )
+
     empresa = models.ForeignKey(
         Empresa, on_delete=models.CASCADE, related_name="clientes",
     )
+    tipo_cliente = models.CharField(max_length=20, choices=TIPO_CHOICES, default="NORMAL")
     rut = models.CharField(max_length=20, blank=True, null=True)
     nombre = models.CharField(max_length=120)
     direccion = models.CharField(max_length=200)

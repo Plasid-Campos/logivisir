@@ -24,6 +24,15 @@
         </div>
 
         <div class="mb-3">
+            <label>Tipo de cliente</label>
+            <select name="tipo_cliente" class="form-select">
+                {% for valor, texto in tipos_cliente %}
+                    <option value="{{ valor }}" {% if cliente.tipo_cliente == valor %}selected{% endif %}>{{ texto }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
             <label>Dirección</label>
             <input type="text" name="direccion" class="form-control" value="{{ cliente.direccion }}" required>
         </div>

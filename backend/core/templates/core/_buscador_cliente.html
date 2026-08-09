@@ -1,0 +1,20 @@
+{% load static %}
+<div class="buscador-cliente-wrapper">
+  <input type="text" id="{{ input_id }}" class="form-control" autocomplete="off"
+         placeholder="{{ placeholder|default:'Escribe el nombre del cliente...' }}">
+  <input type="hidden" id="{{ hidden_id }}" name="{{ hidden_name }}">
+  <div id="{{ dropdown_id }}" class="buscador-cliente-dropdown"></div>
+</div>
+
+{{ clientes_json|json_script:data_id }}
+
+<script src="{% static 'core/js/buscador_cliente.js' %}?v=2"></script>
+<script>
+  initBuscadorCliente({
+    inputId: "{{ input_id }}",
+    hiddenId: "{{ hidden_id }}",
+    dropdownId: "{{ dropdown_id }}",
+    dataId: "{{ data_id }}",
+    submitSelector: "{{ submit_selector|default:'' }}",
+  });
+</script>

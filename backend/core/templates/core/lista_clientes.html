@@ -30,12 +30,66 @@
       </div>
     </div>
 
+    <!-- Filtros -->
+    <div class="saas-card p-3 p-md-4 mb-4">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold mb-1">Buscar por nombre, dirección o RUT</label>
+          <input type="text" name="q" class="form-control" value="{{ filtro_q }}"
+                 placeholder="Ej: La Martina, Providencia...">
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold mb-1">Comuna</label>
+          <select name="comuna" class="form-select">
+            <option value="">Todas las comunas</option>
+            {% for com in comunas_disponibles %}
+              <option value="{{ com }}" {% if filtro_comuna == com %}selected{% endif %}>{{ com }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Tipo</label>
+          <select name="tipo" class="form-select">
+            <option value="">Todos</option>
+            {% for valor, texto in tipos_cliente %}
+              <option value="{{ valor }}" {% if filtro_tipo == valor %}selected{% endif %}>{{ texto }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Estado</label>
+          <select name="estado" class="form-select">
+            <option value="">Todos</option>
+            <option value="activos" {% if filtro_estado == "activos" %}selected{% endif %}>Activos</option>
+            <option value="inactivos" {% if filtro_estado == "inactivos" %}selected{% endif %}>Inactivos</option>
+          </select>
+        </div>
+
+        <div class="col-md-1 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-saas w-100">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+
+        {% if filtro_q or filtro_comuna or filtro_tipo or filtro_estado %}
+          <div class="col-12">
+            <a href="{% url 'lista_clientes' %}" class="small">
+              <i class="bi bi-x-circle me-1"></i>Quitar filtros
+            </a>
+          </div>
+        {% endif %}
+      </form>
+    </div>
+
     <!-- Tabla -->
     <div class="saas-card p-3 p-md-4">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-3">
         <div>
           <h3 class="section-mini-title mb-0"><i class="bi bi-list-check me-2"></i>Clientes registrados</h3>
-          <p class="text-muted small mb-0">Listado general (look SaaS) con acciones rápidas.</p>
+          <p class="text-muted small mb-0">{{ total_filtrado }} cliente{{ total_filtrado|pluralize }} encontrados.</p>
         </div>
       </div>
 
@@ -44,6 +98,7 @@
           <thead>
             <tr>
               <th>Cliente</th>
+              <th>Tipo</th>
               <th>Comuna</th>
               <th>Contacto</th>
               <th>Estado</th>
@@ -61,6 +116,14 @@
                     <small class="text-muted">RUT: {{ c.rut|default:"—" }}</small>
                   </div>
                 </div>
+              </td>
+
+              <td>
+                {% if c.tipo_cliente == "DELIVERY" %}
+                  <span class="badge-soft info"><i class="bi bi-bicycle me-1"></i>Delivery</span>
+                {% else %}
+                  <span class="badge-soft"><i class="bi bi-shop me-1"></i>Regular</span>
+                {% endif %}
               </td>
 
               <td class="text-muted">
@@ -111,8 +174,8 @@
             </tr>
             {% empty %}
             <tr>
-              <td colspan="5" class="text-center text-muted py-4">
-                No hay clientes registrados aún.
+              <td colspan="6" class="text-center text-muted py-4">
+                No se encontraron clientes con estos filtros.
               </td>
             </tr>
             {% endfor %}

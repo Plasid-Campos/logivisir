@@ -5,23 +5,50 @@ de rutas que usan hoy (hojas "CLIENTES" y "CLIENTES DELIVERY"). Uso:
     python manage.py importar_clientes_excel "C:\\ruta\\al\\archivo.xlsx" --empresa "Panadería Macarrón"
 
 Es idempotente: si vuelves a correrlo, no duplica clientes ya importados
-(se identifican por nombre + direccion dentro de la misma empresa).
+(se identifican por nombre + direccion dentro de la misma empresa) pero
+SI actualiza su tipo_cliente (normal/delivery) por si cambio en el Excel.
+
+Clasificacion: un cliente que aparece en la hoja "CLIENTES" (el reparto
+comercial/furgon) queda como NORMAL aunque tambien aparezca en
+"CLIENTES DELIVERY"; si aparece SOLO en "CLIENTES DELIVERY" queda como
+DELIVERY (entrega a domicilio de particulares).
 """
 import openpyxl
 from django.core.management.base import BaseCommand, CommandError
 
 from core.models import Empresa, Cliente
 
-HOJAS_CLIENTES = ["CLIENTES ", "CLIENTES DELIVERY"]
+HOJA_NORMAL = "CLIENTES "
+HOJA_DELIVERY = "CLIENTES DELIVERY"
 
 
 class Command(BaseCommand):
-    help = "Importa clientes reales desde el Excel de rutas de la panaderia (hojas CLIENTES / CLIENTES DELIVERY)."
+    help = "Importa/actualiza clientes reales desde el Excel de rutas de la panaderia."
 
     def add_arguments(self, parser):
         parser.add_argument("archivo", type=str, help="Ruta al archivo .xlsx")
         parser.add_argument("--empresa", type=str, default="Panadería Macarrón")
         parser.add_argument("--ciudad", type=str, default="Santiago")
+
+    def _leer_hoja(self, wb, nombre_hoja):
+        if nombre_hoja not in wb.sheetnames:
+            self.stdout.write(self.style.WARNING(f"Hoja '{nombre_hoja}' no encontrada, se omite."))
+            return {}
+        ws = wb[nombre_hoja]
+        filas = {}
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            fantasia, direccion, comuna = row[1], row[2], row[3]
+            if not fantasia or not direccion:
+                continue
+            nombre = str(fantasia).strip()
+            direccion = str(direccion).strip()
+            clave = (nombre.upper(), direccion.upper())
+            filas[clave] = {
+                "nombre": nombre.title(),
+                "direccion": direccion.title(),
+                "comuna": str(comuna).strip().title() if comuna else "",
+            }
+        return filas
 
     def handle(self, *args, **options):
         ruta_archivo = options["archivo"]
@@ -41,59 +68,47 @@ class Command(BaseCommand):
         except FileNotFoundError:
             raise CommandError(f"No se encontró el archivo: {ruta_archivo}")
 
-        filas = []
-        for nombre_hoja in HOJAS_CLIENTES:
-            if nombre_hoja not in wb.sheetnames:
-                self.stdout.write(self.style.WARNING(f"Hoja '{nombre_hoja}' no encontrada, se omite."))
-                continue
-            ws = wb[nombre_hoja]
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                fantasia, direccion, comuna = row[1], row[2], row[3]
-                if not fantasia or not direccion:
-                    continue
-                filas.append({
-                    "nombre": str(fantasia).strip(),
-                    "direccion": str(direccion).strip(),
-                    "comuna": str(comuna).strip() if comuna else "",
-                })
+        normales = self._leer_hoja(wb, HOJA_NORMAL)
+        delivery = self._leer_hoja(wb, HOJA_DELIVERY)
 
-        # Dedup por (nombre, direccion) en mayusculas, conservando la ultima aparicion
-        vistos = {}
-        for f in filas:
-            clave = (f["nombre"].upper(), f["direccion"].upper())
-            vistos[clave] = f
+        # normales tiene prioridad: si esta en ambas hojas, queda NORMAL.
+        combinados = {}
+        for clave, datos in delivery.items():
+            combinados[clave] = {**datos, "tipo_cliente": "DELIVERY"}
+        for clave, datos in normales.items():
+            combinados[clave] = {**datos, "tipo_cliente": "NORMAL"}
 
         creados = 0
-        existentes = 0
+        actualizados = 0
+        sin_cambios = 0
 
-        for f in vistos.values():
-            nombre = f["nombre"].title()
-            direccion = f["direccion"].title()
-            comuna = f["comuna"].title() if f["comuna"] else ""
+        for datos in combinados.values():
+            cliente = Cliente.objects.filter(
+                empresa=empresa, nombre__iexact=datos["nombre"], direccion__iexact=datos["direccion"]
+            ).first()
 
-            ya_existe = Cliente.objects.filter(
-                empresa=empresa, nombre__iexact=nombre, direccion__iexact=direccion
-            ).exists()
-            if ya_existe:
-                existentes += 1
-                continue
-
-            Cliente.objects.create(
-                empresa=empresa,
-                nombre=nombre,
-                direccion=direccion,
-                comuna=comuna,
-                ciudad=ciudad_default,
-                activo=True,
-            )
-            creados += 1
+            if cliente is None:
+                Cliente.objects.create(
+                    empresa=empresa,
+                    nombre=datos["nombre"],
+                    direccion=datos["direccion"],
+                    comuna=datos["comuna"],
+                    ciudad=ciudad_default,
+                    tipo_cliente=datos["tipo_cliente"],
+                    activo=True,
+                )
+                creados += 1
+            elif cliente.tipo_cliente != datos["tipo_cliente"]:
+                cliente.tipo_cliente = datos["tipo_cliente"]
+                cliente.save(update_fields=["tipo_cliente"])
+                actualizados += 1
+            else:
+                sin_cambios += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f"Listo. Clientes creados: {creados}. Ya existian (omitidos): {existentes}."
+            f"Listo. Creados: {creados}. Tipo actualizado: {actualizados}. Sin cambios: {sin_cambios}."
         ))
         self.stdout.write(
-            "Nota: estos clientes NO quedaron geocodificados todavia (son muchos y "
-            "Nominatim tiene limite de ~1 request/seg). Corre por separado:\n"
-            "  python manage.py regeocodificar_clientes\n"
-            "cuando quieras (puede demorar bastante con este volumen)."
+            "Nota: los clientes nuevos NO quedan geocodificados automaticamente. Corre por separado:\n"
+            "  python manage.py regeocodificar_clientes"
         )

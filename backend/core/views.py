@@ -9,8 +9,10 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+from datetime import date
 from django.utils.crypto import get_random_string
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
@@ -377,9 +379,47 @@ def eliminar_chofer_view(request, chofer_id):
 def lista_clientes_view(request):
     empresa = get_empresa(request)
     clientes_qs = Cliente.objects.filter(empresa=empresa).order_by("nombre")
+
+    q = (request.GET.get("q") or "").strip()
+    comuna = (request.GET.get("comuna") or "").strip()
+    tipo = (request.GET.get("tipo") or "").strip()
+    estado = (request.GET.get("estado") or "").strip()
+
+    if q:
+        clientes_qs = clientes_qs.filter(
+            Q(nombre__icontains=q) | Q(direccion__icontains=q) | Q(rut__icontains=q)
+        )
+    if comuna:
+        clientes_qs = clientes_qs.filter(comuna=comuna)
+    if tipo in dict(Cliente.TIPO_CHOICES).keys():
+        clientes_qs = clientes_qs.filter(tipo_cliente=tipo)
+    if estado == "activos":
+        clientes_qs = clientes_qs.filter(activo=True)
+    elif estado == "inactivos":
+        clientes_qs = clientes_qs.filter(activo=False)
+
+    comunas_disponibles = (
+        Cliente.objects.filter(empresa=empresa)
+        .exclude(comuna="")
+        .exclude(comuna__isnull=True)
+        .order_by("comuna")
+        .values_list("comuna", flat=True)
+        .distinct()
+    )
+
     paginator = Paginator(clientes_qs, PAGINA_TAMANO)
     page_obj = paginator.get_page(request.GET.get("page"))
-    return render(request, "core/lista_clientes.html", {"clientes": page_obj, "page_obj": page_obj})
+    return render(request, "core/lista_clientes.html", {
+        "clientes": page_obj,
+        "page_obj": page_obj,
+        "comunas_disponibles": comunas_disponibles,
+        "tipos_cliente": Cliente.TIPO_CHOICES,
+        "filtro_q": q,
+        "filtro_comuna": comuna,
+        "filtro_tipo": tipo,
+        "filtro_estado": estado,
+        "total_filtrado": clientes_qs.count(),
+    })
 
 
 @user_passes_test(es_admin_o_owner)
@@ -396,6 +436,9 @@ def crear_cliente_view(request):
         ciudad = request.POST.get("ciudad")
         telefono = request.POST.get("telefono")
         email = request.POST.get("email")
+        tipo_cliente = request.POST.get("tipo_cliente")
+        if tipo_cliente not in dict(Cliente.TIPO_CHOICES).keys():
+            tipo_cliente = "NORMAL"
 
         if rut and Cliente.objects.filter(empresa=empresa, rut=rut).exists():
             error = f"Ya existe un cliente con el RUT {rut}."
@@ -403,7 +446,8 @@ def crear_cliente_view(request):
             cliente = Cliente.objects.create(
                 empresa=empresa,
                 rut=rut, nombre=nombre, direccion=direccion,
-                comuna=comuna, ciudad=ciudad, telefono=telefono, email=email
+                comuna=comuna, ciudad=ciudad, telefono=telefono, email=email,
+                tipo_cliente=tipo_cliente,
             )
             mensaje = "Cliente creado correctamente."
             from .geocoding import geocodificar_cliente
@@ -413,7 +457,9 @@ def crear_cliente_view(request):
                     "revisa que esté bien escrita para que la ruta pueda optimizarse."
                 )
 
-    return render(request, "core/crear_cliente.html", {"mensaje": mensaje, "error": error})
+    return render(request, "core/crear_cliente.html", {
+        "mensaje": mensaje, "error": error, "tipos_cliente": Cliente.TIPO_CHOICES,
+    })
 
 
 @user_passes_test(es_admin_o_owner)
@@ -435,6 +481,10 @@ def editar_cliente_view(request, cliente_id):
         cliente.activo = request.POST.get("activo") == "on"
         cliente.motivo_inactivo = request.POST.get("motivo_inactivo")
 
+        tipo_cliente = request.POST.get("tipo_cliente")
+        if tipo_cliente in dict(Cliente.TIPO_CHOICES).keys():
+            cliente.tipo_cliente = tipo_cliente
+
         if cliente.activo:
             cliente.motivo_inactivo = ""
 
@@ -447,7 +497,9 @@ def editar_cliente_view(request, cliente_id):
             if not geocodificar_cliente(cliente):
                 mensaje += " No se pudo re-ubicar la nueva dirección automáticamente."
 
-    return render(request, "core/editar_cliente.html", {"cliente": cliente, "mensaje": mensaje})
+    return render(request, "core/editar_cliente.html", {
+        "cliente": cliente, "mensaje": mensaje, "tipos_cliente": Cliente.TIPO_CHOICES,
+    })
 
 
 @user_passes_test(es_admin_o_owner)
@@ -490,6 +542,7 @@ def crear_ruta_view(request):
     error = None
     empresa = get_empresa(request)
     choferes = Chofer.objects.filter(perfil__empresa=empresa, activo=True).select_related("perfil__user")
+    hoy = timezone.localdate()
 
     if request.method == "POST":
         nombre = request.POST.get("nombre")
@@ -500,13 +553,25 @@ def crear_ruta_view(request):
             error = "Todos los campos son obligatorios."
         else:
             try:
-                chofer = Chofer.objects.get(id=chofer_id, perfil__empresa=empresa)
-                ruta = Ruta.objects.create(nombre=nombre, fecha=fecha, chofer=chofer, empresa=empresa)
-                return redirect("detalle_ruta", ruta_id=ruta.id)
-            except Chofer.DoesNotExist:
-                error = "El chofer seleccionado no existe."
+                fecha_parseada = date.fromisoformat(fecha)
+            except ValueError:
+                fecha_parseada = None
 
-    return render(request, "core/crear_ruta.html", {"mensaje": mensaje, "error": error, "choferes": choferes})
+            if not fecha_parseada:
+                error = "La fecha no es válida."
+            elif fecha_parseada < hoy:
+                error = f"La fecha no puede ser anterior a hoy ({hoy.strftime('%d-%m-%Y')})."
+            else:
+                try:
+                    chofer = Chofer.objects.get(id=chofer_id, perfil__empresa=empresa)
+                    ruta = Ruta.objects.create(nombre=nombre, fecha=fecha_parseada, chofer=chofer, empresa=empresa)
+                    return redirect("detalle_ruta", ruta_id=ruta.id)
+                except Chofer.DoesNotExist:
+                    error = "El chofer seleccionado no existe."
+
+    return render(request, "core/crear_ruta.html", {
+        "mensaje": mensaje, "error": error, "choferes": choferes, "hoy": hoy,
+    })
 
 
 @user_passes_test(es_admin_o_owner)
@@ -516,9 +581,10 @@ def detalle_ruta_view(request, ruta_id):
     paradas = ruta.paradas.select_related("cliente", "pedido").all()
     clientes_activos = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
     pedidos_pendientes = Pedido.objects.filter(empresa=empresa, estado="PENDIENTE").select_related("cliente")
+    clientes_json = list(clientes_activos.values("id", "nombre", "comuna", "tipo_cliente"))
     return render(request, "core/detalle_ruta.html", {
         "ruta": ruta, "paradas": paradas, "clientes": clientes_activos,
-        "pedidos_pendientes": pedidos_pendientes,
+        "pedidos_pendientes": pedidos_pendientes, "clientes_json": clientes_json,
     })
 
 
@@ -900,11 +966,14 @@ def catalogo_view(request):
     if carrito.cliente_id:
         cliente_actual = Cliente.objects.filter(empresa=empresa, id=carrito.cliente_id).first()
 
+    clientes_json = list(clientes.values("id", "nombre", "comuna", "tipo_cliente"))
+
     return render(request, "core/catalogo.html", {
         "clientes": clientes,
         "productos": productos,
         "cliente_actual": cliente_actual,
         "cantidad_items_carrito": len(carrito.datos["items"]),
+        "clientes_json": clientes_json,
     })
 
 

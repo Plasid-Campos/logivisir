@@ -180,12 +180,7 @@
     <div class="row g-3">
       <div class="col-md-5">
         <label>Cliente</label>
-        <select name="cliente_id" class="form-select" required>
-          <option value="">Seleccione...</option>
-          {% for c in clientes %}
-            <option value="{{ c.id }}">{{ c.nombre }}{% if c.rut %} ({{ c.rut }}){% endif %}</option>
-          {% endfor %}
-        </select>
+        {% include "core/_buscador_cliente.html" with input_id="buscar-cliente-parada" hidden_id="cliente-id-parada" dropdown_id="dropdown-cliente-parada" data_id="data-clientes-parada" hidden_name="cliente_id" placeholder="Escribe el nombre del cliente..." submit_selector="#btn-agregar-parada" clientes_json=clientes_json %}
       </div>
 
       <div class="col-md-3">
@@ -199,9 +194,10 @@
       </div>
 
       <div class="col-md-1 d-flex align-items-end">
-        <button class="btn btn-primary w-100">Agregar</button>
+        <button id="btn-agregar-parada" class="btn btn-primary w-100" disabled>Agregar</button>
       </div>
     </div>
+    <div class="form-text mt-1">Escribe al menos parte del nombre del cliente y elige una opción de la lista.</div>
   </form>
 
   <a href="{% url 'lista_rutas' %}" class="btn btn-link mt-3">Volver</a>

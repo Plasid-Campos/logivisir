@@ -23,7 +23,9 @@
 
         <div class="mb-3">
             <label>Fecha</label>
-            <input type="date" name="fecha" class="form-control" required>
+            <input type="date" name="fecha" class="form-control" min="{{ hoy|date:'Y-m-d' }}"
+                   value="{{ hoy|date:'Y-m-d' }}" required>
+            <div class="form-text">No se pueden crear rutas con fecha anterior a hoy.</div>
         </div>
 
         <div class="mb-3">
