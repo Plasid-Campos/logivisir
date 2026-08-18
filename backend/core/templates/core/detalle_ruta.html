@@ -123,6 +123,14 @@
           {% else %}
             <span class="text-muted">—</span>
           {% endif %}
+          {% if parada.foto_entrega %}
+            <div class="mt-1">
+              <a href="{{ parada.foto_entrega.url }}" target="_blank">
+                <img src="{{ parada.foto_entrega.url }}" alt="Foto de entrega"
+                     style="max-width:70px; max-height:70px; border-radius:6px;">
+              </a>
+            </div>
+          {% endif %}
         </td>
 
         <td class="d-flex gap-2">

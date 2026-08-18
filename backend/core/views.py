@@ -664,6 +664,12 @@ def cambiar_estado_ruta_view(request, ruta_id):
             ruta.estado = nuevo_estado
             ruta.save()
 
+            if nuevo_estado == "EN_PROCESO":
+                from .notifications import notificar_pedido_en_camino
+                resultado = notificar_pedido_en_camino(ruta)
+                if resultado["enviado"] and resultado["enviados"] > 0:
+                    messages.info(request, f"Se notificó por correo a {resultado['enviados']} cliente(s).")
+
     return redirect("detalle_ruta", ruta_id=ruta.id)
 
 
@@ -678,6 +684,11 @@ def optimizar_ruta_view(request, ruta_id):
 
     if resultado.get("optimizado"):
         mensaje = f"Ruta optimizada: {resultado['cantidad']} paradas reordenadas."
+        if resultado.get("ahorro_km") is not None:
+            mensaje += (
+                f" Recorrido estimado: {resultado['km_antes']} km → {resultado['km_despues']} km "
+                f"(-{resultado['ahorro_km']} km, {resultado['ahorro_pct']}% menos)."
+            )
         if resultado.get("sin_coordenadas"):
             mensaje += (
                 f" {len(resultado['sin_coordenadas'])} cliente(s) sin coordenadas "
@@ -728,6 +739,9 @@ def _actualizar_estado_ruta_por_paradas(ruta, progreso):
             if ruta.estado != "EN_PROCESO":
                 ruta.estado = "EN_PROCESO"
                 ruta.save(update_fields=["estado", "actualizada_en"])
+
+                from .notifications import notificar_pedido_en_camino
+                notificar_pedido_en_camino(ruta)
         else:
             # Todo pendiente
             if ruta.estado != "PLANIFICADA":
@@ -749,6 +763,7 @@ def chofer_ruta_hoy_view(request):
     paradas = []
     paradas_ui = []
     maps_url = ""
+    maps_tramos = []
     aviso_maps = ""
     progreso = {"total": 0, "entregadas": 0, "no_entregadas": 0, "pendientes": 0}
     siguiente_parada_id = None
@@ -804,26 +819,43 @@ def chofer_ruta_hoy_view(request):
                 "maps_to": maps_to,
             })
 
-        # Ruta completa: origen fijo -> waypoints clientes -> destino fijo
-        if len(direcciones) == 0:
-            maps_url = ""
-        elif len(direcciones) <= MAX_WAYPOINTS_MAPS:
-            base = "https://www.google.com/maps/dir/?api=1"
-            origin = origen_fijo
-            destination = origen_fijo
-            waypoints = direcciones[:]
+        # Ruta completa: origen fijo -> waypoints clientes -> destino fijo.
+        # Google Maps solo admite MAX_WAYPOINTS_MAPS paradas intermedias por
+        # enlace, así que si la ruta tiene más, se arma una cadena de varios
+        # enlaces: el destino de un tramo es el origen del siguiente, y el
+        # último tramo siempre vuelve al origen de la empresa.
+        if len(direcciones) > 0:
+            full_points = [origen_fijo] + direcciones + [origen_fijo]
+            n_legs = len(full_points) - 1
+            paso = MAX_WAYPOINTS_MAPS + 1  # tramos (legs) cubiertos por cada enlace
+            i = 0
+            while i < n_legs:
+                fin = min(i + paso, n_legs)
+                segmento = full_points[i:fin + 1]
+                origin, destination = segmento[0], segmento[-1]
+                waypoints = segmento[1:-1]
 
-            params = f"&origin={quote_plus(origin)}&destination={quote_plus(destination)}"
-            params += f"&waypoints={quote_plus('|'.join(waypoints))}"
-            params += "&travelmode=driving"
-            maps_url = base + params
-        else:
-            maps_url = ""
-            aviso_maps = (
-                f"Esta ruta tiene {len(direcciones)} paradas y Google Maps solo admite "
-                f"{MAX_WAYPOINTS_MAPS} puntos en un enlace. Divide la ruta o navega "
-                "parada por parada con el botón 'Ir a cliente' de cada una."
-            )
+                base = "https://www.google.com/maps/dir/?api=1"
+                params = f"&origin={quote_plus(origin)}&destination={quote_plus(destination)}"
+                if waypoints:
+                    params += f"&waypoints={quote_plus('|'.join(waypoints))}"
+                params += "&travelmode=driving"
+
+                maps_tramos.append({
+                    "numero": len(maps_tramos) + 1,
+                    "url": base + params,
+                    "cantidad_paradas": len(waypoints),
+                })
+                i = fin
+
+            maps_url = maps_tramos[0]["url"]
+            if len(maps_tramos) > 1:
+                aviso_maps = (
+                    f"Esta ruta tiene {len(direcciones)} paradas: Google Maps admite un "
+                    f"máximo de {MAX_WAYPOINTS_MAPS} paradas intermedias por enlace, así que "
+                    f"se dividió en {len(maps_tramos)} tramos encadenados (abre el tramo 1, y al "
+                    "terminarlo abre el tramo 2, y así sucesivamente)."
+                )
 
     return render(request, "core/chofer_ruta.html", {
         "ruta": ruta,
@@ -831,6 +863,7 @@ def chofer_ruta_hoy_view(request):
         "paradas_ui": paradas_ui,
         "hoy": hoy,
         "maps_url": maps_url,
+        "maps_tramos": maps_tramos,
         "aviso_maps": aviso_maps,
         "origen_fijo": origen_fijo,
         "progreso": progreso,
@@ -858,6 +891,9 @@ def chofer_marcar_parada_view(request, parada_id):
         parada.hora_entrega = timezone.now()
         parada.motivo_no_entrega = None
         parada.comentario_chofer = None
+        foto = request.FILES.get("foto_entrega")
+        if foto:
+            parada.foto_entrega = foto
 
     elif accion == "NO_ENTREGADO":
         # motivo obligatorio para NO_ENTREGADO
@@ -869,6 +905,7 @@ def chofer_marcar_parada_view(request, parada_id):
         parada.hora_entrega = timezone.now()
         parada.motivo_no_entrega = motivo
         parada.comentario_chofer = comentario_chofer if comentario_chofer else None
+        parada.foto_entrega = None
 
     elif accion == "REVERTIR":
         parada.estado_entrega = "PENDIENTE"
@@ -876,6 +913,7 @@ def chofer_marcar_parada_view(request, parada_id):
         parada.hora_entrega = None
         parada.motivo_no_entrega = None
         parada.comentario_chofer = None
+        parada.foto_entrega = None
 
     parada.save()
 

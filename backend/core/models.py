@@ -163,6 +163,10 @@ class Ruta(models.Model):
     creada_en = models.DateTimeField(auto_now_add=True)
     actualizada_en = models.DateTimeField(auto_now=True)
 
+    # Evita reenviar el correo "tu pedido va en camino" cada vez que la ruta
+    # vuelve a pasar por EN_PROCESO (ej: se revierte una entrega y se re-marca).
+    notificacion_enviada = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.nombre} - {self.fecha} - {self.chofer}"
 
@@ -252,6 +256,9 @@ class ParadaRuta(models.Model):
     )
     motivo_no_entrega = models.CharField(max_length=200, blank=True, null=True)
     comentario_chofer = models.CharField(max_length=255, blank=True, null=True)
+
+    # Prueba de entrega (POD): foto que el chofer adjunta al marcar Entregado
+    foto_entrega = models.ImageField(upload_to="entregas/%Y/%m/", blank=True, null=True)
 
     class Meta:
         ordering = ["orden"]

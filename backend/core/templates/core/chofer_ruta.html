@@ -37,7 +37,16 @@
           {% endif %}
         </div>
 
-        {% if maps_url %}
+        {% if maps_tramos|length > 1 %}
+          <div class="d-flex gap-2 flex-wrap">
+            {% for tramo in maps_tramos %}
+              <a href="{{ tramo.url }}" target="_blank" class="btn btn-primary btn-saas">
+                <i class="bi bi-map me-1"></i> Tramo {{ tramo.numero }}
+                <span class="badge bg-light text-dark ms-1">{{ tramo.cantidad_paradas }} paradas</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% elif maps_url %}
           <div class="d-flex gap-2 flex-wrap">
             <a href="{{ maps_url }}" target="_blank" class="btn btn-primary btn-saas">
               <i class="bi bi-map me-1"></i> Abrir ruta completa
@@ -122,6 +131,15 @@
                       </div>
                     {% endif %}
 
+                    {% if p.foto_entrega %}
+                      <div class="mt-2">
+                        <a href="{{ p.foto_entrega.url }}" target="_blank">
+                          <img src="{{ p.foto_entrega.url }}" alt="Foto de entrega"
+                               style="max-width:120px; max-height:120px; border-radius:8px;">
+                        </a>
+                      </div>
+                    {% endif %}
+
                     {% if p.estado_entrega == "NO_ENTREGADO" %}
                       <div class="small mt-2">
                         <strong>Motivo:</strong> {{ p.motivo_no_entrega|default:"—" }}
@@ -138,8 +156,18 @@
                       <i class="bi bi-navigation me-1"></i> Ir a cliente
                     </a>
 
-                    <form method="POST" action="{% url 'chofer_marcar_parada' p.id %}" class="mt-2">
+                    <form method="POST" action="{% url 'chofer_marcar_parada' p.id %}" enctype="multipart/form-data" class="mt-2">
                       {% csrf_token %}
+
+                      {% if p.estado_entrega == "PENDIENTE" %}
+                        <div class="mb-2">
+                          <label class="form-label small mb-1">
+                            <i class="bi bi-camera me-1"></i>Foto de respaldo (opcional)
+                          </label>
+                          <input type="file" name="foto_entrega" accept="image/*" capture="environment"
+                                 class="form-control form-control-sm">
+                        </div>
+                      {% endif %}
 
                       <div class="d-flex gap-2 flex-wrap align-items-center">
                         <button type="submit" name="accion" value="ENTREGADO"

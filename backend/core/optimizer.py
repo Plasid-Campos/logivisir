@@ -142,7 +142,11 @@ def optimizar_paradas(ruta):
         }
 
     puntos = [(p.id, p.cliente.latitud, p.cliente.longitud) for p in con_coordenadas]
+    orden_original = [p.id for p in con_coordenadas]
     orden_optimizado = optimizar_ruta(origen, puntos)
+
+    km_antes = _distancia_total(origen, puntos, orden_original)
+    km_despues = _distancia_total(origen, puntos, orden_optimizado)
 
     paradas_por_id = {p.id: p for p in con_coordenadas}
     secuencia_final = [paradas_por_id[pid] for pid in orden_optimizado] + sin_coordenadas
@@ -160,8 +164,15 @@ def optimizar_paradas(ruta):
         parada.orden = i + 1
         parada.save(update_fields=["orden"])
 
+    ahorro_km = max(km_antes - km_despues, 0.0)
+    ahorro_pct = (ahorro_km / km_antes * 100) if km_antes > 0 else 0.0
+
     return {
         "optimizado": True,
         "cantidad": len(con_coordenadas),
         "sin_coordenadas": [p.cliente.nombre for p in sin_coordenadas],
+        "km_antes": round(km_antes, 1),
+        "km_despues": round(km_despues, 1),
+        "ahorro_km": round(ahorro_km, 1),
+        "ahorro_pct": round(ahorro_pct, 1),
     }
