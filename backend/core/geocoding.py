@@ -10,6 +10,7 @@ llama decide qué mostrarle al usuario. Un cliente mal geocodificado no debe
 bloquear nunca su creación/edición.
 """
 import logging
+import re
 
 import requests
 from django.conf import settings
@@ -18,6 +19,21 @@ logger = logging.getLogger(__name__)
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 TIMEOUT_SEGUNDOS = 5
+
+# Nominatim no reconoce sufijos de unidad (local de un mall, depto, oficina,
+# casa dentro de un condominio...) y falla la dirección completa aunque la
+# calle y el número sean correctos y perfectamente ubicables. Ej: "Pio Nono
+# 235, Local 115" no se encuentra, pero "Pio Nono 235" sí.
+_PATRON_UNIDAD = re.compile(
+    r",?\s*\b(local|dpto\.?|depto\.?|of\.?|oficina|casa|piso|torre|block|bloque)\b\.?\s*[\w-]*",
+    re.IGNORECASE,
+)
+
+
+def _sin_unidad(direccion):
+    limpio = _PATRON_UNIDAD.sub("", direccion)
+    limpio = re.sub(r"\s{2,}", " ", limpio)
+    return limpio.strip(" ,")
 
 
 def _formatear_direccion(direccion, comuna=None, ciudad=None):
@@ -43,10 +59,21 @@ def geocodificar_direccion(direccion, comuna=None, ciudad=None):
         return None
 
     provider = getattr(settings, "GEOCODING_PROVIDER", "nominatim")
-    try:
-        if provider == "nominatim":
-            return _geocodificar_nominatim(consulta)
+    if provider != "nominatim":
         logger.warning("Proveedor de geocodificación desconocido: %s", provider)
+        return None
+
+    try:
+        resultado = _geocodificar_nominatim(consulta)
+        if resultado is not None:
+            return resultado
+
+        # Reintenta una vez sin el sufijo de unidad antes de darse por vencido.
+        direccion_sin_unidad = _sin_unidad(direccion)
+        if direccion_sin_unidad and direccion_sin_unidad != direccion:
+            consulta_sin_unidad = _formatear_direccion(direccion_sin_unidad, comuna, ciudad)
+            return _geocodificar_nominatim(consulta_sin_unidad)
+
         return None
     except Exception:
         logger.exception("Fallo al geocodificar dirección: %s", consulta)
