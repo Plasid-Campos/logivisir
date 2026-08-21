@@ -12,7 +12,7 @@ from django.db import IntegrityError
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
-from datetime import date
+from datetime import date, timedelta
 from django.utils.crypto import get_random_string
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
@@ -755,10 +755,14 @@ def _actualizar_estado_ruta_por_paradas(ruta, progreso):
 @user_passes_test(es_chofer)
 def chofer_ruta_hoy_view(request):
     hoy = timezone.localdate()
+    dia = request.GET.get("dia", "hoy")
+    es_hoy = dia != "manana"
+    fecha_objetivo = hoy if es_hoy else hoy + timedelta(days=1)
+
     chofer = get_object_or_404(Chofer, perfil__user=request.user)
     empresa = chofer.perfil.empresa
 
-    ruta = Ruta.objects.filter(chofer=chofer, fecha=hoy, activa=True).order_by("-creada_en").first()
+    ruta = Ruta.objects.filter(chofer=chofer, fecha=fecha_objetivo, activa=True).order_by("-creada_en").first()
 
     paradas = []
     paradas_ui = []
@@ -788,16 +792,17 @@ def chofer_ruta_hoy_view(request):
         else:
             porcentaje_entregadas = 0
 
-        # ✅ Actualiza estado de ruta automáticamente según progreso
-        _actualizar_estado_ruta_por_paradas(ruta, progreso)
+        if es_hoy:
+            # ✅ Actualiza estado de ruta automáticamente según progreso
+            _actualizar_estado_ruta_por_paradas(ruta, progreso)
 
-        # ✅ Siguiente parada (primera pendiente)
-        siguiente_parada_id = (
-            paradas.filter(estado_entrega="PENDIENTE")
-            .order_by("orden")
-            .values_list("id", flat=True)
-            .first()
-        )
+            # ✅ Siguiente parada (primera pendiente)
+            siguiente_parada_id = (
+                paradas.filter(estado_entrega="PENDIENTE")
+                .order_by("orden")
+                .values_list("id", flat=True)
+                .first()
+            )
 
         direcciones = []
         for p in paradas:
@@ -862,6 +867,8 @@ def chofer_ruta_hoy_view(request):
         "paradas": paradas,
         "paradas_ui": paradas_ui,
         "hoy": hoy,
+        "fecha_objetivo": fecha_objetivo,
+        "es_hoy": es_hoy,
         "maps_url": maps_url,
         "maps_tramos": maps_tramos,
         "aviso_maps": aviso_maps,
@@ -879,6 +886,10 @@ def chofer_marcar_parada_view(request, parada_id):
 
     chofer = get_object_or_404(Chofer, perfil__user=request.user)
     if parada.ruta.chofer != chofer:
+        return redirect("chofer_ruta_hoy")
+
+    if parada.ruta.fecha != timezone.localdate():
+        messages.warning(request, "Solo puedes marcar entregas de la ruta de hoy.")
         return redirect("chofer_ruta_hoy")
 
     accion = request.POST.get("accion")  # ENTREGADO | NO_ENTREGADO | REVERTIR
