@@ -162,12 +162,24 @@ MESSAGE_TAGS = {
 }
 
 # -------------------------------
-# CONFIGURACIÓN DE EMAIL (DESARROLLO LOCAL)
+# CONFIGURACIÓN DE EMAIL
 # -------------------------------
+# Sin EMAIL_HOST_USER/EMAIL_HOST_PASSWORD en el .env, los correos se
+# imprimen en la consola del servidor y no salen de verdad — es el modo
+# seguro por defecto mientras se prueba. En cuanto se configuran esas dos
+# variables (ej: una cuenta de Gmail + contraseña de aplicación), los
+# correos empiezan a enviarse de verdad por SMTP sin tocar código.
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 
-# Enviar correos a la consola (ideal para prototipo en localhost)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Dirección que aparecerá como remitente
-DEFAULT_FROM_EMAIL = "no-reply@logivisir.com"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@logivisir.com")
 
