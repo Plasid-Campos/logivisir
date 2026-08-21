@@ -1,5 +1,6 @@
 """
-Notificaciones por correo a clientes cuando su pedido sale a reparto.
+Notificaciones por correo: a clientes cuando su pedido sale a reparto, y a
+choferes cuando se les asigna una ruta nueva.
 
 Igual que geocoding.py: nunca debe lanzar una excepción hacia arriba. Un
 correo que falla (SMTP caído, dirección inválida, etc.) no debe bloquear
@@ -9,6 +10,7 @@ import logging
 
 from django.core.mail import send_mail
 from django.conf import settings
+from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
@@ -62,3 +64,40 @@ def notificar_pedido_en_camino(ruta):
         "total_pendientes": len(paradas),
         "sin_email": len(paradas) - len(paradas_con_email),
     }
+
+
+def notificar_chofer_ruta_asignada(ruta, request=None):
+    """
+    Avisa por correo al chofer de una ruta recién creada, con un link
+    directo a su panel. Si el chofer no tiene correo registrado (es
+    opcional al crear su usuario), no hace nada.
+    """
+    chofer = ruta.chofer
+    email = chofer.perfil.user.email
+    if not email:
+        return {"enviado": False, "motivo": "El chofer no tiene un correo registrado."}
+
+    ruta_path = reverse("chofer_ruta_hoy")
+    link = request.build_absolute_uri(ruta_path) if request is not None else ruta_path
+
+    nombre_chofer = chofer.perfil.user.first_name or chofer.perfil.user.username
+    cuerpo = (
+        f"Hola {nombre_chofer},\n\n"
+        f"Se te asignó una nueva ruta: {ruta.nombre}, para el "
+        f"{ruta.fecha.strftime('%d-%m-%Y')}.\n\n"
+        f"Puedes revisar el detalle y las paradas en tu panel:\n{link}\n\n"
+        f"Equipo {ruta.empresa.nombre}"
+    )
+
+    try:
+        send_mail(
+            subject=f"Nueva ruta asignada: {ruta.nombre} ({ruta.fecha.strftime('%d-%m-%Y')})",
+            message=cuerpo,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return {"enviado": True}
+    except Exception:
+        logger.exception("Fallo al enviar correo de ruta asignada a %s (ruta %s)", email, ruta.id)
+        return {"enviado": False, "motivo": "Error al enviar el correo."}

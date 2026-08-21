@@ -565,6 +565,12 @@ def crear_ruta_view(request):
                 try:
                     chofer = Chofer.objects.get(id=chofer_id, perfil__empresa=empresa)
                     ruta = Ruta.objects.create(nombre=nombre, fecha=fecha_parseada, chofer=chofer, empresa=empresa)
+
+                    from .notifications import notificar_chofer_ruta_asignada
+                    resultado_email = notificar_chofer_ruta_asignada(ruta, request)
+                    if resultado_email.get("enviado"):
+                        messages.info(request, "Se notificó al chofer por correo.")
+
                     return redirect("detalle_ruta", ruta_id=ruta.id)
                 except Chofer.DoesNotExist:
                     error = "El chofer seleccionado no existe."
