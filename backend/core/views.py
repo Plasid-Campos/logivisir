@@ -683,7 +683,8 @@ def optimizar_ruta_view(request, ruta_id):
     resultado = optimizar_paradas(ruta)
 
     if resultado.get("optimizado"):
-        mensaje = f"Ruta optimizada: {resultado['cantidad']} paradas reordenadas."
+        fuente = "distancia real de calle" if resultado.get("por_red_vial") else "línea recta (sin conexión a OSRM)"
+        mensaje = f"Ruta optimizada: {resultado['cantidad']} paradas reordenadas (usando {fuente})."
         if resultado.get("ahorro_km") is not None:
             mensaje += (
                 f" Recorrido estimado: {resultado['km_antes']} km → {resultado['km_despues']} km "

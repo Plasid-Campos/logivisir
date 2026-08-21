@@ -42,6 +42,15 @@ ALLOWED_HOSTS = [
 GEOCODING_PROVIDER = os.environ.get("GEOCODING_PROVIDER", "nominatim")
 GEOCODING_API_KEY = os.environ.get("GEOCODING_API_KEY", "")
 
+# Enrutamiento por red vial real (usado por core/optimizer.py para pedirle a
+# OSRM distancias de calle en vez de línea recta al optimizar una ruta).
+# Por defecto usa el servidor demo público de OSRM: gratis, sin API key,
+# pero no apto para uso intensivo en producción — para eso, apuntar
+# OSRM_URL a un servidor propio. OSRM_HABILITADO=False vuelve a la
+# distancia en línea recta sin llamar a ningún servicio externo.
+OSRM_URL = os.environ.get("OSRM_URL", "https://router.project-osrm.org")
+OSRM_HABILITADO = os.environ.get("OSRM_HABILITADO", "True") == "True"
+
 
 # Application definition
 
