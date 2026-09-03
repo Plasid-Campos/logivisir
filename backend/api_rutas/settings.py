@@ -180,6 +180,12 @@ if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# Dirección que aparecerá como remitente
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@logivisir.com")
+# Dirección que aparecerá como remitente. Gmail no permite falsear la
+# dirección real (siempre va a salir la cuenta autenticada), pero sí
+# permite un nombre para mostrar — así el destinatario ve "LogiVisir
+# Solutions" en grande y el correo real queda como detalle secundario.
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    f"LogiVisir Solutions <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "no-reply@logivisir.com",
+)
 
