@@ -1,0 +1,272 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Analítica de ventas | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4">
+
+    <!-- HERO -->
+    <div class="panel-hero saas-card mb-4">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
+        <div>
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span class="pill pill-primary"><i class="bi bi-graph-up-arrow me-1"></i>Analítica de ventas</span>
+            <span class="pill pill-neutral">Segmentación RFM con Machine Learning (KMeans)</span>
+          </div>
+
+          <h1 class="panel-title mb-1">Ingresos y clientes más rentables</h1>
+          <p class="panel-subtitle mb-0">
+            Ingresos por mes y por comuna, ranking de clientes y segmentación automática (VIP, Frecuente,
+            Ocasional, En riesgo) según Recencia, Frecuencia y Monto de compra. Exporta los datos a CSV
+            para analizarlos en Power BI u otra herramienta.
+          </p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-primary btn-saas" href="{% url 'exportar_rfm_csv' %}">
+            <i class="bi bi-download me-1"></i> Exportar clientes (CSV)
+          </a>
+          <a class="btn btn-outline-primary btn-saas" href="{% url 'exportar_ingresos_mensuales_csv' %}">
+            <i class="bi bi-download me-1"></i> Exportar ingresos mensuales (CSV)
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs DE INGRESOS -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Ingresos totales</div>
+            <div class="kpi-icon soft-green"><i class="bi bi-cash-stack"></i></div>
+          </div>
+          <div class="kpi-value">${{ resumen.ingresos_totales|floatformat:0 }}</div>
+          <div class="kpi-sub">{{ resumen.cantidad_pedidos }} pedido{{ resumen.cantidad_pedidos|pluralize }} entregado{{ resumen.cantidad_pedidos|pluralize }}</div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Ticket promedio</div>
+            <div class="kpi-icon soft-blue"><i class="bi bi-receipt"></i></div>
+          </div>
+          <div class="kpi-value">${{ resumen.ticket_promedio|floatformat:0 }}</div>
+          <div class="kpi-sub">Por pedido entregado</div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Clientes con compras</div>
+            <div class="kpi-icon soft-violet"><i class="bi bi-people-fill"></i></div>
+          </div>
+          <div class="kpi-value">{{ resumen.clientes_con_compras }}</div>
+          <div class="kpi-sub">Con al menos un pedido entregado</div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Ingresos pendientes</div>
+            <div class="kpi-icon soft-amber"><i class="bi bi-hourglass-split"></i></div>
+          </div>
+          <div class="kpi-value">${{ resumen.ingresos_pendientes|floatformat:0 }}</div>
+          <div class="kpi-sub">Pedidos aún no entregados</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs DE SEGMENTOS RFM -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">VIP</div>
+            <div class="kpi-icon soft-green"><i class="bi bi-star-fill"></i></div>
+          </div>
+          <div class="kpi-value">{{ conteo_segmentos.VIP }}</div>
+          <div class="kpi-sub">Mejor combinación de RFM</div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Frecuente</div>
+            <div class="kpi-icon soft-blue"><i class="bi bi-arrow-repeat"></i></div>
+          </div>
+          <div class="kpi-value">{{ conteo_segmentos.Frecuente }}</div>
+          <div class="kpi-sub">Compran seguido</div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">Ocasional</div>
+            <div class="kpi-icon soft-violet"><i class="bi bi-shuffle"></i></div>
+          </div>
+          <div class="kpi-value">{{ conteo_segmentos.Ocasional }}</div>
+          <div class="kpi-sub">Compra esporádica</div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="kpi-card saas-card">
+          <div class="kpi-top">
+            <div class="kpi-label">En riesgo</div>
+            <div class="kpi-icon soft-amber"><i class="bi bi-exclamation-triangle-fill"></i></div>
+          </div>
+          <div class="kpi-value">{{ conteo_segmentos.En_riesgo }}</div>
+          <div class="kpi-sub">Hace tiempo no compran</div>
+        </div>
+      </div>
+    </div>
+
+    {% if not segmentacion.clustering_aplicado %}
+      <div class="saas-card p-4 mb-4">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-info-circle-fill text-primary fs-4"></i>
+          <div>
+            <strong>Segmentación RFM no disponible todavía.</strong>
+            <p class="text-muted small mb-0">{{ segmentacion.motivo }}</p>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="row g-3 mb-3">
+      <!-- INGRESOS POR MES -->
+      <div class="col-lg-6">
+        <div class="saas-card p-4 h-100">
+          <h3 class="section-mini-title mb-3"><i class="bi bi-calendar3 me-2"></i>Ingresos por mes</h3>
+          <div class="table-responsive">
+            <table class="table saas-table align-middle">
+              <thead><tr><th>Mes</th><th class="text-end">Ingresos</th><th class="text-end">Pedidos</th></tr></thead>
+              <tbody>
+                {% for fila in ingresos_mensuales %}
+                <tr>
+                  <td>{{ fila.mes|date:"F Y" }}</td>
+                  <td class="text-end">${{ fila.ingresos|floatformat:0 }}</td>
+                  <td class="text-end">{{ fila.pedidos }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted text-center">Sin pedidos entregados todavía.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- INGRESOS POR COMUNA -->
+      <div class="col-lg-6">
+        <div class="saas-card p-4 h-100">
+          <h3 class="section-mini-title mb-3"><i class="bi bi-geo-alt-fill me-2"></i>Ingresos por comuna</h3>
+          <div class="table-responsive">
+            <table class="table saas-table align-middle">
+              <thead><tr><th>Comuna</th><th class="text-end">Ingresos</th><th class="text-end">Clientes</th></tr></thead>
+              <tbody>
+                {% for fila in ingresos_comuna %}
+                <tr>
+                  <td>{{ fila.comuna }}</td>
+                  <td class="text-end">${{ fila.ingresos|floatformat:0 }}</td>
+                  <td class="text-end">{{ fila.clientes }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted text-center">Sin pedidos entregados todavía.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOP CLIENTES -->
+    <div class="saas-card p-4 mb-3">
+      <h3 class="section-mini-title mb-3"><i class="bi bi-trophy-fill me-2"></i>Top 10 clientes por ingreso</h3>
+      <div class="table-responsive">
+        <table class="table saas-table align-middle">
+          <thead>
+            <tr><th>Cliente</th><th>Comuna</th><th class="text-end">Gastado</th><th class="text-end">Pedidos</th><th>Segmento</th></tr>
+          </thead>
+          <tbody>
+            {% for c in top_clientes %}
+            <tr>
+              <td class="fw-semibold">{{ c.nombre }}</td>
+              <td class="text-muted">{{ c.comuna }}</td>
+              <td class="text-end">${{ c.gastado|floatformat:0 }}</td>
+              <td class="text-end">{{ c.num_pedidos }}</td>
+              <td>
+                {% if c.segmento == "VIP" %}
+                  <span class="status-pill ok">VIP</span>
+                {% elif c.segmento == "Frecuente" %}
+                  <span class="pill pill-primary">Frecuente</span>
+                {% elif c.segmento == "Ocasional" %}
+                  <span class="status-pill warn">Ocasional</span>
+                {% elif c.segmento == "En riesgo" %}
+                  <span class="pill pill-neutral">En riesgo</span>
+                {% else %}
+                  <span class="pill pill-neutral">Sin segmentar</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center">Todavía no hay ventas para rankear clientes.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SEGMENTACION RFM COMPLETA -->
+    <div class="saas-card p-4">
+      <h3 class="section-mini-title mb-3"><i class="bi bi-diagram-3-fill me-2"></i>Segmentación RFM completa</h3>
+      <div class="table-responsive">
+        <table class="table saas-table align-middle">
+          <thead>
+            <tr>
+              <th>Cliente</th><th>Comuna</th>
+              <th class="text-end">Recencia (días)</th>
+              <th class="text-end">Frecuencia</th>
+              <th class="text-end">Monto total</th>
+              <th>Segmento</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in segmentacion.clientes %}
+            <tr>
+              <td class="fw-semibold">{{ c.nombre }}</td>
+              <td class="text-muted">{{ c.comuna }}</td>
+              <td class="text-end">{{ c.recencia_dias }}</td>
+              <td class="text-end">{{ c.frecuencia }}</td>
+              <td class="text-end">${{ c.monetario|floatformat:0 }}</td>
+              <td>
+                {% if c.segmento == "VIP" %}
+                  <span class="status-pill ok">VIP</span>
+                {% elif c.segmento == "Frecuente" %}
+                  <span class="pill pill-primary">Frecuente</span>
+                {% elif c.segmento == "Ocasional" %}
+                  <span class="status-pill warn">Ocasional</span>
+                {% elif c.segmento == "En riesgo" %}
+                  <span class="pill pill-neutral">En riesgo</span>
+                {% else %}
+                  <span class="pill pill-neutral">Sin segmentar</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center">Todavía no hay clientes con pedidos entregados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

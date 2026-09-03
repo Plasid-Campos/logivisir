@@ -67,6 +67,11 @@ urlpatterns = [
     path("pedidos/", core_views.lista_pedidos_view, name="lista_pedidos"),
     path("pedidos/<int:pedido_id>/", core_views.detalle_pedido_view, name="detalle_pedido"),
 
+    # --------- ANALITICA DE VENTAS / RFM (OWNER + ADMIN) ---------
+    path("analitica/", core_views.analitica_ventas_view, name="analitica_ventas"),
+    path("analitica/exportar/clientes-rfm.csv", core_views.exportar_rfm_csv_view, name="exportar_rfm_csv"),
+    path("analitica/exportar/ingresos-mensuales.csv", core_views.exportar_ingresos_mensuales_csv_view, name="exportar_ingresos_mensuales_csv"),
+
     # --------- STAFF LOGIVISIR (solicitudes de cuenta) ---------
     path("staff/solicitudes/", core_views.lista_solicitudes_view, name="lista_solicitudes"),
     path("staff/solicitudes/<int:solicitud_id>/", core_views.detalle_solicitud_view, name="detalle_solicitud"),

@@ -1,6 +1,9 @@
+import csv
+
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import send_mail
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -18,6 +21,7 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 from urllib.parse import quote_plus
 
+from . import analytics
 from .models import (
     PerfilUsuario,
     Chofer,
@@ -1187,6 +1191,88 @@ def agregar_pedido_a_ruta_view(request, ruta_id):
     pedido.save(update_fields=["estado"])
 
     return redirect("detalle_ruta", ruta_id=ruta.id)
+
+
+# =========================================================
+# ANALITICA DE VENTAS / SEGMENTACION RFM (OWNER + ADMIN)
+# =========================================================
+def _csv_response(filename):
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    # BOM: sin esto Excel/Power BI en Windows no detectan UTF-8 y los
+    # nombres/comunas con tilde o "ñ" salen corruptos.
+    response.write("﻿")
+    return response
+
+
+@user_passes_test(es_admin_o_owner)
+def analitica_ventas_view(request):
+    empresa = get_empresa(request)
+
+    resumen = analytics.ingresos_resumen(empresa)
+    ingresos_mensuales = analytics.ingresos_por_mes(empresa, meses=12)
+    ingresos_comuna = analytics.ingresos_por_comuna(empresa)
+    top = analytics.top_clientes(empresa, limite=10)
+    segmentacion = analytics.segmentar_clientes(empresa)
+
+    # claves sin espacios porque las plantillas Django no pueden acceder a
+    # `dict.En riesgo` (el lookup por punto no soporta espacios en el nombre)
+    conteo_segmentos = {s.replace(" ", "_"): 0 for s in analytics.SEGMENTOS_ORDEN}
+    segmento_por_cliente = {}
+    for c in segmentacion["clientes"]:
+        segmento_por_cliente[c["cliente_id"]] = c["segmento"]
+        if c["segmento"]:
+            conteo_segmentos[c["segmento"].replace(" ", "_")] += 1
+
+    for c in top:
+        c["segmento"] = segmento_por_cliente.get(c["cliente_id"])
+
+    return render(request, "core/analitica_ventas.html", {
+        "resumen": resumen,
+        "ingresos_mensuales": ingresos_mensuales,
+        "ingresos_comuna": ingresos_comuna,
+        "top_clientes": top,
+        "segmentacion": segmentacion,
+        "conteo_segmentos": conteo_segmentos,
+        "rfm_min_clientes": analytics.RFM_MIN_CLIENTES,
+    })
+
+
+@user_passes_test(es_admin_o_owner)
+def exportar_rfm_csv_view(request):
+    empresa = get_empresa(request)
+    segmentacion = analytics.segmentar_clientes(empresa)
+
+    fecha = timezone.localdate().isoformat()
+    response = _csv_response(f"rfm_clientes_empresa{empresa.id}_{fecha}.csv")
+
+    writer = csv.writer(response)
+    writer.writerow(["cliente_id", "nombre", "comuna", "recencia_dias",
+                      "frecuencia", "monetario_total", "cluster_id", "segmento"])
+    for c in segmentacion["clientes"]:
+        writer.writerow([
+            c["cliente_id"], c["nombre"], c["comuna"], c["recencia_dias"],
+            c["frecuencia"], c["monetario"],
+            c["cluster_id"] if c["cluster_id"] is not None else "",
+            c["segmento"] or "Sin segmentar",
+        ])
+    return response
+
+
+@user_passes_test(es_admin_o_owner)
+def exportar_ingresos_mensuales_csv_view(request):
+    empresa = get_empresa(request)
+    filas = analytics.ingresos_por_mes(empresa, meses=24)
+
+    fecha = timezone.localdate().isoformat()
+    response = _csv_response(f"ingresos_mensuales_empresa{empresa.id}_{fecha}.csv")
+
+    writer = csv.writer(response)
+    writer.writerow(["mes", "ingresos", "pedidos"])
+    for f in filas:
+        writer.writerow([f["mes"].strftime("%Y-%m"), f["ingresos"], f["pedidos"]])
+    return response
+
 
 # =========================================================
 # STAFF LOGIVISIR: revisar solicitudes, validar pago, aprovisionar cuenta

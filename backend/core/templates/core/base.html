@@ -105,6 +105,11 @@
                 Pedidos
               </a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link nav-link-main" href="{% url 'analitica_ventas' %}">
+                Analítica
+              </a>
+            </li>
 
           {# ====== STAFF LOGIVISIR (equipo interno, no es un tenant) ====== #}
           {% elif request.user.is_staff %}
