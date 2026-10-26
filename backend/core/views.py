@@ -661,6 +661,7 @@ def toggle_parada_entregada_view(request, parada_id):
         parada.comentario_chofer = None
 
     parada.save()
+    _sincronizar_pedido_con_parada(parada)
     return redirect("detalle_ruta", ruta_id=parada.ruta.id)
 
 @user_passes_test(es_admin_o_owner)
@@ -711,6 +712,24 @@ def optimizar_ruta_view(request, ruta_id):
     messages.info(request, mensaje)
 
     return redirect("detalle_ruta", ruta_id=ruta.id)
+
+
+def _sincronizar_pedido_con_parada(parada):
+    """
+    El pedido asociado a una parada debe reflejar el resultado de la entrega:
+    la analitica solo cuenta como venta los pedidos ENTREGADO, asi que si no
+    se sincroniza aqui las entregas reales nunca llegan a los ingresos ni a
+    la segmentacion RFM. Si la entrega se revierte o falla, el pedido vuelve
+    a ASIGNADO (sigue en la ruta).
+    """
+    pedido = parada.pedido
+    if not pedido or pedido.estado == "CANCELADO":
+        return
+
+    nuevo_estado = "ENTREGADO" if parada.estado_entrega == "ENTREGADO" else "ASIGNADO"
+    if pedido.estado != nuevo_estado:
+        pedido.estado = nuevo_estado
+        pedido.save(update_fields=["estado"])
 
 
 def _actualizar_estado_ruta_por_paradas(ruta, progreso):
@@ -938,6 +957,7 @@ def chofer_marcar_parada_view(request, parada_id):
         parada.foto_entrega = None
 
     parada.save()
+    _sincronizar_pedido_con_parada(parada)
 
     # Actualiza el estado de la ruta después de guardar la parada
     ruta = parada.ruta
