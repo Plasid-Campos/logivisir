@@ -1,0 +1,33 @@
+{% extends "core/base.html" %}
+
+{% block title %}Nuevo pedido | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 720px;">
+  <h3 class="mb-1">Nuevo pedido</h3>
+  <p class="text-muted">Indica a qué cliente hay que ir y qué se le lleva. Después lo asignas a una ruta.</p>
+
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+  <div class="card">
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="buscar-cliente-pedido">Cliente</label>
+          {% include "core/_buscador_cliente.html" with input_id="buscar-cliente-pedido" hidden_id="cliente-id-pedido" dropdown_id="dropdown-cliente-pedido" data_id="data-clientes-pedido" hidden_name="cliente_id" placeholder="Escribe el nombre del cliente..." submit_selector="#btn-crear-pedido" clientes_json=clientes_json %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="nota">Qué se despacha <span class="text-muted">(opcional)</span></label>
+          <textarea id="nota" name="nota" class="form-control" rows="3" maxlength="{{ nota_max }}"
+                    placeholder="Ej: 10 kg de marraqueta, 2 bandejas de empanadas">{{ nota }}</textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="btn-crear-pedido" type="submit" class="btn btn-primary" disabled>Crear pedido</button>
+          <a href="{% url 'lista_pedidos' %}" class="btn btn-link">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

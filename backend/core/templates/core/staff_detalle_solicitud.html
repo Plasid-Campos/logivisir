@@ -81,7 +81,7 @@
           {% elif solicitud.estado == "CUENTA_CREADA" %}
             <div class="alert alert-success mb-0">
               Cuenta creada
-              {% if solicitud.empresa_creada %}para <strong>{{ solicitud.empresa_creada.nombre }}</strong>{% endif %}.
+              {% if solicitud.empresa_creada %}para <strong><a href="{% url 'staff_detalle_empresa' solicitud.empresa_creada.id %}">{{ solicitud.empresa_creada.nombre }}</a></strong>{% endif %}.
               Las credenciales fueron enviadas a {{ solicitud.email_contacto }}.
             </div>
 

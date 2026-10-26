@@ -6,16 +6,17 @@ Logivisir de punta a punta sin cargar información real de clientes.
     python manage.py seed_demo --reset    # la borra y la vuelve a crear
 
 Usuarios que deja creados (contraseña: demo12345):
-    owner_demo    -> Dueño   (panel completo + analítica)
-    admin_demo    -> Administrador
-    chofer_demo   -> Chofer  (panel de reparto del día)
+    logivisir_demo -> Equipo LogiVisir (empresas clientes y solicitudes;
+                      no ve clientes, rutas ni pedidos de ninguna empresa)
+    owner_demo     -> Dueño de la Panadería Demo (panel completo + analítica)
+    admin_demo     -> Administrador de la Panadería Demo
+    chofer_demo    -> Chofer de la Panadería Demo (panel de reparto del día)
 
 Todas las direcciones y coordenadas son inventadas pero verosímiles
 (comunas de Santiago) para que el optimizador de rutas funcione sin
 salir a internet a geocodificar.
 """
 from datetime import timedelta
-from decimal import Decimal
 import random
 
 from django.contrib.auth.models import User
@@ -24,11 +25,12 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.models import (
-    Empresa, PerfilUsuario, Chofer, Cliente, Producto,
-    Pedido, PedidoItem, Ruta, ParadaRuta,
+    Empresa, PerfilUsuario, Chofer, Cliente,
+    Pedido, Ruta, ParadaRuta, SolicitudCuenta,
 )
 
 EMPRESA_NOMBRE = "Panadería Demo"
+SOLICITUDES_DEMO = (EMPRESA_NOMBRE, "Distribuidora Los Andes (demo)")
 PASSWORD = "demo12345"
 
 ORIGEN = {
@@ -39,20 +41,28 @@ ORIGEN = {
     "longitud_origen": -70.6580,
 }
 
-PRODUCTOS = [
-    ("Marraqueta (kg)", "El pan de cada día, crujiente.", 1900, "kg"),
-    ("Hallulla (kg)", "Redonda y suave.", 1900, "kg"),
-    ("Pan integral (kg)", "Harina integral y semillas.", 2600, "kg"),
-    ("Empanada de pino", "Horneada, receta de la casa.", 1800, "unidad"),
-    ("Empanada de queso", "Bien rellena.", 1600, "unidad"),
-    ("Berlín con crema pastelera", "Clásico de vitrina.", 1200, "unidad"),
-    ("Torta tres leches (porción)", "Húmeda, para el once.", 2500, "unidad"),
-    ("Pan de molde artesanal", "Sin conservantes, dura 4 días.", 3200, "unidad"),
-    ("Croissant de mantequilla", "Hojaldre de verdad.", 1500, "unidad"),
-    ("Alfajor de manjar", "Bañado en chocolate.", 1300, "unidad"),
-    ("Kuchen de nuez", "Para pedidos grandes.", 12000, "unidad"),
-    ("Bebida 1.5 L", "Para acompañar el reparto.", 2200, "unidad"),
+STAFF_USERNAME = "logivisir_demo"
+
+# Solo para describir que se despacha en cada pedido (texto libre, sin precios:
+# LogiVisir no maneja montos del negocio de sus empresas clientes).
+ARTICULOS = [
+    ("kg de marraqueta", (5, 20)),
+    ("kg de hallulla", (3, 15)),
+    ("kg de pan integral", (2, 8)),
+    ("empanadas de pino", (12, 48)),
+    ("empanadas de queso", (12, 36)),
+    ("berlines", (10, 30)),
+    ("porciones de torta", (6, 20)),
+    ("panes de molde", (4, 12)),
+    ("croissants", (10, 40)),
+    ("alfajores", (12, 36)),
 ]
+
+MOTIVOS_NO_ENTREGA = (
+    "Local cerrado",
+    "Cliente no recibió",
+    "Dirección no encontrada",
+)
 
 # (nombre, comuna, direccion, lat, lon, perfil_rfm, tipo)
 # perfil_rfm controla cuántos pedidos y qué tan recientes se generan.
@@ -121,13 +131,7 @@ class Command(BaseCommand):
             telefono="+56 9 6543 2100", licencia="Clase B", patente="LLXR-42",
         )
 
-        productos = [
-            Producto.objects.create(
-                empresa=empresa, nombre=n, descripcion=d,
-                precio=Decimal(p), unidad=u, stock_disponible=500,
-            )
-            for (n, d, p, u) in PRODUCTOS
-        ]
+        self._staff_y_solicitudes(empresa)
 
         clientes = []
         for (nombre, comuna, direccion, lat, lon, perfil, tipo) in CLIENTES:
@@ -142,14 +146,16 @@ class Command(BaseCommand):
                 geocodificado=True,
             ), perfil))
 
-        self._generar_pedidos(empresa, clientes, productos, owner_user)
+        self._generar_pedidos(empresa, clientes, owner_user)
+        self._generar_rutas_pasadas(empresa, chofer)
         self._generar_ruta_de_hoy(empresa, chofer, clientes)
 
         self.stdout.write(self.style.SUCCESS(
             f'Listo. Empresa "{EMPRESA_NOMBRE}" creada con '
             f"{len(clientes)} clientes, {Pedido.objects.filter(empresa=empresa).count()} pedidos "
             f"y una ruta para hoy.\n"
-            f"Entra en /login con  owner_demo  /  {PASSWORD}"
+            f"Entra en /login con  owner_demo  /  {PASSWORD}  (dueño de la panadería)\n"
+            f"o con  {STAFF_USERNAME}  /  {PASSWORD}  (equipo LogiVisir)"
         ))
 
     # ---------------------------------------------------------------
@@ -166,11 +172,46 @@ class Command(BaseCommand):
         usernames = list(
             User.objects.filter(perfilusuario__empresa=empresa).values_list("username", flat=True)
         )
-        empresa.delete()  # cascada: perfiles, clientes, rutas, pedidos, productos
+        SolicitudCuenta.objects.filter(nombre_empresa__in=SOLICITUDES_DEMO).delete()
+        # ParadaRuta.cliente y Pedido.cliente son PROTECT: hay que borrarlos
+        # antes que la empresa, o la cascada hacia Cliente se bloquea.
+        ParadaRuta.objects.filter(ruta__empresa=empresa).delete()
+        Pedido.objects.filter(empresa=empresa).delete()
+        Ruta.objects.filter(empresa=empresa).delete()
+        empresa.delete()  # cascada: perfiles, choferes, clientes
         User.objects.filter(username__in=usernames).delete()
         self.stdout.write(self.style.WARNING(f'Empresa "{empresa.nombre}" anterior eliminada.'))
 
-    def _generar_pedidos(self, empresa, clientes, productos, creado_por):
+    def _staff_y_solicitudes(self, empresa):
+        """
+        Usuario del equipo LogiVisir (is_staff, sin empresa) y solicitudes de
+        ejemplo: la que dio origen a la Panaderia Demo y una nueva por revisar.
+        """
+        staff = self._usuario(STAFF_USERNAME, "Equipo", "LogiVisir")
+        staff.is_staff = True
+        staff.save(update_fields=["is_staff"])
+
+        SolicitudCuenta.objects.filter(nombre_empresa__in=SOLICITUDES_DEMO).delete()
+        SolicitudCuenta.objects.create(
+            nombre_empresa=EMPRESA_NOMBRE, nombre_contacto="Camila Rojas",
+            email_contacto="owner_demo@ejemplo.cl", telefono_contacto="+56 9 5555 1234",
+            rubro="Panadería", plan_solicitado="PRO", estado="CUENTA_CREADA",
+            empresa_creada=empresa,
+        )
+        SolicitudCuenta.objects.create(
+            nombre_empresa="Distribuidora Los Andes (demo)", nombre_contacto="Rodrigo Saavedra",
+            email_contacto="contacto@losandes-demo.cl", telefono_contacto="+56 9 4444 7788",
+            rubro="Distribución de abarrotes", plan_solicitado="BASICO",
+            mensaje="Tenemos 2 camionetas y unos 80 clientes en la zona sur de Santiago.",
+        )
+
+    def _nota_despacho(self):
+        partes = []
+        for nombre, (minimo, maximo) in random.sample(ARTICULOS, random.randint(2, 4)):
+            partes.append(f"{random.randint(minimo, maximo)} {nombre}")
+        return ", ".join(partes)
+
+    def _generar_pedidos(self, empresa, clientes, creado_por):
         ahora = timezone.now()
         for cliente, perfil in clientes:
             n_pedidos, dias_ultima = PERFIL_PEDIDOS[perfil]
@@ -182,30 +223,56 @@ class Command(BaseCommand):
 
                 pedido = Pedido.objects.create(
                     empresa=empresa, cliente=cliente, estado="ENTREGADO",
-                    creado_por=creado_por,
+                    nota=self._nota_despacho(), creado_por=creado_por,
                 )
-                for producto in random.sample(productos, random.randint(2, 5)):
-                    cantidad = random.randint(1, 6)
-                    PedidoItem.objects.create(
-                        pedido=pedido, producto=producto, cantidad=cantidad,
-                        precio_unitario=producto.precio,
-                    )
-                pedido.recalcular_total()
                 # creado_en es auto_now_add: se corrige por UPDATE directo.
                 Pedido.objects.filter(pk=pedido.pk).update(creado_en=creado)
 
         # algunos pedidos vivos (aún no entregados) para el panel de pendientes
         for cliente, _ in random.sample(clientes, 5):
-            pedido = Pedido.objects.create(
+            Pedido.objects.create(
                 empresa=empresa, cliente=cliente, estado="PENDIENTE",
-                creado_por=creado_por,
+                nota=self._nota_despacho(), creado_por=creado_por,
             )
-            for producto in random.sample(productos, random.randint(2, 4)):
-                PedidoItem.objects.create(
-                    pedido=pedido, producto=producto, cantidad=random.randint(1, 4),
-                    precio_unitario=producto.precio,
+
+    def _generar_rutas_pasadas(self, empresa, chofer):
+        """
+        Rutas ya realizadas en los ultimos 45 dias, una por cada dia con
+        despachos, para que el historial y el indicador de entregas al primer
+        intento tengan datos. Algunas paradas quedan como NO_ENTREGADO con su
+        motivo, sin pedido asociado. No se generan fotos de entrega: esas
+        solo las sube el chofer desde su panel.
+        """
+        hoy = timezone.localdate()
+        desde = hoy - timedelta(days=45)
+        pedidos = Pedido.objects.filter(
+            empresa=empresa, estado="ENTREGADO", creado_en__date__gte=desde,
+        ).select_related("cliente").order_by("creado_en")
+
+        por_dia = {}
+        for pedido in pedidos:
+            por_dia.setdefault(timezone.localtime(pedido.creado_en).date(), []).append(pedido)
+
+        clientes = list(Cliente.objects.filter(empresa=empresa))
+        for n_ruta, (fecha, pedidos_dia) in enumerate(por_dia.items()):
+            ruta = Ruta.objects.create(
+                empresa=empresa, nombre=f"Reparto {fecha.strftime('%d-%m')}",
+                fecha=fecha, chofer=chofer, estado="COMPLETADA",
+            )
+            orden = 0
+            for pedido in pedidos_dia:
+                orden += 1
+                ParadaRuta.objects.create(
+                    ruta=ruta, cliente=pedido.cliente, orden=orden, pedido=pedido,
+                    estado_entrega="ENTREGADO", entregado=True,
                 )
-            pedido.recalcular_total()
+            if n_ruta % 4 == 3:  # una parada fallida cada 4 rutas
+                orden += 1
+                ParadaRuta.objects.create(
+                    ruta=ruta, cliente=random.choice(clientes), orden=orden,
+                    estado_entrega="NO_ENTREGADO",
+                    motivo_no_entrega=random.choice(MOTIVOS_NO_ENTREGA),
+                )
 
     def _generar_ruta_de_hoy(self, empresa, chofer, clientes):
         hoy = timezone.localdate()

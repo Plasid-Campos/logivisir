@@ -6,7 +6,7 @@
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Pedidos</h3>
-    <a href="{% url 'catalogo' %}" class="btn btn-primary">Nuevo pedido</a>
+    <a href="{% url 'crear_pedido' %}" class="btn btn-primary">Nuevo pedido</a>
   </div>
 
   <table class="table table-striped align-middle">
@@ -14,7 +14,7 @@
       <tr>
         <th>#</th>
         <th>Cliente</th>
-        <th>Total</th>
+        <th>Qué se despacha</th>
         <th>Estado</th>
         <th>Fecha</th>
         <th></th>
@@ -25,7 +25,7 @@
       <tr>
         <td>{{ p.id }}</td>
         <td>{{ p.cliente.nombre }}</td>
-        <td>${{ p.total }}</td>
+        <td class="text-muted small">{{ p.nota|default:"—"|truncatechars:60 }}</td>
         <td>
           {% if p.estado == "PENDIENTE" %}
             <span class="badge bg-secondary">Pendiente</span>

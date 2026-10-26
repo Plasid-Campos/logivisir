@@ -27,8 +27,11 @@ LogiVisir resuelve eso con tres piezas:
    calcula un orden de visita corto usando distancias reales de calle.
 2. **Panel del chofer** — una vista móvil con la ruta del día, navegación a Google Maps
    y marcado de cada entrega (con foto y motivo si no se pudo entregar).
-3. **Analítica de ventas** — ingresos por mes y comuna, mejores clientes y segmentación
-   automática de clientes (VIP / Frecuente / Ocasional / En riesgo).
+3. **Analítica de despachos** — despachos por mes y por comuna, clientes con más
+   entregas y segmentación automática de clientes (VIP / Frecuente / Ocasional / En riesgo).
+
+LogiVisir solo optimiza el reparto: **no maneja precios, ventas ni montos** del negocio
+de sus empresas clientes.
 
 ---
 
@@ -36,12 +39,17 @@ LogiVisir resuelve eso con tres piezas:
 
 **Operación**
 - Multi-tenant: varias empresas en una misma instancia, con datos totalmente aislados.
-- Roles: Dueño, Administrador y Chofer, cada uno con su propia navegación y permisos.
+- Roles de la empresa cliente: Dueño, Administrador y Chofer, cada uno con su propia
+  navegación y permisos.
+- **Panel del equipo LogiVisir**, separado de las empresas: lista de empresas clientes
+  (plan, contacto, estado, usuarios), alta de usuarios, restablecer claves y
+  suspender/reactivar el servicio. Por privacidad, el equipo LogiVisir **no ve** los
+  clientes, rutas, pedidos ni choferes de ninguna empresa (tampoco desde `/admin/`).
 - Clientes con geocodificación automática de la dirección (Nominatim / OpenStreetMap),
   con reintento sin el sufijo de unidad ("Local 3", "Depto 12"...) cuando el primer
   intento falla.
 - Rutas con estados (Planificada → En proceso → Completada) y paradas ordenables.
-- Catálogo de productos, carrito y pedidos; los pedidos se asignan a paradas de ruta.
+- Pedidos simples (cliente + qué se despacha, en texto) que se asignan a paradas de ruta.
 
 **Motor de optimización de rutas** (`core/optimizer.py`)
 - Problema del viajante (TSP): heurística de **vecino más cercano** para construir una
@@ -57,16 +65,19 @@ LogiVisir resuelve eso con tres piezas:
 - Aviso por correo al chofer cuando se le asigna una ruta, y al cliente según el estado.
 
 **Analítica y segmentación** (`core/analytics.py`)
-- Ingresos totales, ticket promedio, ingresos pendientes; series por mes y por comuna.
-- **Segmentación RFM (Recencia / Frecuencia / Monto) con K-Means** (scikit-learn):
+- Despachos realizados, entregas al primer intento, entregas con foto y pedidos por
+  despachar; series por mes y por comuna; top de clientes por cantidad de despachos.
+- **Segmentación RF (Recencia / Frecuencia de despachos) con K-Means** (scikit-learn):
   agrupa a los clientes y nombra cada grupo por un score de sus centroides, para que
-  "VIP" sea siempre el segmento con mejor combinación real de RFM.
+  "VIP" sea siempre el segmento con mejor combinación real.
 - Exportación a CSV para seguir el análisis en Power BI u otra herramienta.
 
 **Seguridad**
 - Todo queryset y `get_object_or_404` pasa por un helper de tenant (`core/tenancy.py`);
   se corrigió una vulnerabilidad IDOR de acceso entre empresas.
 - Cambio de contraseña obligatorio en el primer ingreso de usuarios creados por un admin.
+- Una empresa suspendida no puede ingresar, ni siquiera con una sesión ya abierta.
+- El parámetro `?next=` del login solo acepta rutas internas (sin redirecciones abiertas).
 - Secretos y credenciales solo por variables de entorno; nada en el código.
 
 ---
@@ -113,7 +124,8 @@ que crea `seed_demo` (contraseña `demo12345` en todos):
 
 | Usuario | Rol | Qué ve |
 |---|---|---|
-| `owner_demo` | Dueño | Panel completo, rutas, clientes, analítica |
+| `logivisir_demo` | Equipo LogiVisir | Empresas clientes y solicitudes (sin sus datos) |
+| `owner_demo` | Dueño de la Panadería Demo | Panel completo, rutas, clientes, analítica |
 | `admin_demo` | Administrador | Operación diaria |
 | `chofer_demo` | Chofer | Panel de reparto del día |
 
@@ -128,8 +140,8 @@ que crea `seed_demo` (contraseña `demo12345` en todos):
 python manage.py test
 ```
 
-73 tests que cubren el optimizador de rutas, el aislamiento multi-tenant, pedidos,
-solicitudes de cuenta, la analítica RFM y las vistas.
+96 tests que cubren el optimizador de rutas, el aislamiento multi-tenant, pedidos,
+solicitudes de cuenta, el panel del equipo LogiVisir, la analítica y las vistas.
 
 ---
 
@@ -139,15 +151,14 @@ solicitudes de cuenta, la analítica RFM y las vistas.
 backend/
   api_rutas/        # configuración del proyecto Django
   core/
-    models.py       # Empresa, Cliente, Chofer, Ruta, ParadaRuta, Producto, Pedido...
-    views.py        # vistas (operación, chofer, catálogo, analítica, staff)
+    models.py       # Empresa, Cliente, Chofer, Ruta, ParadaRuta, Pedido...
+    views.py        # vistas (operación, chofer, pedidos, analítica, staff)
     optimizer.py    # TSP: vecino más cercano + 2-opt + OSRM
     geocoding.py    # direcciones -> lat/lon (Nominatim)
-    analytics.py    # ingresos, ranking y segmentación RFM con K-Means
+    analytics.py    # despachos, ranking y segmentación RF con K-Means
     tenancy.py      # aislamiento por empresa (tenant)
     notifications.py# correos a chofer y cliente
-    cart.py         # carrito en sesión
-    tests/          # 73 tests
+    tests/          # 96 tests
     management/commands/
       seed_demo.py            # datos de demostración
       importar_clientes_excel.py

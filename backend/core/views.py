@@ -12,12 +12,13 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
 from datetime import date, timedelta
 from django.utils.crypto import get_random_string
 from django.utils.text import slugify
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from urllib.parse import quote_plus
 
@@ -28,14 +29,11 @@ from .models import (
     Cliente,
     Ruta,
     ParadaRuta,
-    Producto,
     Pedido,
-    PedidoItem,
     Empresa,
     SolicitudCuenta,
 )
 from .tenancy import get_empresa, get_object_or_404_scoped
-from .cart import Carrito
 
 # =========================================================
 # CONFIG
@@ -110,8 +108,18 @@ def login_view(request):
 
         usuario = authenticate(request, username=username, password=password)
         if usuario is not None:
-            login(request, usuario)
             perfil = getattr(usuario, "perfilusuario", None)
+
+            # Empresa suspendida por LogiVisir (ej: plan impago): sus
+            # usuarios no entran hasta que el staff la reactive.
+            if perfil and not perfil.empresa.activa:
+                mensaje_error = (
+                    "La cuenta de tu empresa está suspendida. "
+                    "Contacta a LogiVisir Solutions para reactivarla."
+                )
+                return render(request, "core/login.html", {"mensaje_error": mensaje_error, "next": next_url})
+
+            login(request, usuario)
 
             # Cuentas recien aprovisionadas por el staff deben cambiar su
             # password temporal antes de hacer cualquier otra cosa. Este
@@ -120,7 +128,11 @@ def login_view(request):
             if perfil and perfil.debe_cambiar_password:
                 return redirect("cambiar_password_obligatorio")
 
-            if next_url:
+            # Solo rutas internas: un ?next= hacia otro dominio permitiria
+            # usar el login de LogiVisir para redirigir a un sitio falso.
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure(),
+            ):
                 return redirect(next_url)
 
             if perfil and perfil.rol == "CHOFER":
@@ -129,7 +141,7 @@ def login_view(request):
             # Staff de Logivisir no es un tenant: no tiene PerfilUsuario ni
             # empresa, asi que no puede ir al dashboard normal.
             if not perfil and usuario.is_staff:
-                return redirect("lista_solicitudes")
+                return redirect("staff_lista_empresas")
 
             return redirect("dashboard")
 
@@ -717,9 +729,9 @@ def optimizar_ruta_view(request, ruta_id):
 def _sincronizar_pedido_con_parada(parada):
     """
     El pedido asociado a una parada debe reflejar el resultado de la entrega:
-    la analitica solo cuenta como venta los pedidos ENTREGADO, asi que si no
-    se sincroniza aqui las entregas reales nunca llegan a los ingresos ni a
-    la segmentacion RFM. Si la entrega se revierte o falla, el pedido vuelve
+    la analitica solo cuenta como despacho los pedidos ENTREGADO, asi que si
+    no se sincroniza aqui las entregas reales nunca llegan a los despachos ni
+    a la segmentacion de clientes. Si la entrega se revierte o falla, el pedido vuelve
     a ASIGNADO (sigue en la ruta).
     """
     pedido = parada.pedido
@@ -973,194 +985,42 @@ def chofer_marcar_parada_view(request, parada_id):
     return redirect("chofer_ruta_hoy")
 
 # =========================================================
-# PRODUCTOS (catálogo, OWNER + ADMIN)
+# NUEVO PEDIDO (OWNER + ADMIN): cliente + que se despacha
 # =========================================================
-@user_passes_test(es_admin_o_owner)
-def lista_productos_view(request):
-    empresa = get_empresa(request)
-    productos = Producto.objects.filter(empresa=empresa)
-    return render(request, "core/lista_productos.html", {"productos": productos})
+# LogiVisir solo optimiza el reparto, asi que un pedido no lleva productos con
+# precio ni montos: basta con saber a quien hay que ir y que se le lleva.
+NOTA_PEDIDO_MAX = 500
 
 
 @user_passes_test(es_admin_o_owner)
-def crear_producto_view(request):
-    mensaje = None
-    error = None
-    empresa = get_empresa(request)
-
-    if request.method == "POST":
-        nombre = request.POST.get("nombre")
-        descripcion = request.POST.get("descripcion")
-        precio = request.POST.get("precio")
-        unidad = request.POST.get("unidad") or "unidad"
-        stock_disponible = request.POST.get("stock_disponible") or 0
-
-        if not (nombre and precio):
-            error = "Nombre y precio son obligatorios."
-        else:
-            try:
-                Producto.objects.create(
-                    empresa=empresa,
-                    nombre=nombre,
-                    descripcion=descripcion,
-                    precio=precio,
-                    unidad=unidad,
-                    stock_disponible=stock_disponible,
-                )
-                mensaje = "Producto creado correctamente."
-            except (ValueError, TypeError):
-                error = "Precio o stock inválido."
-
-    return render(request, "core/crear_producto.html", {"mensaje": mensaje, "error": error})
-
-
-@user_passes_test(es_admin_o_owner)
-def editar_producto_view(request, producto_id):
-    empresa = get_empresa(request)
-    producto = get_object_or_404_scoped(Producto, empresa, id=producto_id)
-    mensaje = None
-
-    if request.method == "POST":
-        producto.nombre = request.POST.get("nombre")
-        producto.descripcion = request.POST.get("descripcion")
-        producto.precio = request.POST.get("precio")
-        producto.unidad = request.POST.get("unidad") or "unidad"
-        producto.stock_disponible = request.POST.get("stock_disponible") or 0
-        producto.disponible = request.POST.get("disponible") == "on"
-        producto.save()
-        mensaje = "Cambios guardados."
-
-    return render(request, "core/editar_producto.html", {"producto": producto, "mensaje": mensaje})
-
-# =========================================================
-# CATÁLOGO Y CARRITO (armado por admin/vendedor para un cliente)
-# =========================================================
-@user_passes_test(es_admin_o_owner)
-def catalogo_view(request):
+def crear_pedido_view(request):
     empresa = get_empresa(request)
     clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
-    productos = Producto.objects.filter(empresa=empresa, disponible=True)
+    error = None
+    nota = ""
 
-    carrito = Carrito(request)
-    cliente_actual = None
-    if carrito.cliente_id:
-        cliente_actual = Cliente.objects.filter(empresa=empresa, id=carrito.cliente_id).first()
+    if request.method == "POST":
+        nota = (request.POST.get("nota") or "").strip()
+        cliente_id = request.POST.get("cliente_id")
+        cliente = Cliente.objects.filter(empresa=empresa, activo=True, id=cliente_id).first() if cliente_id else None
 
-    clientes_json = list(clientes.values("id", "nombre", "comuna", "tipo_cliente"))
+        if cliente is None:
+            error = "Elige un cliente de la lista."
+        elif len(nota) > NOTA_PEDIDO_MAX:
+            error = f"La descripción no puede superar {NOTA_PEDIDO_MAX} caracteres."
+        else:
+            pedido = Pedido.objects.create(
+                empresa=empresa, cliente=cliente, nota=nota, creado_por=request.user,
+            )
+            messages.success(request, f"Pedido #{pedido.id} creado para {cliente.nombre}.")
+            return redirect("detalle_pedido", pedido_id=pedido.id)
 
-    return render(request, "core/catalogo.html", {
-        "clientes": clientes,
-        "productos": productos,
-        "cliente_actual": cliente_actual,
-        "cantidad_items_carrito": len(carrito.datos["items"]),
-        "clientes_json": clientes_json,
+    return render(request, "core/crear_pedido.html", {
+        "clientes_json": list(clientes.values("id", "nombre", "comuna", "tipo_cliente")),
+        "error": error,
+        "nota": nota,
+        "nota_max": NOTA_PEDIDO_MAX,
     })
-
-
-@user_passes_test(es_admin_o_owner)
-@require_POST
-def seleccionar_cliente_carrito_view(request):
-    empresa = get_empresa(request)
-    cliente_id = request.POST.get("cliente_id")
-    cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
-
-    carrito = Carrito(request)
-    carrito.iniciar_para_cliente(cliente.id)
-    return redirect("catalogo")
-
-
-@user_passes_test(es_admin_o_owner)
-@require_POST
-def carrito_agregar_view(request, producto_id):
-    empresa = get_empresa(request)
-    producto = get_object_or_404_scoped(Producto, empresa, id=producto_id)
-
-    carrito = Carrito(request)
-    if not carrito.cliente_id:
-        return redirect("catalogo")
-
-    cantidad = request.POST.get("cantidad") or 1
-    try:
-        cantidad = int(cantidad)
-    except ValueError:
-        cantidad = 1
-
-    carrito.agregar(producto.id, cantidad)
-    return redirect("catalogo")
-
-
-@user_passes_test(es_admin_o_owner)
-def carrito_view(request):
-    empresa = get_empresa(request)
-    carrito = Carrito(request)
-
-    cliente = None
-    if carrito.cliente_id:
-        cliente = Cliente.objects.filter(empresa=empresa, id=carrito.cliente_id).first()
-
-    items = carrito.items(empresa)
-    total = carrito.total(empresa)
-
-    return render(request, "core/carrito.html", {
-        "cliente": cliente,
-        "items": items,
-        "total": total,
-    })
-
-
-@user_passes_test(es_admin_o_owner)
-@require_POST
-def carrito_actualizar_view(request, producto_id):
-    carrito = Carrito(request)
-    cantidad = request.POST.get("cantidad") or 0
-    try:
-        cantidad = int(cantidad)
-    except ValueError:
-        cantidad = 0
-    carrito.actualizar_cantidad(producto_id, cantidad)
-    return redirect("carrito")
-
-
-@user_passes_test(es_admin_o_owner)
-@require_POST
-def carrito_quitar_view(request, producto_id):
-    carrito = Carrito(request)
-    carrito.quitar(producto_id)
-    return redirect("carrito")
-
-
-@user_passes_test(es_admin_o_owner)
-@require_POST
-def carrito_vaciar_view(request):
-    carrito = Carrito(request)
-    carrito.vaciar()
-    return redirect("carrito")
-
-
-@user_passes_test(es_admin_o_owner)
-@require_POST
-def carrito_confirmar_view(request):
-    empresa = get_empresa(request)
-    carrito = Carrito(request)
-
-    if not carrito.cliente_id or carrito.esta_vacio():
-        return redirect("carrito")
-
-    cliente = get_object_or_404_scoped(Cliente, empresa, id=carrito.cliente_id)
-    items = carrito.items(empresa)
-
-    pedido = Pedido.objects.create(empresa=empresa, cliente=cliente, creado_por=request.user)
-    for item in items:
-        PedidoItem.objects.create(
-            pedido=pedido,
-            producto=item["producto"],
-            cantidad=item["cantidad"],
-            precio_unitario=item["producto"].precio,
-        )
-    pedido.recalcular_total()
-
-    carrito.vaciar()
-    return redirect("detalle_pedido", pedido_id=pedido.id)
 
 # =========================================================
 # PEDIDOS (OWNER + ADMIN)
@@ -1185,8 +1045,8 @@ def lista_pedidos_view(request):
 def detalle_pedido_view(request, pedido_id):
     empresa = get_empresa(request)
     pedido = get_object_or_404_scoped(Pedido, empresa, id=pedido_id)
-    items = pedido.items.select_related("producto")
-    return render(request, "core/detalle_pedido.html", {"pedido": pedido, "items": items})
+    paradas = pedido.paradas_pedido.select_related("ruta").order_by("-ruta__fecha")
+    return render(request, "core/detalle_pedido.html", {"pedido": pedido, "paradas": paradas})
 
 
 @user_passes_test(es_admin_o_owner)
@@ -1214,7 +1074,7 @@ def agregar_pedido_a_ruta_view(request, ruta_id):
 
 
 # =========================================================
-# ANALITICA DE VENTAS / SEGMENTACION RFM (OWNER + ADMIN)
+# ANALITICA DE DESPACHOS / SEGMENTACION RF (OWNER + ADMIN)
 # =========================================================
 def _csv_response(filename):
     response = HttpResponse(content_type="text/csv")
@@ -1226,12 +1086,12 @@ def _csv_response(filename):
 
 
 @user_passes_test(es_admin_o_owner)
-def analitica_ventas_view(request):
+def analitica_view(request):
     empresa = get_empresa(request)
 
-    resumen = analytics.ingresos_resumen(empresa)
-    ingresos_mensuales = analytics.ingresos_por_mes(empresa, meses=12)
-    ingresos_comuna = analytics.ingresos_por_comuna(empresa)
+    resumen = analytics.resumen_despachos(empresa)
+    mensuales = analytics.despachos_por_mes(empresa, meses=12)
+    por_comuna = analytics.despachos_por_comuna(empresa)
     top = analytics.top_clientes(empresa, limite=10)
     segmentacion = analytics.segmentar_clientes(empresa)
 
@@ -1247,32 +1107,37 @@ def analitica_ventas_view(request):
     for c in top:
         c["segmento"] = segmento_por_cliente.get(c["cliente_id"])
 
-    return render(request, "core/analitica_ventas.html", {
+    max_mes = max((f["despachos"] for f in mensuales), default=0)
+    max_comuna = max((f["despachos"] for f in por_comuna), default=0)
+
+    return render(request, "core/analitica.html", {
         "resumen": resumen,
-        "ingresos_mensuales": ingresos_mensuales,
-        "ingresos_comuna": ingresos_comuna,
+        "despachos_mensuales": mensuales,
+        "despachos_comuna": por_comuna,
+        "max_mes": max_mes,
+        "max_comuna": max_comuna,
         "top_clientes": top,
         "segmentacion": segmentacion,
         "conteo_segmentos": conteo_segmentos,
-        "rfm_min_clientes": analytics.RFM_MIN_CLIENTES,
+        "rf_min_clientes": analytics.RF_MIN_CLIENTES,
     })
 
 
 @user_passes_test(es_admin_o_owner)
-def exportar_rfm_csv_view(request):
+def exportar_segmentacion_csv_view(request):
     empresa = get_empresa(request)
     segmentacion = analytics.segmentar_clientes(empresa)
 
     fecha = timezone.localdate().isoformat()
-    response = _csv_response(f"rfm_clientes_empresa{empresa.id}_{fecha}.csv")
+    response = _csv_response(f"segmentacion_clientes_empresa{empresa.id}_{fecha}.csv")
 
     writer = csv.writer(response)
     writer.writerow(["cliente_id", "nombre", "comuna", "recencia_dias",
-                      "frecuencia", "monetario_total", "cluster_id", "segmento"])
+                     "frecuencia_despachos", "cluster_id", "segmento"])
     for c in segmentacion["clientes"]:
         writer.writerow([
             c["cliente_id"], c["nombre"], c["comuna"], c["recencia_dias"],
-            c["frecuencia"], c["monetario"],
+            c["frecuencia"],
             c["cluster_id"] if c["cluster_id"] is not None else "",
             c["segmento"] or "Sin segmentar",
         ])
@@ -1280,17 +1145,17 @@ def exportar_rfm_csv_view(request):
 
 
 @user_passes_test(es_admin_o_owner)
-def exportar_ingresos_mensuales_csv_view(request):
+def exportar_despachos_mensuales_csv_view(request):
     empresa = get_empresa(request)
-    filas = analytics.ingresos_por_mes(empresa, meses=24)
+    filas = analytics.despachos_por_mes(empresa, meses=24)
 
     fecha = timezone.localdate().isoformat()
-    response = _csv_response(f"ingresos_mensuales_empresa{empresa.id}_{fecha}.csv")
+    response = _csv_response(f"despachos_mensuales_empresa{empresa.id}_{fecha}.csv")
 
     writer = csv.writer(response)
-    writer.writerow(["mes", "ingresos", "pedidos"])
+    writer.writerow(["mes", "despachos", "clientes_atendidos"])
     for f in filas:
-        writer.writerow([f["mes"].strftime("%Y-%m"), f["ingresos"], f["pedidos"]])
+        writer.writerow([f["mes"].strftime("%Y-%m"), f["despachos"], f["clientes"]])
     return response
 
 
@@ -1404,3 +1269,141 @@ def rechazar_solicitud_view(request, solicitud_id):
 
     messages.info(request, "Solicitud rechazada.")
     return redirect("detalle_solicitud", solicitud_id=solicitud.id)
+
+
+# =========================================================
+# STAFF LOGIVISIR: empresas clientes (ficha y acceso)
+# =========================================================
+# El equipo LogiVisir administra a quien contrata el servicio, no el negocio
+# de cada empresa: estas vistas muestran plan, contacto, estado y usuarios,
+# y NUNCA consultan Cliente, Ruta, Pedido ni Chofer de la empresa. Es un
+# limite de privacidad (Ley 19.628/21.719): los datos de los clientes finales
+# pertenecen a la empresa, no a LogiVisir.
+ROLES_CREABLES_STAFF = ("OWNER", "ADMIN")
+
+
+def _plan_de_empresa(empresa):
+    solicitud = empresa.solicitud_origen.first()
+    return solicitud.get_plan_solicitado_display() if solicitud else "Sin plan registrado"
+
+
+@user_passes_test(es_staff_logivisir)
+def staff_lista_empresas_view(request):
+    empresas = Empresa.objects.select_related("owner").annotate(
+        num_usuarios=Count("perfiles", distinct=True),
+    ).order_by("nombre")
+
+    estado = request.GET.get("estado")
+    if estado == "activas":
+        empresas = empresas.filter(activa=True)
+    elif estado == "suspendidas":
+        empresas = empresas.filter(activa=False)
+
+    filas = [
+        {"empresa": e, "plan": _plan_de_empresa(e), "num_usuarios": e.num_usuarios}
+        for e in empresas
+    ]
+    return render(request, "core/staff_lista_empresas.html", {
+        "filas": filas, "estado_filtro": estado,
+    })
+
+
+@user_passes_test(es_staff_logivisir)
+def staff_detalle_empresa_view(request, empresa_id):
+    empresa = get_object_or_404(Empresa.objects.select_related("owner"), id=empresa_id)
+    usuarios = (
+        PerfilUsuario.objects.filter(empresa=empresa)
+        .select_related("user")
+        .order_by("rol", "user__username")
+    )
+    return render(request, "core/staff_detalle_empresa.html", {
+        "empresa": empresa,
+        "plan": _plan_de_empresa(empresa),
+        "solicitud": empresa.solicitud_origen.first(),
+        "usuarios": usuarios,
+        "roles_creables": [r for r in PerfilUsuario.ROL_CHOICES if r[0] in ROLES_CREABLES_STAFF],
+    })
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def staff_cambiar_estado_empresa_view(request, empresa_id):
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    empresa.activa = not empresa.activa
+    empresa.save(update_fields=["activa"])
+    if empresa.activa:
+        messages.success(request, f"{empresa.nombre} fue reactivada: sus usuarios ya pueden ingresar.")
+    else:
+        messages.warning(request, f"{empresa.nombre} fue suspendida: sus usuarios no podrán ingresar.")
+    return redirect("staff_detalle_empresa", empresa_id=empresa.id)
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def staff_crear_usuario_empresa_view(request, empresa_id):
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    rol = request.POST.get("rol")
+    nombre = (request.POST.get("nombre") or "").strip()
+    email = (request.POST.get("email") or "").strip()
+
+    if rol not in ROLES_CREABLES_STAFF or not nombre or not email:
+        messages.error(request, "Completa nombre, correo y rol (Dueño o Administrador).")
+        return redirect("staff_detalle_empresa", empresa_id=empresa.id)
+
+    username = _generar_username(empresa.nombre)
+    temp_password = get_random_string(14, allowed_chars=TEMP_PASSWORD_CHARS)
+    usuario = User.objects.create_user(
+        username=username, password=temp_password, email=email, first_name=nombre,
+    )
+    PerfilUsuario.objects.create(
+        user=usuario, empresa=empresa, rol=rol, debe_cambiar_password=True,
+    )
+    _enviar_credenciales(request, usuario, empresa, temp_password)
+
+    messages.success(
+        request,
+        f"Usuario {username} creado. Clave temporal (se pide cambiarla al primer ingreso): {temp_password}",
+    )
+    return redirect("staff_detalle_empresa", empresa_id=empresa.id)
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def staff_restablecer_clave_view(request, user_id):
+    # Solo usuarios de empresas clientes: nunca otro miembro del staff.
+    perfil = get_object_or_404(PerfilUsuario.objects.select_related("user", "empresa"), user_id=user_id)
+    usuario = perfil.user
+
+    temp_password = get_random_string(14, allowed_chars=TEMP_PASSWORD_CHARS)
+    usuario.set_password(temp_password)
+    usuario.save()
+    perfil.debe_cambiar_password = True
+    perfil.save(update_fields=["debe_cambiar_password"])
+    _enviar_credenciales(request, usuario, perfil.empresa, temp_password)
+
+    messages.success(
+        request,
+        f"Clave de {usuario.username} restablecida. Clave temporal: {temp_password}",
+    )
+    return redirect("staff_detalle_empresa", empresa_id=perfil.empresa_id)
+
+
+def _enviar_credenciales(request, usuario, empresa, temp_password):
+    if not usuario.email:
+        return
+    login_url = request.build_absolute_uri(reverse("login"))
+    send_mail(
+        subject="Tu acceso a LogiVisir Solutions",
+        message=(
+            f"Hola {usuario.first_name or usuario.username},\n\n"
+            f"Tienes acceso a LogiVisir para {empresa.nombre}.\n\n"
+            f"Ingresa en: {login_url}\n"
+            f"Usuario: {usuario.username}\n"
+            f"Contraseña temporal: {temp_password}\n\n"
+            "Por seguridad, te pediremos cambiarla en tu primer inicio de sesión.\n\n"
+            "Equipo LogiVisir Solutions"
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[usuario.email],
+        fail_silently=True,
+    )

@@ -48,29 +48,22 @@ urlpatterns = [
     path("rutas/<int:ruta_id>/optimizar/", core_views.optimizar_ruta_view, name="optimizar_ruta"),
     path("rutas/<int:ruta_id>/agregar-pedido/", core_views.agregar_pedido_a_ruta_view, name="agregar_pedido_a_ruta"),
 
-    # --------- PRODUCTOS (catalogo) ---------
-    path("productos/", core_views.lista_productos_view, name="lista_productos"),
-    path("productos/crear/", core_views.crear_producto_view, name="crear_producto"),
-    path("productos/<int:producto_id>/editar/", core_views.editar_producto_view, name="editar_producto"),
-
-    # --------- CATALOGO Y CARRITO ---------
-    path("catalogo/", core_views.catalogo_view, name="catalogo"),
-    path("catalogo/seleccionar-cliente/", core_views.seleccionar_cliente_carrito_view, name="seleccionar_cliente_carrito"),
-    path("carrito/", core_views.carrito_view, name="carrito"),
-    path("carrito/agregar/<int:producto_id>/", core_views.carrito_agregar_view, name="carrito_agregar"),
-    path("carrito/actualizar/<int:producto_id>/", core_views.carrito_actualizar_view, name="carrito_actualizar"),
-    path("carrito/quitar/<int:producto_id>/", core_views.carrito_quitar_view, name="carrito_quitar"),
-    path("carrito/vaciar/", core_views.carrito_vaciar_view, name="carrito_vaciar"),
-    path("carrito/confirmar/", core_views.carrito_confirmar_view, name="carrito_confirmar"),
-
     # --------- PEDIDOS ---------
     path("pedidos/", core_views.lista_pedidos_view, name="lista_pedidos"),
+    path("pedidos/nuevo/", core_views.crear_pedido_view, name="crear_pedido"),
     path("pedidos/<int:pedido_id>/", core_views.detalle_pedido_view, name="detalle_pedido"),
 
-    # --------- ANALITICA DE VENTAS / RFM (OWNER + ADMIN) ---------
-    path("analitica/", core_views.analitica_ventas_view, name="analitica_ventas"),
-    path("analitica/exportar/clientes-rfm.csv", core_views.exportar_rfm_csv_view, name="exportar_rfm_csv"),
-    path("analitica/exportar/ingresos-mensuales.csv", core_views.exportar_ingresos_mensuales_csv_view, name="exportar_ingresos_mensuales_csv"),
+    # --------- ANALITICA DE DESPACHOS / SEGMENTACION (OWNER + ADMIN) ---------
+    path("analitica/", core_views.analitica_view, name="analitica"),
+    path("analitica/exportar/segmentacion-clientes.csv", core_views.exportar_segmentacion_csv_view, name="exportar_segmentacion_csv"),
+    path("analitica/exportar/despachos-mensuales.csv", core_views.exportar_despachos_mensuales_csv_view, name="exportar_despachos_mensuales_csv"),
+
+    # --------- STAFF LOGIVISIR (empresas clientes: ficha y acceso, sin sus datos) ---------
+    path("staff/empresas/", core_views.staff_lista_empresas_view, name="staff_lista_empresas"),
+    path("staff/empresas/<int:empresa_id>/", core_views.staff_detalle_empresa_view, name="staff_detalle_empresa"),
+    path("staff/empresas/<int:empresa_id>/estado/", core_views.staff_cambiar_estado_empresa_view, name="staff_cambiar_estado_empresa"),
+    path("staff/empresas/<int:empresa_id>/usuarios/crear/", core_views.staff_crear_usuario_empresa_view, name="staff_crear_usuario_empresa"),
+    path("staff/usuarios/<int:user_id>/restablecer-clave/", core_views.staff_restablecer_clave_view, name="staff_restablecer_clave"),
 
     # --------- STAFF LOGIVISIR (solicitudes de cuenta) ---------
     path("staff/solicitudes/", core_views.lista_solicitudes_view, name="lista_solicitudes"),

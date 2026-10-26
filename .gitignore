@@ -29,3 +29,7 @@ Thumbs.db
 # Config local de Claude Code
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Respaldos locales de la base (pueden tener datos reales de clientes)
+backend/*.bak
+backend/*.sqlite3.*

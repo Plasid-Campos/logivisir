@@ -12,31 +12,38 @@
       <p class="mb-1"><strong>Dirección:</strong> {{ pedido.cliente.direccion }}{% if pedido.cliente.comuna %}, {{ pedido.cliente.comuna }}{% endif %}</p>
       <p class="mb-1"><strong>Estado:</strong> {{ pedido.get_estado_display }}</p>
       <p class="mb-1"><strong>Creado:</strong> {{ pedido.creado_en|date:"d-m-Y H:i" }}</p>
-      <p class="mb-0"><strong>Total:</strong> ${{ pedido.total }}</p>
+      <p class="mb-0"><strong>Qué se despacha:</strong> {{ pedido.nota|default:"Sin detalle"|linebreaksbr }}</p>
     </div>
   </div>
 
-  <h5>Productos</h5>
+  <h5>Ruta asignada</h5>
+  {% if paradas %}
   <table class="table align-middle">
     <thead>
       <tr>
-        <th>Producto</th>
-        <th>Cantidad</th>
-        <th>Precio unitario</th>
-        <th>Subtotal</th>
+        <th>Ruta</th>
+        <th>Fecha</th>
+        <th>Parada</th>
+        <th>Resultado</th>
       </tr>
     </thead>
     <tbody>
-      {% for item in items %}
+      {% for parada in paradas %}
       <tr>
-        <td>{{ item.producto.nombre }}</td>
-        <td>{{ item.cantidad }}</td>
-        <td>${{ item.precio_unitario }}</td>
-        <td>${{ item.subtotal }}</td>
+        <td><a href="{% url 'detalle_ruta' parada.ruta.id %}">{{ parada.ruta.nombre }}</a></td>
+        <td>{{ parada.ruta.fecha|date:"d-m-Y" }}</td>
+        <td>#{{ parada.orden }}</td>
+        <td>
+          {{ parada.get_estado_entrega_display }}
+          {% if parada.motivo_no_entrega %}<br><small class="text-muted">{{ parada.motivo_no_entrega }}</small>{% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% else %}
+    <p class="text-muted">Este pedido todavía no está en ninguna ruta.</p>
+  {% endif %}
 
   <a href="{% url 'lista_pedidos' %}" class="btn btn-link">Volver a pedidos</a>
 </div>

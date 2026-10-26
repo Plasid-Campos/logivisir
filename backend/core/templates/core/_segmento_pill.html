@@ -1,0 +1,11 @@
+{% if segmento == "VIP" %}
+  <span class="status-pill ok">VIP</span>
+{% elif segmento == "Frecuente" %}
+  <span class="pill pill-primary">Frecuente</span>
+{% elif segmento == "Ocasional" %}
+  <span class="status-pill warn">Ocasional</span>
+{% elif segmento == "En riesgo" %}
+  <span class="pill pill-neutral">En riesgo</span>
+{% else %}
+  <span class="pill pill-neutral">Sin segmentar</span>
+{% endif %}

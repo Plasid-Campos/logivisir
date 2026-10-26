@@ -1,47 +1,54 @@
-from decimal import Decimal
-
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import Empresa, PerfilUsuario, Cliente, Producto, Pedido
+from core.models import Empresa, PerfilUsuario, Cliente, Pedido
 
 
-class CarritoYPedidoTests(TestCase):
+class CrearPedidoTests(TestCase):
+    """Un pedido es solo cliente + que se despacha: sin productos ni montos."""
+
     def setUp(self):
         self.owner = User.objects.create_user(username="owner3", password="Segura123!")
         self.empresa = Empresa.objects.create(nombre="Empresa 3", owner=self.owner, direccion_origen="Centro")
         PerfilUsuario.objects.create(user=self.owner, rol="OWNER", empresa=self.empresa)
 
         self.cliente = Cliente.objects.create(
-            empresa=self.empresa, rut="9-9", nombre="Cliente Carrito", direccion="Calle X"
-        )
-        self.producto = Producto.objects.create(
-            empresa=self.empresa, nombre="Producto Test", precio=Decimal("1000.00")
+            empresa=self.empresa, rut="9-9", nombre="Cliente Pedido", direccion="Calle X"
         )
         self.client.login(username="owner3", password="Segura123!")
 
-    def test_flujo_completo_carrito_a_pedido(self):
-        self.client.post(reverse("seleccionar_cliente_carrito"), {"cliente_id": self.cliente.id})
-        self.client.post(reverse("carrito_agregar", args=[self.producto.id]), {"cantidad": 4})
-
-        resp = self.client.get(reverse("carrito"))
-        self.assertEqual(resp.context["total"], Decimal("4000.00"))
-
-        resp = self.client.post(reverse("carrito_confirmar"))
-        self.assertEqual(resp.status_code, 302)
-
+    def test_crear_pedido_con_cliente_y_nota(self):
+        resp = self.client.post(reverse("crear_pedido"), {
+            "cliente_id": self.cliente.id, "nota": "10 kg marraqueta, 2 bandejas de empanadas",
+        })
         pedido = Pedido.objects.get(cliente=self.cliente)
-        self.assertEqual(pedido.total, Decimal("4000.00"))
-        self.assertEqual(pedido.items.count(), 1)
-        self.assertEqual(pedido.items.first().cantidad, 4)
+        self.assertRedirects(resp, reverse("detalle_pedido", args=[pedido.id]))
+        self.assertEqual(pedido.estado, "PENDIENTE")
+        self.assertEqual(pedido.nota, "10 kg marraqueta, 2 bandejas de empanadas")
+        self.assertEqual(pedido.creado_por, self.owner)
 
-        # el carrito debe quedar vacio tras confirmar
-        resp = self.client.get(reverse("carrito"))
-        self.assertEqual(len(resp.context["items"]), 0)
+        detalle = self.client.get(reverse("detalle_pedido", args=[pedido.id]))
+        self.assertContains(detalle, "10 kg marraqueta")
+        self.assertNotContains(detalle, "$")
 
-    def test_no_se_puede_confirmar_carrito_vacio(self):
-        self.client.post(reverse("seleccionar_cliente_carrito"), {"cliente_id": self.cliente.id})
-        resp = self.client.post(reverse("carrito_confirmar"))
-        self.assertEqual(resp.status_code, 302)
-        self.assertFalse(Pedido.objects.filter(cliente=self.cliente).exists())
+    def test_no_se_puede_crear_pedido_sin_cliente(self):
+        resp = self.client.post(reverse("crear_pedido"), {"nota": "algo"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Pedido.objects.exists())
+
+    def test_no_se_puede_crear_pedido_para_cliente_de_otra_empresa(self):
+        otro_owner = User.objects.create_user(username="owner_otro", password="Segura123!")
+        otra = Empresa.objects.create(nombre="Otra", owner=otro_owner)
+        cliente_ajeno = Cliente.objects.create(empresa=otra, nombre="Ajeno", direccion="D")
+
+        resp = self.client.post(reverse("crear_pedido"), {"cliente_id": cliente_ajeno.id})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Pedido.objects.exists())
+
+    def test_no_se_puede_crear_pedido_para_cliente_inactivo(self):
+        self.cliente.activo = False
+        self.cliente.save()
+        resp = self.client.post(reverse("crear_pedido"), {"cliente_id": self.cliente.id})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Pedido.objects.exists())

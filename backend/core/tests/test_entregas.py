@@ -1,11 +1,9 @@
-from decimal import Decimal
-
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from core.analytics import ingresos_resumen
+from core.analytics import resumen_despachos
 from core.models import (
     Empresa, PerfilUsuario, Chofer, Cliente, Pedido, Ruta, ParadaRuta,
 )
@@ -14,7 +12,7 @@ from core.models import (
 class SincronizacionPedidoEntregaTests(TestCase):
     """
     Regresion: al marcar una parada como entregada, el pedido asociado debe
-    pasar a ENTREGADO para que la analitica de ventas lo cuente como ingreso.
+    pasar a ENTREGADO para que la analitica lo cuente como despacho.
     """
 
     def setUp(self):
@@ -28,7 +26,7 @@ class SincronizacionPedidoEntregaTests(TestCase):
 
         cliente = Cliente.objects.create(empresa=self.empresa, nombre="Almacén Uno", direccion="Calle 1")
         self.pedido = Pedido.objects.create(
-            empresa=self.empresa, cliente=cliente, estado="ASIGNADO", total=Decimal("12000"),
+            empresa=self.empresa, cliente=cliente, estado="ASIGNADO",
         )
         self.ruta = Ruta.objects.create(
             empresa=self.empresa, nombre="Ruta hoy", fecha=timezone.localdate(), chofer=self.chofer,
@@ -42,12 +40,12 @@ class SincronizacionPedidoEntregaTests(TestCase):
         datos = {"accion": accion, **extra}
         return self.client.post(reverse("chofer_marcar_parada", args=[self.parada.id]), datos)
 
-    def test_chofer_marca_entregado_actualiza_pedido_e_ingresos(self):
+    def test_chofer_marca_entregado_actualiza_pedido_y_despachos(self):
         self._chofer_marca("ENTREGADO")
 
         self.pedido.refresh_from_db()
         self.assertEqual(self.pedido.estado, "ENTREGADO")
-        self.assertEqual(ingresos_resumen(self.empresa)["ingresos_totales"], Decimal("12000"))
+        self.assertEqual(resumen_despachos(self.empresa)["despachos"], 1)
 
     def test_chofer_revierte_entrega_devuelve_pedido_a_asignado(self):
         self._chofer_marca("ENTREGADO")

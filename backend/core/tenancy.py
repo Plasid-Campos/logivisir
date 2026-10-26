@@ -13,6 +13,9 @@ def get_empresa(request):
     empresa = getattr(perfil, "empresa", None)
     if empresa is None:
         raise PermissionDenied("Tu usuario no tiene una empresa asociada.")
+    if not empresa.activa:
+        # Cubre sesiones abiertas antes de que LogiVisir suspendiera la empresa
+        raise PermissionDenied("La cuenta de tu empresa está suspendida.")
     return empresa
 
 

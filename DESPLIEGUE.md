@@ -18,14 +18,13 @@ En el menú **Consoles** → **Bash**, pega:
 ```bash
 git clone https://github.com/Plasid-Campos/logivisir.git
 cd logivisir/backend
-mkvirtualenv --python=python3.12 logivisir
-pip install -r requirements.txt
+mkvirtualenv --system-site-packages --python=python3.13 logivisir
+pip install Django==5.2.8 djangorestframework==3.16.1 python-dotenv==1.0.1
 ```
 
-La instalación tarda unos minutos. Si avisa que se acabó el espacio (la cuenta
-gratis tiene 512 MB), ejecuta `rmvirtualenv logivisir` y repite con
-`mkvirtualenv --system-site-packages --python=python3.12 logivisir`. Esa variante
-reutiliza numpy y scikit-learn, que PythonAnywhere ya trae instalados.
+`--system-site-packages` reutiliza numpy, scikit-learn, Pillow y requests, que
+PythonAnywhere ya trae instalados para Python 3.13. Así se ahorra espacio, porque
+la cuenta gratis tiene 512 MB.
 
 ## 3. Configurar las variables
 
@@ -65,18 +64,19 @@ python manage.py seed_demo
 python manage.py createsuperuser
 ```
 
-`seed_demo` crea la "Panadería Demo", con 14 clientes ficticios, productos,
-pedidos y rutas. También crea estos usuarios, todos con la contraseña `demo12345`:
+`seed_demo` crea la "Panadería Demo", con 14 clientes ficticios, pedidos,
+rutas ya realizadas y una ruta para hoy. También crea estos usuarios, todos con la contraseña `demo12345`:
 
 | Usuario | Rol |
 |---|---|
-| `owner_demo` | Dueño/a (todo + analítica) |
+| `logivisir_demo` | Equipo LogiVisir (empresas clientes; no ve sus datos) |
+| `owner_demo` | Dueño/a de la Panadería Demo (todo + analítica) |
 | `admin_demo` | Administrador/a |
 | `chofer_demo` | Chofer (panel móvil) |
 
 ## 5. Crear la aplicación web
 
-En el menú **Web** → **Add a new web app** → **Manual configuration** → **Python 3.12**. Luego, en la misma página:
+En el menú **Web** → **Add a new web app** → **Manual configuration** → **Python 3.13**. Luego, en la misma página:
 
 - **Source code:** `/home/USUARIO/logivisir/backend`
 - **Virtualenv:** `/home/USUARIO/.virtualenvs/logivisir`
@@ -102,7 +102,8 @@ application = get_wsgi_application()
 - **Force HTTPS:** activado.
 - Presiona el botón verde **Reload**.
 
-Abre `https://USUARIO.pythonanywhere.com` y entra con `owner_demo`.
+Abre `https://USUARIO.pythonanywhere.com` y entra con `logivisir_demo` (vista de
+LogiVisir) o con `owner_demo` (vista de la empresa cliente).
 
 ## 6. Actualizar después de subir cambios a GitHub
 
@@ -120,7 +121,7 @@ presentación), usa `python manage.py seed_demo --reset`.
 
 ## Límites de la cuenta gratis
 
-- **Vencimiento:** la pestaña **Web** muestra hasta qué fecha está activa la página. Antes de que venza, hay que entrar y presionar **Run until 3 months from today**.
+- **Vencimiento:** la cuenta gratis desactiva el sitio cada **1 mes**. La pestaña **Web** muestra la fecha, y PythonAnywhere avisa por correo una semana antes. Hay que entrar y presionar **Run until 1 month from today**.
 - **Acceso a internet restringido:** la cuenta gratis solo puede conectarse a una lista de servicios permitidos.
   - Si el servicio de rutas OSRM no está en esa lista, el optimizador calcula con distancia en línea recta, como define el RNF04 del informe. El sistema sigue funcionando.
   - Los clientes demo ya traen coordenadas, así que no dependen de la geocodificación.
