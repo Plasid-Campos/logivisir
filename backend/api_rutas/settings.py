@@ -38,6 +38,30 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
+# Origenes HTTPS desde los que se aceptan formularios (obligatorio en Django
+# cuando el sitio se publica en un dominio, ej: https://usuario.pythonanywhere.com)
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if o.strip()
+]
+
+# Modo publicado con HTTPS: cookies solo por HTTPS, redireccion a HTTPS y HSTS.
+# Se deja apagado en local porque el servidor de desarrollo no usa HTTPS.
+DJANGO_SECURE = os.environ.get("DJANGO_SECURE", "False") == "True"
+if DJANGO_SECURE:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Si el hosting ya fuerza HTTPS (ej: "Force HTTPS" de PythonAnywhere),
+    # dejar DJANGO_SSL_REDIRECT=False para no duplicar la redireccion.
+    SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "False") == "True"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "3600"))
+
+# Servir las fotos de entrega desde Django aunque DEBUG este apagado. Sirve
+# para un despliegue de demostracion sin Nginx; con Nginx dejarlo en False.
+SERVIR_MEDIA = os.environ.get("DJANGO_SERVIR_MEDIA", "False") == "True"
+
 # Geocodificacion (usado por core/geocoding.py)
 GEOCODING_PROVIDER = os.environ.get("GEOCODING_PROVIDER", "nominatim")
 GEOCODING_API_KEY = os.environ.get("GEOCODING_API_KEY", "")
@@ -142,6 +166,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+# Carpeta donde "collectstatic" junta CSS/JS/imagenes para publicarlos
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Archivos subidos por usuarios (fotos de prueba de entrega)
 MEDIA_URL = 'media/'
