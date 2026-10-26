@@ -23,6 +23,7 @@ from django.views.decorators.http import require_POST
 from urllib.parse import quote_plus
 
 from . import analytics
+from .maps import MAX_WAYPOINTS, armar_tramos
 from .models import (
     PerfilUsuario,
     Chofer,
@@ -38,7 +39,6 @@ from .tenancy import get_empresa, get_object_or_404_scoped
 # =========================================================
 # CONFIG
 # =========================================================
-MAX_WAYPOINTS_MAPS = 20  # evita que Maps falle
 PAGINA_TAMANO = 25
 
 # =========================================================
@@ -808,14 +808,13 @@ def chofer_ruta_hoy_view(request):
 
     paradas = []
     paradas_ui = []
-    maps_url = ""
     maps_tramos = []
-    aviso_maps = ""
+    navegacion_desde_ubicacion = False
     progreso = {"total": 0, "entregadas": 0, "no_entregadas": 0, "pendientes": 0}
     siguiente_parada_id = None
     porcentaje_entregadas = 0
 
-    origen_fijo = empresa.direccion_origen_completa() or "Origen no configurado"
+    origen_fijo = empresa.direccion_origen_completa() if empresa.direccion_origen else None
 
     if ruta:
         paradas = ruta.paradas.select_related("cliente").order_by("orden")
@@ -852,7 +851,7 @@ def chofer_ruta_hoy_view(request):
             partes = [cli.direccion]
             if cli.comuna:
                 partes.append(cli.comuna)
-            if cli.ciudad:
+            if cli.ciudad and cli.ciudad != cli.comuna:
                 partes.append(cli.ciudad)
             partes.append("Chile")
             direccion_completa = ", ".join([x for x in partes if x])
@@ -866,43 +865,19 @@ def chofer_ruta_hoy_view(request):
                 "maps_to": maps_to,
             })
 
-        # Ruta completa: origen fijo -> waypoints clientes -> destino fijo.
-        # Google Maps solo admite MAX_WAYPOINTS_MAPS paradas intermedias por
-        # enlace, así que si la ruta tiene más, se arma una cadena de varios
-        # enlaces: el destino de un tramo es el origen del siguiente, y el
-        # último tramo siempre vuelve al origen de la empresa.
-        if len(direcciones) > 0:
-            full_points = [origen_fijo] + direcciones + [origen_fijo]
-            n_legs = len(full_points) - 1
-            paso = MAX_WAYPOINTS_MAPS + 1  # tramos (legs) cubiertos por cada enlace
-            i = 0
-            while i < n_legs:
-                fin = min(i + paso, n_legs)
-                segmento = full_points[i:fin + 1]
-                origin, destination = segmento[0], segmento[-1]
-                waypoints = segmento[1:-1]
-
-                base = "https://www.google.com/maps/dir/?api=1"
-                params = f"&origin={quote_plus(origin)}&destination={quote_plus(destination)}"
-                if waypoints:
-                    params += f"&waypoints={quote_plus('|'.join(waypoints))}"
-                params += "&travelmode=driving"
-
-                maps_tramos.append({
-                    "numero": len(maps_tramos) + 1,
-                    "url": base + params,
-                    "cantidad_paradas": len(waypoints),
-                })
-                i = fin
-
-            maps_url = maps_tramos[0]["url"]
-            if len(maps_tramos) > 1:
-                aviso_maps = (
-                    f"Esta ruta tiene {len(direcciones)} paradas: Google Maps admite un "
-                    f"máximo de {MAX_WAYPOINTS_MAPS} paradas intermedias por enlace, así que "
-                    f"se dividió en {len(maps_tramos)} tramos encadenados (abre el tramo 1, y al "
-                    "terminarlo abre el tramo 2, y así sucesivamente)."
-                )
+        # Navegacion en Google Maps solo con lo que falta: si la ruta no ha
+        # empezado sale de la panaderia; si ya hubo entregas, sale de la
+        # ubicacion actual del chofer. Siempre termina en la panaderia, y se
+        # parte en tramos para no pasar el limite de paradas de Google Maps.
+        pendientes = [
+            (item["parada"].orden, item["direccion"])
+            for item in paradas_ui
+            if item["parada"].estado_entrega == "PENDIENTE"
+        ]
+        navegacion_desde_ubicacion = progreso["entregadas"] + progreso["no_entregadas"] > 0
+        maps_tramos = armar_tramos(
+            pendientes, origen_empresa=origen_fijo, desde_origen=not navegacion_desde_ubicacion,
+        )
 
     return render(request, "core/chofer_ruta.html", {
         "ruta": ruta,
@@ -911,9 +886,9 @@ def chofer_ruta_hoy_view(request):
         "hoy": hoy,
         "fecha_objetivo": fecha_objetivo,
         "es_hoy": es_hoy,
-        "maps_url": maps_url,
         "maps_tramos": maps_tramos,
-        "aviso_maps": aviso_maps,
+        "navegacion_desde_ubicacion": navegacion_desde_ubicacion,
+        "max_waypoints_maps": MAX_WAYPOINTS,
         "origen_fijo": origen_fijo,
         "progreso": progreso,
         "porcentaje_entregadas": porcentaje_entregadas,

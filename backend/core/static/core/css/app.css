@@ -298,9 +298,12 @@
   background: rgba(255,255,255,.70);
 }
 
-/* Que la columna de acciones no se vea gigante */
-.driver-actions {
-  min-width: 320px;
+/* Que la columna de acciones no se vea gigante (solo en pantallas anchas:
+   en el celular del chofer va debajo de la parada y usa todo el ancho) */
+@media (min-width: 768px) {
+  .driver-actions {
+    min-width: 320px;
+  }
 }
 
 /* Caja del colapsable “No entregado” */

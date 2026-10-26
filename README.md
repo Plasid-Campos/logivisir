@@ -129,8 +129,8 @@ que crea `seed_demo` (contraseña `demo12345` en todos):
 | `admin_demo` | Administrador | Operación diaria |
 | `chofer_demo` | Chofer | Panel de reparto del día |
 
-> `seed_demo` usa nombres, direcciones y coordenadas **inventados** (comunas de
-> Santiago). Con `--reset` borra la empresa demo y la vuelve a crear.
+> `seed_demo` usa nombres de clientes **inventados**, pero direcciones reales del sur de
+> Santiago, verificadas con su número en OpenStreetMap. Con `--reset` borra la empresa demo y la vuelve a crear.
 
 ---
 

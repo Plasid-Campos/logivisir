@@ -12,9 +12,11 @@ Usuarios que deja creados (contraseña: demo12345):
     admin_demo     -> Administrador de la Panadería Demo
     chofer_demo    -> Chofer de la Panadería Demo (panel de reparto del día)
 
-Todas las direcciones y coordenadas son inventadas pero verosímiles
-(comunas de Santiago) para que el optimizador de rutas funcione sin
-salir a internet a geocodificar.
+Los nombres de los clientes son inventados, pero las direcciones son
+reales: cada una se verificó con Nominatim (OpenStreetMap) con su número
+de calle, y las coordenadas son las de ese número. Así Google Maps y el
+optimizador llevan a lugares que existen. La panadería sale de Salesianos
+768, San Miguel (la dirección de la panadería piloto).
 """
 from datetime import timedelta
 import random
@@ -34,11 +36,11 @@ SOLICITUDES_DEMO = (EMPRESA_NOMBRE, "Distribuidora Los Andes (demo)")
 PASSWORD = "demo12345"
 
 ORIGEN = {
-    "direccion_origen": "Av. Manuel Antonio Matta 1234",
-    "comuna_origen": "Santiago",
+    "direccion_origen": "Avenida Salesianos 768",
+    "comuna_origen": "San Miguel",
     "ciudad_origen": "Santiago",
-    "latitud_origen": -33.4550,
-    "longitud_origen": -70.6580,
+    "latitud_origen": -33.494197,
+    "longitud_origen": -70.644544,
 }
 
 STAFF_USERNAME = "logivisir_demo"
@@ -67,20 +69,22 @@ MOTIVOS_NO_ENTREGA = (
 # (nombre, comuna, direccion, lat, lon, perfil_rfm, tipo)
 # perfil_rfm controla cuántos pedidos y qué tan recientes se generan.
 CLIENTES = [
-    ("Almacén Doña Rosa",        "Providencia",   "Av. Providencia 2145",   -33.4258, -70.6160, "vip",       "NORMAL"),
-    ("Cafetería El Rincón",      "Ñuñoa",         "Irarrázaval 3410",       -33.4562, -70.5975, "vip",       "NORMAL"),
-    ("Minimarket Las Tres T",    "Las Condes",    "Apoquindo 4501",         -33.4110, -70.5695, "vip",       "NORMAL"),
-    ("Hotel Plaza Norte",        "Santiago",      "San Antonio 480",        -33.4405, -70.6490, "vip",       "NORMAL"),
-    ("Kiosco Estación",          "Santiago",      "Alameda 3355",           -33.4520, -70.6870, "frecuente", "NORMAL"),
-    ("Botillería El Roble",      "San Miguel",    "Gran Avenida 5200",      -33.4975, -70.6520, "frecuente", "NORMAL"),
-    ("Casino Empresa TecnoSur",  "Macul",         "Quilín 3100",            -33.4895, -70.5990, "frecuente", "NORMAL"),
-    ("Jardín Infantil Girasol",  "Peñalolén",     "Consistorial 2450",      -33.4780, -70.5415, "frecuente", "DELIVERY"),
-    ("Almacén San Pedro",        "La Florida",    "Vicuña Mackenna 8850",   -33.5325, -70.5985, "ocasional", "NORMAL"),
-    ("Verdulería La Chacra",     "Maipú",         "Av. Pajaritos 2900",     -33.4880, -70.7590, "ocasional", "DELIVERY"),
-    ("Panadería aliada El Sol",  "Puente Alto",   "Concha y Toro 1450",     -33.6115, -70.5765, "ocasional", "NORMAL"),
-    ("Café de la Villa",         "Ñuñoa",         "Grecia 1855",            -33.4600, -70.5860, "ocasional", "NORMAL"),
-    ("Local eventos Doña Marta", "La Florida",    "Walker Martínez 1600",   -33.5420, -70.5810, "en_riesgo", "DELIVERY"),
-    ("Quiosco Parque O'Higgins", "Santiago",      "Av. Matta 900",          -33.4630, -70.6470, "en_riesgo", "NORMAL"),
+    ("Almacén Doña Rosa",        "San Miguel",          "Gran Avenida José Miguel Carrera 4400", -33.494342, -70.652075, "vip",       "NORMAL"),
+    ("Cafetería El Rincón",      "San Joaquín",         "Avenida Santa Rosa 3100",               -33.483792, -70.641111, "vip",       "NORMAL"),
+    ("Minimarket Las Tres T",    "San Miguel",          "Carlos Edwards 1200",                   -33.501140, -70.656432, "vip",       "NORMAL"),
+    ("Hotel Plaza Sur",          "Santiago",            "San Diego 1900",                        -33.471177, -70.648328, "vip",       "NORMAL"),
+    ("Kiosco Estación Franklin", "Santiago",            "Franklin 700",                          -33.473014, -70.641905, "frecuente", "NORMAL"),
+    ("Botillería El Roble",      "San Miguel",          "Gran Avenida José Miguel Carrera 5800", -33.507722, -70.655929, "frecuente", "NORMAL"),
+    ("Casino Empresa TecnoSur",  "Macul",               "Avenida Macul 2800",                    -33.480197, -70.598969, "frecuente", "NORMAL"),
+    ("Jardín Infantil Girasol",  "Santiago",            "San Francisco 1800",                    -33.468963, -70.643921, "frecuente", "DELIVERY"),
+    ("Almacén San Pedro",        "San Miguel",          "Avenida Lo Ovalle 800",                 -33.512440, -70.665939, "ocasional", "NORMAL"),
+    ("Verdulería La Chacra",     "La Cisterna",         "Avenida El Parrón 600",                 -33.524443, -70.667523, "ocasional", "DELIVERY"),
+    ("Panadería aliada El Sol",  "La Granja",           "Avenida Santa Rosa 7500",               -33.527076, -70.635502, "ocasional", "NORMAL"),
+    ("Café de la Villa",         "Ñuñoa",               "Avenida Grecia 1500",                   -33.461390, -70.616384, "ocasional", "NORMAL"),
+    ("Colegio San Ignacio Sur",  "Santiago",            "San Ignacio de Loyola 1500",            -33.466590, -70.654796, "ocasional", "NORMAL"),
+    ("Local eventos Doña Marta", "Santiago",            "Avenida Santa Rosa 2000",               -33.471805, -70.641928, "en_riesgo", "DELIVERY"),
+    ("Minimarket Don Lucho",     "Macul",               "Avenida Macul 4500",                    -33.494921, -70.599160, "en_riesgo", "NORMAL"),
+    ("Fuente de soda La Esquina", "La Cisterna",        "Avenida El Parrón 1000",                -33.528163, -70.650370, "en_riesgo", "NORMAL"),
 ]
 
 PERFIL_PEDIDOS = {
@@ -141,8 +145,8 @@ class Command(BaseCommand):
                 telefono=f"+56 9 {random.randint(3000, 9999)} {random.randint(1000, 9999)}",
                 email=f"{nombre.split()[0].lower()}@ejemplo.cl",
                 rut=f"{random.randint(60, 99)}.{random.randint(100,999)}.{random.randint(100,999)}-{random.randint(0,9)}",
-                latitud=lat + random.uniform(-0.004, 0.004),
-                longitud=lon + random.uniform(-0.004, 0.004),
+                latitud=lat,
+                longitud=lon,
                 geocodificado=True,
             ), perfil))
 
@@ -280,7 +284,9 @@ class Command(BaseCommand):
             empresa=empresa, nombre=f"Reparto {hoy.strftime('%d-%m')}",
             fecha=hoy, chofer=chofer, estado="PLANIFICADA",
         )
-        seleccion = [c for (c, _) in clientes][:9]
+        # 12 paradas: más que las 9 intermedias que acepta Google Maps por
+        # enlace, para que se vea la división en tramos del panel del chofer.
+        seleccion = [c for (c, _) in clientes][:12]
         for orden, cliente in enumerate(seleccion, start=1):
             ParadaRuta.objects.create(
                 ruta=ruta, cliente=cliente, orden=orden,

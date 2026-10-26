@@ -64,7 +64,7 @@ python manage.py seed_demo
 python manage.py createsuperuser
 ```
 
-`seed_demo` crea la "Panadería Demo", con 14 clientes ficticios, pedidos,
+`seed_demo` crea la "Panadería Demo", con 16 clientes de nombre ficticio y dirección real, pedidos,
 rutas ya realizadas y una ruta para hoy. También crea estos usuarios, todos con la contraseña `demo12345`:
 
 | Usuario | Rol |
