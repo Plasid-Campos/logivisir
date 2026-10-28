@@ -61,3 +61,42 @@ Si la aplicación deja de funcionar, se aplicará el siguiente procedimiento:
 ## 7. Resultado esperado
 
 Con estas medidas, LogiVisir contará con respaldo del código, trazabilidad de los cambios y un procedimiento básico de recuperación ante fallas, permitiendo mantener la continuidad del servicio.
+
+
+## 8. Plan de mantención
+
+La mantención de LogiVisir permitirá conservar la estabilidad, seguridad y correcto funcionamiento de la aplicación después de su implementación.
+
+### 8.1 Mantención preventiva
+
+Se realizarán las siguientes actividades:
+
+- Revisar periódicamente el funcionamiento de la aplicación.
+- Comprobar el acceso de los usuarios y sus roles.
+- Verificar las funciones de clientes, pedidos, rutas y entregas.
+- Mantener actualizadas las dependencias del proyecto.
+- Revisar el uso de almacenamiento y la base de datos.
+- Realizar respaldos periódicos del código y los datos.
+
+### 8.2 Mantención correctiva
+
+Cuando se detecte un problema se deberá:
+
+1. Registrar el error encontrado.
+2. Identificar los archivos o componentes afectados.
+3. Realizar la corrección en un entorno controlado.
+4. Probar la funcionalidad modificada.
+5. Registrar el cambio mediante un commit vinculado a Azure Boards.
+6. Verificar nuevamente la aplicación publicada.
+
+### 8.3 Frecuencia
+
+- Revisión funcional: semanal.
+- Revisión de errores: cada vez que se reporte una incidencia.
+- Actualización de dependencias: mensual.
+- Respaldo del código: con cada cambio mediante Azure Repos.
+- Respaldo de datos: semanal o antes de una modificación importante.
+
+### 8.4 Registro de cambios
+
+Todos los cambios deberán quedar registrados en Azure, indicando una descripción clara y el número de la tarea correspondiente.
