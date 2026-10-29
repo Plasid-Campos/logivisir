@@ -50,6 +50,8 @@ de sus empresas clientes.
   intento falla.
 - Rutas con estados (Planificada → En proceso → Completada) y paradas ordenables.
 - Pedidos simples (cliente + qué se despacha, en texto) que se asignan a paradas de ruta.
+- Configuración de la dirección de salida de la empresa (menú **Empresa**): se ubica
+  automáticamente en el mapa o con coordenadas pegadas desde Google Maps.
 
 **Motor de optimización de rutas** (`core/optimizer.py`)
 - Problema del viajante (TSP): heurística de **vecino más cercano** para construir una

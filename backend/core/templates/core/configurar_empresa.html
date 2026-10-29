@@ -1,0 +1,92 @@
+{% extends "core/base.html" %}
+
+{% block title %}Configuración de la empresa | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4" style="max-width: 900px;">
+
+    <div class="saas-card p-4 mb-4">
+      <span class="pill pill-primary mb-2"><i class="bi bi-gear-fill me-1"></i>Configuración</span>
+      <h1 class="panel-title mb-1">{{ empresa.nombre }}</h1>
+      <p class="panel-subtitle mb-0">
+        La dirección de salida es desde donde parten y adonde vuelven todas las rutas. Sin ella no se
+        pueden optimizar rutas, y el chofer no tiene punto de partida en Google Maps.
+      </p>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <div class="saas-card p-4 h-100">
+          <h2 class="section-mini-title mb-3"><i class="bi bi-shop me-2"></i>Dirección de salida</h2>
+
+          {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+          <form method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label" for="direccion_origen">Calle y número</label>
+              <input id="direccion_origen" name="direccion_origen" class="form-control" required
+                     placeholder="Ej: Avenida Salesianos 768"
+                     value="{% if datos %}{{ datos.direccion_origen }}{% else %}{{ empresa.direccion_origen|default:'' }}{% endif %}">
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="comuna_origen">Comuna</label>
+                <input id="comuna_origen" name="comuna_origen" class="form-control" required
+                       placeholder="Ej: San Miguel"
+                       value="{% if datos %}{{ datos.comuna_origen }}{% else %}{{ empresa.comuna_origen|default:'' }}{% endif %}">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="ciudad_origen">Ciudad</label>
+                <input id="ciudad_origen" name="ciudad_origen" class="form-control"
+                       value="{% if datos %}{{ datos.ciudad_origen }}{% else %}{{ empresa.ciudad_origen|default:'Santiago' }}{% endif %}">
+              </div>
+            </div>
+
+            <details class="mb-3" {% if datos.coordenadas %}open{% endif %}>
+              <summary class="small text-primary" style="cursor: pointer;">
+                ¿El punto quedó mal ubicado? Pega las coordenadas desde Google Maps
+              </summary>
+              <div class="mt-2">
+                <input id="coordenadas" name="coordenadas" class="form-control" inputmode="decimal"
+                       placeholder="-33.494197, -70.644544" value="{{ datos.coordenadas|default:'' }}">
+                <div class="form-text">
+                  En Google Maps, haz clic derecho sobre la entrada del local y luego clic en los números
+                  que aparecen arriba del menú: se copian solos. Si dejas esto vacío, ubicamos la dirección
+                  automáticamente.
+                </div>
+              </div>
+            </details>
+
+            <button class="btn btn-primary w-100">Guardar dirección de salida</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="saas-card p-4 h-100">
+          <h2 class="section-mini-title mb-3"><i class="bi bi-geo-alt-fill me-2"></i>Ubicación en el mapa</h2>
+          {% if mapa %}
+            <iframe title="Mapa de la dirección de salida" class="w-100 rounded border" style="height: 260px;"
+                    loading="lazy" src="{{ mapa.embed }}"></iframe>
+            <p class="small text-muted mt-2 mb-1">
+              {{ empresa.direccion_origen_completa }}<br>
+              Coordenadas: {{ mapa.coordenadas }}
+            </p>
+            <a class="small" target="_blank" rel="noopener" href="{{ mapa.google }}">
+              Abrir este punto en Google Maps <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+          {% else %}
+            <div class="alert alert-warning mb-0">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              Todavía no hay una dirección de salida ubicada en el mapa. Mientras falte, no se pueden
+              optimizar rutas.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

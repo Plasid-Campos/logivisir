@@ -21,10 +21,11 @@ from django.utils.crypto import get_random_string
 from django.utils.text import slugify
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from . import analytics
 from .maps import MAX_WAYPOINTS, armar_tramos
+from .geocoding import geocodificar_direccion
 from .notifications import (
     avisar_ruta_actualizada, avisar_ruta_asignada, avisar_ruta_quitada, fecha_legible,
 )
@@ -1525,5 +1526,116 @@ class RestablecerPasswordConfirmView(auth_views.PasswordResetConfirmView):
         PerfilUsuario.objects.filter(user=usuario, debe_cambiar_password=True).update(debe_cambiar_password=False)
         avisar_cambio_password(usuario, self.request)
         return respuesta
+
+
+# =========================================================
+# CONFIGURACION DE LA EMPRESA: direccion de salida de las rutas
+# =========================================================
+# Sin esta direccion (y sus coordenadas) no se puede optimizar ninguna ruta,
+# y el chofer no tiene punto de partida ni de regreso en Google Maps.
+LIMITES_CHILE = {"lat": (-56.0, -17.0), "lon": (-110.0, -66.0)}  # incluye Isla de Pascua
+
+
+def _leer_coordenadas(texto):
+    """
+    "-33.4942, -70.6445" (como las copia Google Maps) -> (lat, lon), o None
+    si viene vacio. Lanza ValueError si el formato o el rango no sirven.
+    """
+    texto = (texto or "").strip()
+    if not texto:
+        return None
+    partes = [p.strip() for p in texto.replace(";", ",").split(",")]
+    try:
+        if len(partes) != 2:
+            raise ValueError
+        lat, lon = float(partes[0]), float(partes[1])
+    except ValueError:
+        raise ValueError("Escribe las coordenadas como latitud, longitud (ej: -33.4942, -70.6445).")
+    if not (LIMITES_CHILE["lat"][0] <= lat <= LIMITES_CHILE["lat"][1]
+            and LIMITES_CHILE["lon"][0] <= lon <= LIMITES_CHILE["lon"][1]):
+        raise ValueError("Esas coordenadas no están en Chile. Revisa que la latitud vaya primero.")
+    return lat, lon
+
+
+@user_passes_test(es_admin_o_owner)
+def configurar_empresa_view(request):
+    empresa = get_empresa(request)
+    error = None
+
+    if request.method == "POST":
+        direccion = (request.POST.get("direccion_origen") or "").strip()
+        comuna = (request.POST.get("comuna_origen") or "").strip()
+        ciudad = (request.POST.get("ciudad_origen") or "").strip() or "Santiago"
+
+        try:
+            coordenadas_manuales = _leer_coordenadas(request.POST.get("coordenadas"))
+        except ValueError as e:
+            coordenadas_manuales = None
+            error = str(e)
+
+        if not error and not (direccion and comuna):
+            error = "La dirección y la comuna son obligatorias."
+
+        if not error:
+            cambio_direccion = (
+                direccion != (empresa.direccion_origen or "")
+                or comuna != (empresa.comuna_origen or "")
+                or ciudad != (empresa.ciudad_origen or "")
+            )
+            empresa.direccion_origen = direccion
+            empresa.comuna_origen = comuna
+            empresa.ciudad_origen = ciudad
+
+            if coordenadas_manuales:
+                empresa.latitud_origen, empresa.longitud_origen = coordenadas_manuales
+                messages.success(request, "Dirección de salida guardada con las coordenadas que indicaste.")
+            elif cambio_direccion or empresa.latitud_origen is None:
+                resultado = geocodificar_direccion(direccion, comuna, ciudad)
+                if resultado:
+                    empresa.latitud_origen, empresa.longitud_origen = resultado
+                    messages.success(
+                        request,
+                        "Dirección de salida guardada y ubicada en el mapa. Revisa que el punto sea el correcto.",
+                    )
+                else:
+                    empresa.latitud_origen = empresa.longitud_origen = None
+                    messages.warning(
+                        request,
+                        "Guardamos la dirección, pero no pudimos ubicarla en el mapa. Revisa que esté bien "
+                        "escrita o pega las coordenadas desde Google Maps.",
+                    )
+            else:
+                messages.success(request, "Datos guardados.")
+
+            empresa.save(update_fields=[
+                "direccion_origen", "comuna_origen", "ciudad_origen", "latitud_origen", "longitud_origen",
+            ])
+            return redirect("configurar_empresa")
+
+    return render(request, "core/configurar_empresa.html", {
+        "empresa": empresa,
+        "error": error,
+        "datos": request.POST if request.method == "POST" else None,
+        "mapa": _urls_mapa(empresa.latitud_origen, empresa.longitud_origen),
+    })
+
+
+def _urls_mapa(lat, lon):
+    """
+    Enlaces del mapa armados en Python: en plantillas, con el idioma es-cl,
+    los decimales salen con coma y rompen las URLs.
+    """
+    if lat is None or lon is None:
+        return None
+    bbox = f"{lon - 0.006:.6f},{lat - 0.004:.6f},{lon + 0.006:.6f},{lat + 0.004:.6f}"
+    return {
+        "coordenadas": f"{lat:.6f}, {lon:.6f}",
+        "embed": (
+            "https://www.openstreetmap.org/export/embed.html?"
+            + urlencode({"bbox": bbox, "layer": "mapnik", "marker": f"{lat:.6f},{lon:.6f}"})
+        ),
+        "google": "https://www.google.com/maps/search/?" + urlencode({"api": 1, "query": f"{lat:.6f},{lon:.6f}"}),
+    }
+
 
 

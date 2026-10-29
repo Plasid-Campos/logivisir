@@ -58,6 +58,9 @@ urlpatterns = [
     path("analitica/exportar/segmentacion-clientes.csv", core_views.exportar_segmentacion_csv_view, name="exportar_segmentacion_csv"),
     path("analitica/exportar/despachos-mensuales.csv", core_views.exportar_despachos_mensuales_csv_view, name="exportar_despachos_mensuales_csv"),
 
+    # --------- CONFIGURACION DE LA EMPRESA ---------
+    path("empresa/configuracion/", core_views.configurar_empresa_view, name="configurar_empresa"),
+
     # --------- MI CUENTA ---------
     path("cuenta/cambiar-clave/", core_views.CambiarPasswordView.as_view(), name="cambiar_password"),
 

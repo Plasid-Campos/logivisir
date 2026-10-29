@@ -115,6 +115,14 @@
                 Analítica
               </a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link nav-link-main" href="{% url 'configurar_empresa' %}">
+                Empresa
+                {% if USER_EMPRESA and USER_EMPRESA.latitud_origen is None %}
+                  <i class="bi bi-exclamation-circle-fill text-warning" title="Falta la dirección de salida"></i>
+                {% endif %}
+              </a>
+            </li>
 
           {# ====== STAFF LOGIVISIR (equipo interno, no es un tenant) ====== #}
           {% elif request.user.is_staff %}

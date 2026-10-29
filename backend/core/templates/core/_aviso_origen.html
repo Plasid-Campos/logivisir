@@ -1,0 +1,8 @@
+{% if USER_EMPRESA and USER_EMPRESA.latitud_origen is None %}
+  <div class="alert alert-warning d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-4">
+    <span><i class="bi bi-exclamation-triangle-fill me-1"></i>
+      <strong>Falta la dirección de salida de la empresa.</strong>
+      Sin ella no se pueden optimizar rutas ni dar al chofer un punto de partida.</span>
+    <a href="{% url 'configurar_empresa' %}" class="btn btn-sm btn-warning">Configurarla ahora</a>
+  </div>
+{% endif %}
