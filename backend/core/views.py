@@ -444,6 +444,7 @@ def lista_clientes_view(request):
     comuna = (request.GET.get("comuna") or "").strip()
     tipo = (request.GET.get("tipo") or "").strip()
     estado = (request.GET.get("estado") or "").strip()
+    ubicacion = (request.GET.get("ubicacion") or "").strip()
 
     if q:
         clientes_qs = clientes_qs.filter(
@@ -457,6 +458,12 @@ def lista_clientes_view(request):
         clientes_qs = clientes_qs.filter(activo=True)
     elif estado == "inactivos":
         clientes_qs = clientes_qs.filter(activo=False)
+    # CU-02 (2b): los clientes sin coordenadas quedan al final de las rutas
+    # sin optimizar, asi que deben poder encontrarse y corregirse.
+    if ubicacion == "sin":
+        clientes_qs = clientes_qs.filter(SIN_UBICACION)
+    elif ubicacion == "con":
+        clientes_qs = clientes_qs.exclude(SIN_UBICACION)
 
     comunas_disponibles = (
         Cliente.objects.filter(empresa=empresa)
@@ -478,7 +485,10 @@ def lista_clientes_view(request):
         "filtro_comuna": comuna,
         "filtro_tipo": tipo,
         "filtro_estado": estado,
+        "filtro_ubicacion": ubicacion,
         "total_filtrado": clientes_qs.count(),
+        "activos_sin_ubicacion": Cliente.objects.filter(empresa=empresa, activo=True).filter(SIN_UBICACION).count(),
+        "reubicar_lote": REUBICAR_LOTE,
     })
 
 
@@ -527,8 +537,17 @@ def editar_cliente_view(request, cliente_id):
     empresa = get_empresa(request)
     cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
     mensaje = None
+    error = None
 
     if request.method == "POST":
+        try:
+            coordenadas_manuales = _leer_coordenadas(request.POST.get("coordenadas"))
+        except ValueError as e:
+            error = str(e)
+            return render(request, "core/editar_cliente.html", {
+                "cliente": cliente, "error": error, "tipos_cliente": Cliente.TIPO_CHOICES,
+                "mapa": _urls_mapa(cliente.latitud, cliente.longitud),
+            })
         direccion_anterior = (cliente.direccion, cliente.comuna, cliente.ciudad)
 
         cliente.rut = (request.POST.get("rut") or "").strip() or None
@@ -552,13 +571,19 @@ def editar_cliente_view(request, cliente_id):
         cliente.save()
         mensaje = "Cambios guardados."
 
-        if direccion_nueva != direccion_anterior:
+        if coordenadas_manuales:
+            cliente.latitud, cliente.longitud = coordenadas_manuales
+            cliente.geocodificado = True
+            cliente.save(update_fields=["latitud", "longitud", "geocodificado"])
+            mensaje += " Ubicación fijada con las coordenadas que indicaste."
+        elif direccion_nueva != direccion_anterior:
             from .geocoding import geocodificar_cliente
             if not geocodificar_cliente(cliente):
-                mensaje += " No se pudo re-ubicar la nueva dirección automáticamente."
+                mensaje += " No se pudo ubicar la nueva dirección en el mapa: pega sus coordenadas desde Google Maps."
 
     return render(request, "core/editar_cliente.html", {
-        "cliente": cliente, "mensaje": mensaje, "tipos_cliente": Cliente.TIPO_CHOICES,
+        "cliente": cliente, "mensaje": mensaje, "error": error, "tipos_cliente": Cliente.TIPO_CHOICES,
+        "mapa": _urls_mapa(cliente.latitud, cliente.longitud),
     })
 
 
@@ -579,7 +604,21 @@ def desactivar_cliente_view(request, cliente_id):
 def eliminar_cliente_view(request, cliente_id):
     empresa = get_empresa(request)
     cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
-    cliente.delete()
+
+    # Pedidos y paradas protegen al cliente: borrarlo fallaria y perderia el
+    # historial de despachos. Con historial, se desactiva.
+    if cliente.pedidos.exists() or ParadaRuta.objects.filter(cliente=cliente).exists():
+        cliente.activo = False
+        cliente.motivo_inactivo = "Desactivado al intentar eliminarlo (tiene historial de despachos)."
+        cliente.save(update_fields=["activo", "motivo_inactivo"])
+        messages.warning(
+            request,
+            f"{cliente.nombre} tiene pedidos o entregas registradas, así que se desactivó en vez de "
+            "borrarse: no aparecerá para nuevos pedidos, pero su historial se conserva.",
+        )
+    else:
+        cliente.delete()
+        messages.success(request, "Cliente eliminado.")
     return redirect("lista_clientes")
 
 # =========================================================
@@ -1832,3 +1871,56 @@ def restablecer_clave_usuario_view(request, user_id):
 
 
 
+# =========================================================
+# CLIENTES SIN UBICACION: reintentar ubicarlos en el mapa
+# =========================================================
+SIN_UBICACION = Q(latitud__isnull=True) | Q(longitud__isnull=True) | Q(geocodificado=False)
+# Nominatim pide como maximo 1 consulta por segundo: un lote chico por clic
+# mantiene la pagina rapida y respeta su politica de uso.
+REUBICAR_LOTE = 15
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def reubicar_cliente_view(request, cliente_id):
+    empresa = get_empresa(request)
+    cliente = get_object_or_404_scoped(Cliente, empresa, id=cliente_id)
+    from .geocoding import geocodificar_cliente
+    if geocodificar_cliente(cliente):
+        messages.success(request, f"{cliente.nombre} quedó ubicado en el mapa.")
+    else:
+        messages.warning(
+            request,
+            f"No pudimos ubicar a {cliente.nombre}. Revisa su dirección o pega sus coordenadas en Editar.",
+        )
+    volver = request.POST.get("volver")
+    if volver and url_has_allowed_host_and_scheme(volver, allowed_hosts={request.get_host()}):
+        return redirect(volver)
+    return redirect("lista_clientes")
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def reubicar_clientes_lote_view(request):
+    import time
+    from .geocoding import geocodificar_cliente
+
+    empresa = get_empresa(request)
+    pendientes = list(
+        Cliente.objects.filter(empresa=empresa, activo=True).filter(SIN_UBICACION).order_by("id")[:REUBICAR_LOTE]
+    )
+    ubicados = 0
+    for i, cliente in enumerate(pendientes):
+        if i:
+            time.sleep(1)  # politica de uso de Nominatim
+        if geocodificar_cliente(cliente):
+            ubicados += 1
+
+    quedan = Cliente.objects.filter(empresa=empresa, activo=True).filter(SIN_UBICACION).count()
+    messages.info(
+        request,
+        f"Se intentó ubicar a {len(pendientes)} cliente(s): {ubicados} quedaron en el mapa. "
+        f"Quedan {quedan} sin ubicación"
+        + (" — los que no se encuentran necesitan que revises la dirección o pegues sus coordenadas." if quedan else "."),
+    )
+    return redirect(f"{reverse('lista_clientes')}?ubicacion=sin")

@@ -9,6 +9,9 @@
     {% if mensaje %}
         <div class="alert alert-success">{{ mensaje }}</div>
     {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
 
     <form method="POST">
         {% csrf_token %}
@@ -45,6 +48,33 @@
         <div class="mb-3">
             <label>Ciudad</label>
             <input type="text" name="ciudad" class="form-control" value="{{ cliente.ciudad }}">
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="mb-2"><i class="bi bi-geo-alt me-1"></i>Ubicación en el mapa</h6>
+                {% if mapa and cliente.geocodificado %}
+                    <iframe title="Ubicación del cliente" class="w-100 rounded border" style="height: 220px;"
+                            loading="lazy" src="{{ mapa.embed }}"></iframe>
+                    <p class="small text-muted mt-2 mb-2">
+                        Coordenadas: {{ mapa.coordenadas }} ·
+                        <a href="{{ mapa.google }}" target="_blank" rel="noopener">Abrir en Google Maps</a>
+                    </p>
+                {% else %}
+                    <div class="alert alert-warning small mb-2">
+                        Este cliente no está ubicado en el mapa, así que en una ruta queda al final sin optimizar.
+                        Revisa que la dirección esté bien escrita (si la cambias, la buscamos de nuevo al guardar)
+                        o pega sus coordenadas aquí abajo.
+                    </div>
+                {% endif %}
+                <label class="form-label small" for="coordenadas">¿Quedó mal ubicado? Pega las coordenadas desde Google Maps</label>
+                <input id="coordenadas" name="coordenadas" class="form-control" inputmode="decimal"
+                       placeholder="-33.494197, -70.644544">
+                <div class="form-text">
+                    En Google Maps, haz clic derecho sobre el lugar y luego clic en los números que aparecen arriba
+                    del menú: se copian solos.
+                </div>
+            </div>
         </div>
 
         <div class="mb-3">

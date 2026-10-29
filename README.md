@@ -50,6 +50,9 @@ de sus empresas clientes.
 - Clientes con geocodificación automática de la dirección (Nominatim / OpenStreetMap),
   con reintento sin el sufijo de unidad ("Local 3", "Depto 12"...) cuando el primer
   intento falla.
+- Clientes sin ubicación en el mapa: aviso con el total, filtro, botón para reintentar
+  (de a uno o por lotes de 15, respetando el límite de Nominatim) y coordenadas pegadas
+  desde Google Maps en la edición del cliente.
 - Rutas con estados (Planificada → En proceso → Completada) y paradas ordenables.
 - Edición de rutas: nombre siempre; chofer aunque la ruta ya haya empezado (se avisa al
   nuevo y al anterior); fecha solo si aún no empezó. Las rutas pasadas quedan fijas.

@@ -37,6 +37,8 @@ urlpatterns = [
     path("clientes/", core_views.lista_clientes_view, name="lista_clientes"),
     path("clientes/crear/", core_views.crear_cliente_view, name="crear_cliente"),
     path("clientes/<int:cliente_id>/editar/", core_views.editar_cliente_view, name="editar_cliente"),
+    path("clientes/<int:cliente_id>/reubicar/", core_views.reubicar_cliente_view, name="reubicar_cliente"),
+    path("clientes/reubicar-sin-ubicacion/", core_views.reubicar_clientes_lote_view, name="reubicar_clientes_lote"),
     path("clientes/<int:cliente_id>/desactivar/", core_views.desactivar_cliente_view, name="desactivar_cliente"),
     path("clientes/<int:cliente_id>/eliminar/", core_views.eliminar_cliente_view, name="eliminar_cliente"),
 
