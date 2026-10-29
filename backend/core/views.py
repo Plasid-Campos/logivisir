@@ -6,6 +6,7 @@ from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -24,6 +25,12 @@ from urllib.parse import quote_plus
 
 from . import analytics
 from .maps import MAX_WAYPOINTS, armar_tramos
+from .notifications import (
+    avisar_ruta_actualizada, avisar_ruta_asignada, avisar_ruta_quitada, fecha_legible,
+)
+from .cuentas import (
+    acusar_recibo_solicitud, avisar_cambio_password, enviar_bienvenida, validar_email_nuevo_usuario,
+)
 from .models import (
     PerfilUsuario,
     Chofer,
@@ -32,6 +39,7 @@ from .models import (
     ParadaRuta,
     Pedido,
     Empresa,
+    Notificacion,
     SolicitudCuenta,
 )
 from .tenancy import get_empresa, get_object_or_404_scoped
@@ -82,6 +90,7 @@ def solicitar_cuenta_view(request):
                 plan_solicitado=plan_solicitado,
                 mensaje=mensaje,
             )
+            acusar_recibo_solicitud(solicitud)
             return redirect("solicitud_confirmacion", solicitud_id=solicitud.id)
 
     return render(request, "core/solicitar_cuenta.html", {
@@ -218,6 +227,7 @@ def cambiar_password_obligatorio_view(request):
             # Sin esto, cambiar la password invalida la sesion actual y
             # el usuario queda expulsado justo despues de guardar.
             update_session_auth_hash(request, request.user)
+            avisar_cambio_password(request.user, request)
 
             if perfil and perfil.rol == "CHOFER":
                 return redirect("chofer_ruta_hoy")
@@ -276,6 +286,8 @@ def crear_usuario_view(request):
             error = "Rol inválido."
         elif User.objects.filter(username=username).exists():
             error = f"El nombre de usuario '{username}' ya existe. Elige otro."
+        elif validar_email_nuevo_usuario(email):
+            error = validar_email_nuevo_usuario(email)
         elif not password:
             error = "La contraseña es obligatoria."
         else:
@@ -290,10 +302,15 @@ def crear_usuario_view(request):
                 password=password,
                 first_name=nombre,
                 last_name=apellido,
-                email=email,
+                email=email.strip(),
             )
-            PerfilUsuario.objects.create(user=user, rol=rol, empresa=empresa)
-            mensaje = f"Usuario '{username}' creado correctamente."
+            # La clave la eligio el dueño: el usuario debe cambiarla al entrar
+            PerfilUsuario.objects.create(user=user, rol=rol, empresa=empresa, debe_cambiar_password=True)
+            enviar_bienvenida(user, empresa, request)
+            mensaje = (
+                f"Usuario '{username}' creado. Le enviamos un correo de bienvenida; "
+                "deberá cambiar la contraseña en su primer ingreso."
+            )
 
     return render(request, "core/crear_usuario.html", {"mensaje": mensaje, "error": error})
 
@@ -329,6 +346,8 @@ def crear_chofer_view(request):
             error = f"El nombre de usuario '{username}' ya existe. Usa otro."
         elif Chofer.objects.filter(rut=rut).exists():
             error = f"Ya existe un chofer con el RUT {rut}."
+        elif validar_email_nuevo_usuario(email):
+            error = validar_email_nuevo_usuario(email)
         elif not password:
             error = "La contraseña es obligatoria."
         else:
@@ -344,9 +363,11 @@ def crear_chofer_view(request):
                     password=password,
                     first_name=nombre,
                     last_name=apellido,
-                    email=email,
+                    email=email.strip(),
                 )
-                perfil = PerfilUsuario.objects.create(user=user, rol="CHOFER", empresa=empresa)
+                perfil = PerfilUsuario.objects.create(
+                    user=user, rol="CHOFER", empresa=empresa, debe_cambiar_password=True,
+                )
                 Chofer.objects.create(
                     perfil=perfil,
                     rut=rut,
@@ -354,7 +375,11 @@ def crear_chofer_view(request):
                     licencia=licencia,
                     patente=patente,
                 )
-                mensaje = "Chofer creado con éxito."
+                enviar_bienvenida(user, empresa, request)
+                mensaje = (
+                    "Chofer creado. Le enviamos un correo de bienvenida; "
+                    "deberá cambiar la contraseña en su primer ingreso."
+                )
             except IntegrityError:
                 error = "Error al guardar. Verifica usuario y RUT."
 
@@ -582,10 +607,11 @@ def crear_ruta_view(request):
                     chofer = Chofer.objects.get(id=chofer_id, perfil__empresa=empresa)
                     ruta = Ruta.objects.create(nombre=nombre, fecha=fecha_parseada, chofer=chofer, empresa=empresa)
 
-                    from .notifications import notificar_chofer_ruta_asignada
-                    resultado_email = notificar_chofer_ruta_asignada(ruta, request)
+                    resultado_email = avisar_ruta_asignada(ruta, request)
                     if resultado_email.get("enviado"):
-                        messages.info(request, "Se notificó al chofer por correo.")
+                        messages.info(request, "Se avisó al chofer en la plataforma y por correo.")
+                    else:
+                        messages.info(request, "Se avisó al chofer en la plataforma.")
 
                     return redirect("detalle_ruta", ruta_id=ruta.id)
                 except Chofer.DoesNotExist:
@@ -638,6 +664,7 @@ def agregar_parada_view(request, ruta_id):
             orden=orden,
             comentario=comentario,
         )
+        avisar_ruta_actualizada(ruta, f"se agregó {cliente.nombre}.")
 
     return redirect("detalle_ruta", ruta_id=ruta.id)
 
@@ -647,9 +674,18 @@ def agregar_parada_view(request, ruta_id):
 def eliminar_parada_view(request, parada_id):
     empresa = get_empresa(request)
     parada = get_object_or_404_scoped(ParadaRuta, empresa, lookup_field="ruta__empresa", id=parada_id)
-    ruta_id = parada.ruta.id
+    ruta = parada.ruta
+    nombre_cliente = parada.cliente.nombre
+    pedido = parada.pedido
     parada.delete()
-    return redirect("detalle_ruta", ruta_id=ruta_id)
+
+    # El pedido sale de la ruta: vuelve a quedar disponible para asignarlo
+    if pedido and pedido.estado == "ASIGNADO":
+        pedido.estado = "PENDIENTE"
+        pedido.save(update_fields=["estado"])
+
+    avisar_ruta_actualizada(ruta, f"se quitó {nombre_cliente}.")
+    return redirect("detalle_ruta", ruta_id=ruta.id)
 
 
 @user_passes_test(es_admin_o_owner)
@@ -706,6 +742,7 @@ def optimizar_ruta_view(request, ruta_id):
     resultado = optimizar_paradas(ruta)
 
     if resultado.get("optimizado"):
+        avisar_ruta_actualizada(ruta, "se reordenaron las paradas.")
         fuente = "distancia real de calle" if resultado.get("por_red_vial") else "línea recta (sin conexión a OSRM)"
         mensaje = f"Ruta optimizada: {resultado['cantidad']} paradas reordenadas (usando {fuente})."
         if resultado.get("ahorro_km") is not None:
@@ -797,9 +834,14 @@ def _actualizar_estado_ruta_por_paradas(ruta, progreso):
 @user_passes_test(es_chofer)
 def chofer_ruta_hoy_view(request):
     hoy = timezone.localdate()
-    dia = request.GET.get("dia", "hoy")
-    es_hoy = dia != "manana"
-    fecha_objetivo = hoy if es_hoy else hoy + timedelta(days=1)
+    # ?fecha=AAAA-MM-DD abre cualquier ruta del chofer (p. ej. desde un aviso);
+    # ?dia=manana se mantiene para el boton "Mañana".
+    fecha_objetivo = hoy + timedelta(days=1) if request.GET.get("dia") == "manana" else hoy
+    try:
+        fecha_objetivo = date.fromisoformat(request.GET.get("fecha", "")) or fecha_objetivo
+    except ValueError:
+        pass
+    es_hoy = fecha_objetivo == hoy
 
     chofer = get_object_or_404(Chofer, perfil__user=request.user)
     empresa = chofer.perfil.empresa
@@ -886,6 +928,11 @@ def chofer_ruta_hoy_view(request):
         "hoy": hoy,
         "fecha_objetivo": fecha_objetivo,
         "es_hoy": es_hoy,
+        "es_manana": fecha_objetivo == hoy + timedelta(days=1),
+        "etiqueta_dia": "de hoy" if es_hoy else (
+            "de mañana" if fecha_objetivo == hoy + timedelta(days=1)
+            else "del " + fecha_legible(fecha_objetivo).removeprefix("el ")
+        ),
         "maps_tramos": maps_tramos,
         "navegacion_desde_ubicacion": navegacion_desde_ubicacion,
         "max_waypoints_maps": MAX_WAYPOINTS,
@@ -1044,6 +1091,7 @@ def agregar_pedido_a_ruta_view(request, ruta_id):
     ParadaRuta.objects.create(ruta=ruta, cliente=pedido.cliente, orden=orden, pedido=pedido)
     pedido.estado = "ASIGNADO"
     pedido.save(update_fields=["estado"])
+    avisar_ruta_actualizada(ruta, f"se agregó el pedido de {pedido.cliente.nombre}.")
 
     return redirect("detalle_ruta", ruta_id=ruta.id)
 
@@ -1324,6 +1372,10 @@ def staff_crear_usuario_empresa_view(request, empresa_id):
     if rol not in ROLES_CREABLES_STAFF or not nombre or not email:
         messages.error(request, "Completa nombre, correo y rol (Dueño o Administrador).")
         return redirect("staff_detalle_empresa", empresa_id=empresa.id)
+    error_email = validar_email_nuevo_usuario(email)
+    if error_email:
+        messages.error(request, error_email)
+        return redirect("staff_detalle_empresa", empresa_id=empresa.id)
 
     username = _generar_username(empresa.nombre)
     temp_password = get_random_string(14, allowed_chars=TEMP_PASSWORD_CHARS)
@@ -1382,3 +1434,96 @@ def _enviar_credenciales(request, usuario, empresa, temp_password):
         recipient_list=[usuario.email],
         fail_silently=True,
     )
+
+
+# =========================================================
+# NOTIFICACIONES (campana del menu, todos los roles)
+# =========================================================
+@login_required
+def lista_notificaciones_view(request):
+    notificaciones = request.user.notificaciones.all()[:50]
+    return render(request, "core/notificaciones.html", {"notificaciones": notificaciones})
+
+
+@login_required
+def abrir_notificacion_view(request, notificacion_id):
+    # Solo las del propio usuario: get_object_or_404 con usuario=request.user
+    notificacion = get_object_or_404(Notificacion, id=notificacion_id, usuario=request.user)
+    if not notificacion.leida:
+        notificacion.leida = True
+        notificacion.save(update_fields=["leida"])
+    destino = notificacion.url
+    if destino and url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()}):
+        return redirect(destino)
+    return redirect("lista_notificaciones")
+
+
+@login_required
+@require_POST
+def marcar_notificaciones_leidas_view(request):
+    request.user.notificaciones.filter(leida=False).update(leida=True)
+    return redirect(request.POST.get("volver") if url_has_allowed_host_and_scheme(
+        request.POST.get("volver"), allowed_hosts={request.get_host()},
+    ) else "lista_notificaciones")
+
+
+# =========================================================
+# CHOFER: todas mis rutas (proximas y recientes)
+# =========================================================
+@user_passes_test(es_chofer)
+def chofer_mis_rutas_view(request):
+    chofer = get_object_or_404(Chofer, perfil__user=request.user)
+    hoy = timezone.localdate()
+    rutas = Ruta.objects.filter(chofer=chofer, activa=True).annotate(
+        num_paradas=Count("paradas"),
+    )
+    return render(request, "core/chofer_mis_rutas.html", {
+        "proximas": rutas.filter(fecha__gte=hoy).order_by("fecha", "creada_en"),
+        "recientes": rutas.filter(fecha__lt=hoy, fecha__gte=hoy - timedelta(days=14)).order_by("-fecha"),
+        "hoy": hoy,
+    })
+
+
+
+# =========================================================
+# MI CUENTA: cambiar contraseña y recuperación con aviso por correo
+# =========================================================
+class CambiarPasswordView(auth_views.PasswordChangeView):
+    """Cambio voluntario de contraseña, para cualquier usuario con sesión."""
+    template_name = "core/cambiar_password.html"
+
+    def form_valid(self, form):
+        respuesta = super().form_valid(form)  # tambien mantiene la sesion abierta
+        perfil = getattr(self.request.user, "perfilusuario", None)
+        if perfil and perfil.debe_cambiar_password:
+            perfil.debe_cambiar_password = False
+            perfil.save(update_fields=["debe_cambiar_password"])
+        avisar_cambio_password(self.request.user, self.request)
+        messages.success(self.request, "Contraseña actualizada. Te enviamos un correo de confirmación.")
+        return respuesta
+
+    def get_success_url(self):
+        perfil = getattr(self.request.user, "perfilusuario", None)
+        if perfil and perfil.rol == "CHOFER":
+            return reverse("chofer_ruta_hoy")
+        if perfil is None and self.request.user.is_staff:
+            return reverse("staff_lista_empresas")
+        return reverse("dashboard")
+
+
+class RestablecerPasswordConfirmView(auth_views.PasswordResetConfirmView):
+    """
+    Paso final de "¿Olvidaste tu contraseña?": ademas de guardar la clave
+    nueva, avisa por correo y deja de exigir el cambio obligatorio (la
+    persona ya eligio su propia contraseña).
+    """
+    template_name = "core/password_reset_confirm.html"
+
+    def form_valid(self, form):
+        respuesta = super().form_valid(form)
+        usuario = form.user
+        PerfilUsuario.objects.filter(user=usuario, debe_cambiar_password=True).update(debe_cambiar_password=False)
+        avisar_cambio_password(usuario, self.request)
+        return respuesta
+
+

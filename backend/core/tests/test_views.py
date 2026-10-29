@@ -113,6 +113,7 @@ class ValidacionPasswordTests(TestCase):
             "nombre": "Admin",
             "apellido": "Valido",
             "rol": "ADMIN",
+            "email": "admin.valido@example.com",
         })
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(User.objects.filter(username="admin_valido").exists())

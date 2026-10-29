@@ -58,6 +58,15 @@ urlpatterns = [
     path("analitica/exportar/segmentacion-clientes.csv", core_views.exportar_segmentacion_csv_view, name="exportar_segmentacion_csv"),
     path("analitica/exportar/despachos-mensuales.csv", core_views.exportar_despachos_mensuales_csv_view, name="exportar_despachos_mensuales_csv"),
 
+    # --------- MI CUENTA ---------
+    path("cuenta/cambiar-clave/", core_views.CambiarPasswordView.as_view(), name="cambiar_password"),
+
+    # --------- NOTIFICACIONES (todos los roles) ---------
+    path("notificaciones/", core_views.lista_notificaciones_view, name="lista_notificaciones"),
+    path("notificaciones/<int:notificacion_id>/abrir/", core_views.abrir_notificacion_view, name="abrir_notificacion"),
+    path("notificaciones/marcar-leidas/", core_views.marcar_notificaciones_leidas_view, name="marcar_notificaciones_leidas"),
+    path("chofer/mis-rutas/", core_views.chofer_mis_rutas_view, name="chofer_mis_rutas"),
+
     # --------- STAFF LOGIVISIR (empresas clientes: ficha y acceso, sin sus datos) ---------
     path("staff/empresas/", core_views.staff_lista_empresas_view, name="staff_lista_empresas"),
     path("staff/empresas/<int:empresa_id>/", core_views.staff_detalle_empresa_view, name="staff_detalle_empresa"),
@@ -99,9 +108,7 @@ urlpatterns = [
     ),
     path(
         "reset/<uidb64>/<token>/",
-        auth_views.PasswordResetConfirmView.as_view(
-            template_name="core/password_reset_confirm.html"
-        ),
+        core_views.RestablecerPasswordConfirmView.as_view(),
         name="password_reset_confirm",
     ),
     path(

@@ -20,7 +20,7 @@
 
     <!-- CSS APP (solo post-login) -->
     {% if request.user.is_authenticated %}
-        <link rel="stylesheet" href="{% static 'core/css/app.css' %}?v=4">
+        <link rel="stylesheet" href="{% static 'core/css/app.css' %}?v=5">
     {% endif %}
 
     {% block extra_head %}{% endblock %}
@@ -50,6 +50,16 @@
         <span class="brand-sub">SOLUTIONS · SAAS ROUTING</span>
       </div>
     </a>
+
+    {% if request.user.is_authenticated %}
+      <!-- CAMPANA DE AVISOS (fuera del menú colapsable: visible también en el celular) -->
+      <a href="{% url 'lista_notificaciones' %}" class="notif-bell ms-auto me-2 order-lg-last ms-lg-3"
+         aria-label="Avisos{% if NOTIF_NO_LEIDAS %}: {{ NOTIF_NO_LEIDAS }} sin leer{% endif %}"
+         title="Avisos">
+        <i class="bi bi-bell{% if NOTIF_NO_LEIDAS %}-fill{% endif %}"></i>
+        {% if NOTIF_NO_LEIDAS %}<span class="notif-badge">{{ NOTIF_NO_LEIDAS }}</span>{% endif %}
+      </a>
+    {% endif %}
 
     <!-- BOTÓN HAMBURGUESA -->
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
@@ -147,9 +157,10 @@
               <i class="bi bi-building me-1"></i>{{ USER_EMPRESA.nombre }}
             </span>
           {% endif %}
-          <span class="navbar-text me-2 small text-muted">
-            {{ request.user.get_full_name|default:request.user.username }}
-          </span>
+          <a href="{% url 'cambiar_password' %}" class="navbar-text me-2 small text-muted text-decoration-none"
+             title="Cambiar contraseña">
+            <i class="bi bi-person-circle me-1"></i>{{ request.user.get_full_name|default:request.user.username }}
+          </a>
           <a href="{% url 'logout' %}" class="btn btn-outline-primary btn-sm">
             Cerrar sesión
           </a>

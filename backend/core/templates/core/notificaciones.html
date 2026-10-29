@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+
+{% block title %}Avisos | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4" style="max-width: 760px;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <h1 class="panel-title mb-0"><i class="bi bi-bell me-2"></i>Avisos</h1>
+      {% if NOTIF_NO_LEIDAS %}
+        <form method="POST" action="{% url 'marcar_notificaciones_leidas' %}">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-secondary">Marcar todo como leído</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <div class="d-flex flex-column gap-2">
+      {% for n in notificaciones %}
+        <a href="{% url 'abrir_notificacion' n.id %}" class="notif-item {% if not n.leida %}no-leida{% endif %} text-decoration-none text-reset">
+          <div class="d-flex justify-content-between gap-2">
+            <strong>
+              {% if n.tipo == "RUTA_ASIGNADA" %}<i class="bi bi-signpost-2 me-1 text-primary"></i>{% elif n.tipo == "RUTA_QUITADA" %}<i class="bi bi-x-circle me-1 text-danger"></i>{% else %}<i class="bi bi-arrow-repeat me-1 text-primary"></i>{% endif %}
+              {{ n.titulo }}
+            </strong>
+            {% if not n.leida %}<span class="badge text-bg-primary">Nuevo</span>{% endif %}
+          </div>
+          {% if n.mensaje %}<div class="small text-muted mt-1">{{ n.mensaje }}</div>{% endif %}
+          <div class="small text-muted mt-1">{{ n.actualizada_en|date:"d-m-Y H:i" }}</div>
+        </a>
+      {% empty %}
+        <div class="saas-card p-4 text-center text-muted">No tienes avisos todavía.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

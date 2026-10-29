@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+
+{% block title %}Mis rutas | LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4" style="max-width: 760px;">
+    <div class="btn-group mb-3" role="group">
+      <a href="{% url 'chofer_ruta_hoy' %}" class="btn btn-sm btn-outline-primary">Hoy</a>
+      <a href="{% url 'chofer_ruta_hoy' %}?dia=manana" class="btn btn-sm btn-outline-primary">Mañana</a>
+      <a href="{% url 'chofer_mis_rutas' %}" class="btn btn-sm btn-primary">Todas mis rutas</a>
+    </div>
+
+    <h1 class="panel-title mb-3">Mis rutas</h1>
+
+    <h2 class="section-mini-title mb-2">Próximas</h2>
+    <div class="d-flex flex-column gap-2 mb-4">
+      {% for r in proximas %}
+        <a href="{% url 'chofer_ruta_hoy' %}?fecha={{ r.fecha|date:'Y-m-d' }}" class="notif-item text-decoration-none text-reset">
+          <div class="d-flex justify-content-between gap-2">
+            <strong>{{ r.nombre }}</strong>
+            {% if r.fecha == hoy %}<span class="badge text-bg-primary">Hoy</span>{% endif %}
+          </div>
+          <div class="small text-muted mt-1">
+            {{ r.fecha|date:"l d-m-Y"|capfirst }} · {{ r.num_paradas }} parada{{ r.num_paradas|pluralize }} · {{ r.get_estado_display }}
+          </div>
+        </a>
+      {% empty %}
+        <div class="saas-card p-4 text-center text-muted">No tienes rutas próximas asignadas.</div>
+      {% endfor %}
+    </div>
+
+    {% if recientes %}
+      <h2 class="section-mini-title mb-2">Últimos 14 días</h2>
+      <div class="d-flex flex-column gap-2">
+        {% for r in recientes %}
+          <a href="{% url 'chofer_ruta_hoy' %}?fecha={{ r.fecha|date:'Y-m-d' }}" class="notif-item text-decoration-none text-reset">
+            <strong>{{ r.nombre }}</strong>
+            <div class="small text-muted mt-1">
+              {{ r.fecha|date:"l d-m-Y"|capfirst }} · {{ r.num_paradas }} parada{{ r.num_paradas|pluralize }} · {{ r.get_estado_display }}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

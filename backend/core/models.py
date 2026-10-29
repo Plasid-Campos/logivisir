@@ -234,3 +234,35 @@ class ParadaRuta(models.Model):
 
     def __str__(self):
         return f"{self.ruta} -> {self.cliente} (#{self.orden})"
+
+
+class Notificacion(models.Model):
+    """
+    Aviso dentro de la plataforma (campana del menu). Hoy se usa para que el
+    chofer sepa que se le asigno una ruta o que su ruta cambio; queda abierto
+    a otros tipos de aviso.
+    """
+    TIPO_CHOICES = (
+        ("RUTA_ASIGNADA", "Ruta asignada"),
+        ("RUTA_ACTUALIZADA", "Ruta actualizada"),
+        ("RUTA_QUITADA", "Ruta reasignada a otro chofer"),
+    )
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notificaciones")
+    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES)
+    titulo = models.CharField(max_length=150)
+    mensaje = models.CharField(max_length=300, blank=True, default="")
+    url = models.CharField(max_length=300, blank=True, default="")
+    ruta = models.ForeignKey(
+        "Ruta", on_delete=models.CASCADE, null=True, blank=True, related_name="notificaciones",
+    )
+    leida = models.BooleanField(default=False)
+    creada_en = models.DateTimeField(auto_now_add=True)
+    actualizada_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-actualizada_en"]
+        indexes = [models.Index(fields=["usuario", "leida"])]
+
+    def __str__(self):
+        return f"{self.usuario.username}: {self.titulo}"

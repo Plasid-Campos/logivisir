@@ -26,9 +26,11 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from core.notifications import fecha_legible, url_ruta_chofer
+
 from core.models import (
     Empresa, PerfilUsuario, Chofer, Cliente,
-    Pedido, Ruta, ParadaRuta, SolicitudCuenta,
+    Pedido, Ruta, ParadaRuta, SolicitudCuenta, Notificacion,
 )
 
 EMPRESA_NOMBRE = "Panadería Demo"
@@ -143,7 +145,7 @@ class Command(BaseCommand):
                 empresa=empresa, tipo_cliente=tipo, nombre=nombre,
                 direccion=direccion, comuna=comuna, ciudad="Santiago",
                 telefono=f"+56 9 {random.randint(3000, 9999)} {random.randint(1000, 9999)}",
-                email=f"{nombre.split()[0].lower()}@ejemplo.cl",
+                email=f"{nombre.split()[0].lower()}@example.com",
                 rut=f"{random.randint(60, 99)}.{random.randint(100,999)}.{random.randint(100,999)}-{random.randint(0,9)}",
                 latitud=lat,
                 longitud=lon,
@@ -169,7 +171,7 @@ class Command(BaseCommand):
         return User.objects.create_user(
             username=username, password=PASSWORD,
             first_name=first, last_name=last,
-            email=f"{username}@ejemplo.cl",
+            email=f"{username}@example.com",
         )
 
     def _borrar(self, empresa):
@@ -198,13 +200,13 @@ class Command(BaseCommand):
         SolicitudCuenta.objects.filter(nombre_empresa__in=SOLICITUDES_DEMO).delete()
         SolicitudCuenta.objects.create(
             nombre_empresa=EMPRESA_NOMBRE, nombre_contacto="Camila Rojas",
-            email_contacto="owner_demo@ejemplo.cl", telefono_contacto="+56 9 5555 1234",
+            email_contacto="owner_demo@example.com", telefono_contacto="+56 9 5555 1234",
             rubro="Panadería", plan_solicitado="PRO", estado="CUENTA_CREADA",
             empresa_creada=empresa,
         )
         SolicitudCuenta.objects.create(
             nombre_empresa="Distribuidora Los Andes (demo)", nombre_contacto="Rodrigo Saavedra",
-            email_contacto="contacto@losandes-demo.cl", telefono_contacto="+56 9 4444 7788",
+            email_contacto="contacto.losandes@example.com", telefono_contacto="+56 9 4444 7788",
             rubro="Distribución de abarrotes", plan_solicitado="BASICO",
             mensaje="Tenemos 2 camionetas y unos 80 clientes en la zona sur de Santiago.",
         )
@@ -291,4 +293,24 @@ class Command(BaseCommand):
             ParadaRuta.objects.create(
                 ruta=ruta, cliente=cliente, orden=orden,
                 estado_entrega="PENDIENTE",
+            )
+
+        # Ruta de mañana, recién asignada: el chofer la ve con un aviso sin
+        # leer en la campana. El aviso de la de hoy ya está leído.
+        manana = hoy + timedelta(days=1)
+        ruta_manana = Ruta.objects.create(
+            empresa=empresa, nombre=f"Reparto {manana.strftime('%d-%m')}",
+            fecha=manana, chofer=chofer, estado="PLANIFICADA",
+        )
+        for orden, cliente in enumerate([c for (c, _) in clientes][4:10], start=1):
+            ParadaRuta.objects.create(ruta=ruta_manana, cliente=cliente, orden=orden)
+
+        usuario_chofer = chofer.perfil.user
+        Notificacion.objects.filter(usuario=usuario_chofer).delete()
+        for r, leida in ((ruta, True), (ruta_manana, False)):
+            Notificacion.objects.create(
+                usuario=usuario_chofer, tipo="RUTA_ASIGNADA", ruta=r, leida=leida,
+                titulo=f"Nueva ruta: {r.nombre}",
+                mensaje=f"Para {fecha_legible(r.fecha)}. {r.paradas.count()} paradas.",
+                url=url_ruta_chofer(r),
             )

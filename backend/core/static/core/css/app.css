@@ -399,3 +399,39 @@
   font-size: 0.88rem;
   text-align: center;
 }
+
+/* ----------------------------------------------------
+   CAMPANA DE AVISOS
+---------------------------------------------------- */
+.notif-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: #1e3a8a;
+  font-size: 1.25rem;
+  text-decoration: none;
+  border: 1px solid rgba(148, 163, 184, .35);
+  background: #fff;
+}
+.notif-bell:hover { background: rgba(37, 99, 235, .08); color: #1d4ed8; }
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
+.notif-item { border-radius: 14px; border: 1px solid rgba(148, 163, 184, .25); padding: 14px 16px; background: #fff; }
+.notif-item.no-leida { border-color: rgba(37, 99, 235, .45); background: rgba(37, 99, 235, .05); }

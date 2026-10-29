@@ -62,7 +62,11 @@ de sus empresas clientes.
 **Panel del chofer**
 - Vista de la ruta de hoy y previsualización de la de mañana.
 - Marcado de entrega con foto (prueba de entrega) o registro del motivo de no entrega.
-- Aviso por correo al chofer cuando se le asigna una ruta, y al cliente según el estado.
+- Navegación en Google Maps por tramos (máximo 9 paradas intermedias por enlace, el
+  límite de Google) y solo con las paradas pendientes, partiendo desde la ubicación del
+  chofer una vez que la ruta empezó.
+- Avisos en la plataforma (campana) y por correo cuando se le asigna una ruta o la ruta
+  cambia; "Mis rutas" con las próximas y las recientes.
 
 **Analítica y segmentación** (`core/analytics.py`)
 - Despachos realizados, entregas al primer intento, entregas con foto y pedidos por
@@ -76,6 +80,8 @@ de sus empresas clientes.
 - Todo queryset y `get_object_or_404` pasa por un helper de tenant (`core/tenancy.py`);
   se corrigió una vulnerabilidad IDOR de acceso entre empresas.
 - Cambio de contraseña obligatorio en el primer ingreso de usuarios creados por un admin.
+- Correo obligatorio y único por usuario; recuperación de contraseña por correo, aviso
+  por correo cada vez que cambia la contraseña y bienvenida al crear la cuenta.
 - Una empresa suspendida no puede ingresar, ni siquiera con una sesión ya abierta.
 - El parámetro `?next=` del login solo acepta rutas internas (sin redirecciones abiertas).
 - Secretos y credenciales solo por variables de entorno; nada en el código.

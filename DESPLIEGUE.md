@@ -119,11 +119,41 @@ Después presiona **Reload** en la pestaña **Web**.
 Para dejar los datos de demostración como nuevos (por ejemplo, antes de la
 presentación), usa `python manage.py seed_demo --reset`.
 
+## 7. Activar el correo real (Gmail)
+
+Sin esto, los correos (recuperar contraseña, bienvenida, aviso de cambio de
+clave, ruta asignada) no salen: se escriben en **Web** → **Server log**. La
+cuenta gratis de PythonAnywhere permite enviar por el servidor de Gmail.
+
+1. En la cuenta de Gmail que enviará los correos (por ejemplo `logivisir@gmail.com`),
+   activa la **verificación en 2 pasos**: https://myaccount.google.com/security
+2. Crea una **contraseña de aplicación**: https://myaccount.google.com/apppasswords.
+   Ponle de nombre `LogiVisir`. Google muestra 16 letras; cópialas sin espacios.
+3. En la consola Bash de PythonAnywhere, abre el `.env`:
+
+   ```bash
+   nano ~/logivisir/backend/.env
+   ```
+
+   y agrega al final (con tu correo y las 16 letras):
+
+   ```
+   EMAIL_HOST_USER=logivisir@gmail.com
+   EMAIL_HOST_PASSWORD=las16letrassinespacios
+   ```
+
+   Guarda con `Ctrl+O`, `Enter` y sal con `Ctrl+X`.
+4. Presiona **Reload** en la pestaña **Web**.
+5. Prueba: en el sitio, "¿Olvidaste tu contraseña?" con un correo de un usuario real.
+
+Nunca subas el `.env` a GitHub ni compartas la contraseña de aplicación. Si se
+filtra, bórrala en https://myaccount.google.com/apppasswords y crea otra.
+
 ## Límites de la cuenta gratis
 
 - **Vencimiento:** la cuenta gratis desactiva el sitio cada **1 mes**. La pestaña **Web** muestra la fecha, y PythonAnywhere avisa por correo una semana antes. Hay que entrar y presionar **Run until 1 month from today**.
 - **Acceso a internet restringido:** la cuenta gratis solo puede conectarse a una lista de servicios permitidos.
   - Si el servicio de rutas OSRM no está en esa lista, el optimizador calcula con distancia en línea recta, como define el RNF04 del informe. El sistema sigue funcionando.
   - Los clientes demo ya traen coordenadas, así que no dependen de la geocodificación.
-- **Correo:** sin `EMAIL_HOST_USER`, los avisos al chofer se escriben en el log del servidor en vez de enviarse. Eso basta para la demostración.
+- **Correo:** solo por Gmail (paso 7). Gmail permite unos 500 correos al día, de sobra para la demostración.
 - **Errores:** si algo falla, el detalle está en **Web** → **Error log**.
