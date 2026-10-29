@@ -917,7 +917,7 @@ def chofer_ruta_hoy_view(request):
     origen_fijo = empresa.direccion_origen_completa() if empresa.direccion_origen else None
 
     if ruta:
-        paradas = ruta.paradas.select_related("cliente").order_by("orden")
+        paradas = ruta.paradas.select_related("cliente", "pedido").order_by("orden")
 
         # ✅ Progreso de ruta (según estado_entrega)
         progreso = {
@@ -1126,7 +1126,104 @@ def detalle_pedido_view(request, pedido_id):
     empresa = get_empresa(request)
     pedido = get_object_or_404_scoped(Pedido, empresa, id=pedido_id)
     paradas = pedido.paradas_pedido.select_related("ruta").order_by("-ruta__fecha")
-    return render(request, "core/detalle_pedido.html", {"pedido": pedido, "paradas": paradas})
+    return render(request, "core/detalle_pedido.html", {
+        "pedido": pedido, "paradas": paradas, "motivo_max": MOTIVO_CANCELACION_MAX,
+    })
+
+
+MOTIVO_CANCELACION_MAX = 200
+
+
+def _rutas_pendientes_del_pedido(pedido):
+    """Rutas donde el pedido todavia espera ser entregado."""
+    return Ruta.objects.filter(
+        paradas__pedido=pedido, paradas__estado_entrega="PENDIENTE",
+    ).distinct()
+
+
+@user_passes_test(es_admin_o_owner)
+def editar_pedido_view(request, pedido_id):
+    """
+    CU-03: corregir un pedido antes de entregarlo. Mientras esta PENDIENTE se
+    puede cambiar el cliente y lo que se lleva; ya ASIGNADO a una ruta solo lo
+    que se lleva (cambiar el cliente moveria la parada a otra direccion), y
+    el chofer recibe un aviso.
+    """
+    empresa = get_empresa(request)
+    pedido = get_object_or_404_scoped(Pedido, empresa, id=pedido_id)
+    if not pedido.editable:
+        messages.warning(request, f"El pedido está {pedido.get_estado_display().lower()}: ya no se puede modificar.")
+        return redirect("detalle_pedido", pedido_id=pedido.id)
+
+    puede_cambiar_cliente = pedido.estado == "PENDIENTE"
+    error = None
+    nota = pedido.nota
+
+    if request.method == "POST":
+        nota = (request.POST.get("nota") or "").strip()
+        cliente = pedido.cliente
+        if puede_cambiar_cliente:
+            cliente_id = request.POST.get("cliente_id")
+            cliente = Cliente.objects.filter(empresa=empresa, activo=True, id=cliente_id).first() if cliente_id else None
+
+        if cliente is None:
+            error = "Elige un cliente de la lista."
+        elif len(nota) > NOTA_PEDIDO_MAX:
+            error = f"La descripción no puede superar {NOTA_PEDIDO_MAX} caracteres."
+        else:
+            cambio_nota = nota != pedido.nota
+            pedido.cliente = cliente
+            pedido.nota = nota
+            pedido.save(update_fields=["cliente", "nota"])
+            if cambio_nota:
+                for ruta in _rutas_pendientes_del_pedido(pedido):
+                    avisar_ruta_actualizada(ruta, f"cambió lo que se lleva a {cliente.nombre}.")
+            messages.success(request, f"Pedido #{pedido.id} actualizado.")
+            return redirect("detalle_pedido", pedido_id=pedido.id)
+
+    clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
+    return render(request, "core/editar_pedido.html", {
+        "pedido": pedido,
+        "puede_cambiar_cliente": puede_cambiar_cliente,
+        "clientes_json": list(clientes.values("id", "nombre", "comuna", "tipo_cliente")),
+        "error": error,
+        "nota": nota,
+        "nota_max": NOTA_PEDIDO_MAX,
+    })
+
+
+@user_passes_test(es_admin_o_owner)
+@require_POST
+def cancelar_pedido_view(request, pedido_id):
+    """
+    CU-03: cancelar un pedido que aun no se entrega. Si estaba en una ruta,
+    su parada pendiente sale de ella y el chofer recibe un aviso. Las
+    paradas ya marcadas como no entregadas se conservan como historial.
+    """
+    empresa = get_empresa(request)
+    pedido = get_object_or_404_scoped(Pedido, empresa, id=pedido_id)
+    if not pedido.editable:
+        messages.warning(request, f"El pedido está {pedido.get_estado_display().lower()}: no se puede cancelar.")
+        return redirect("detalle_pedido", pedido_id=pedido.id)
+
+    motivo = (request.POST.get("motivo") or "").strip()[:MOTIVO_CANCELACION_MAX]
+    rutas = list(_rutas_pendientes_del_pedido(pedido))
+    pedido.paradas_pedido.filter(estado_entrega="PENDIENTE").delete()
+
+    pedido.estado = "CANCELADO"
+    pedido.cancelado_en = timezone.now()
+    pedido.cancelado_por = request.user
+    pedido.motivo_cancelacion = motivo
+    pedido.save(update_fields=["estado", "cancelado_en", "cancelado_por", "motivo_cancelacion"])
+
+    for ruta in rutas:
+        avisar_ruta_actualizada(ruta, f"se canceló el pedido de {pedido.cliente.nombre}: ya no hay que ir.")
+
+    texto = f"Pedido #{pedido.id} cancelado."
+    if rutas:
+        texto += " Se quitó de " + ", ".join(r.nombre for r in rutas) + " y se avisó al chofer."
+    messages.success(request, texto)
+    return redirect("detalle_pedido", pedido_id=pedido.id)
 
 
 @user_passes_test(es_admin_o_owner)

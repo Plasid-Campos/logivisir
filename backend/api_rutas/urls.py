@@ -58,6 +58,8 @@ urlpatterns = [
     path("pedidos/", core_views.lista_pedidos_view, name="lista_pedidos"),
     path("pedidos/nuevo/", core_views.crear_pedido_view, name="crear_pedido"),
     path("pedidos/<int:pedido_id>/", core_views.detalle_pedido_view, name="detalle_pedido"),
+    path("pedidos/<int:pedido_id>/editar/", core_views.editar_pedido_view, name="editar_pedido"),
+    path("pedidos/<int:pedido_id>/cancelar/", core_views.cancelar_pedido_view, name="cancelar_pedido"),
 
     # --------- ANALITICA DE DESPACHOS / SEGMENTACION (OWNER + ADMIN) ---------
     path("analitica/", core_views.analitica_view, name="analitica"),

@@ -1,0 +1,45 @@
+{% extends "core/base.html" %}
+
+{% block title %}Editar pedido #{{ pedido.id }} | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 720px;">
+  <h3 class="mb-1">Editar pedido #{{ pedido.id }}</h3>
+  <p class="text-muted">Estado: {{ pedido.get_estado_display }}</p>
+
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+  <div class="card">
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="buscar-cliente-pedido">Cliente</label>
+          {% if puede_cambiar_cliente %}
+            {% include "core/_buscador_cliente.html" with input_id="buscar-cliente-pedido" hidden_id="cliente-id-pedido" dropdown_id="dropdown-cliente-pedido" data_id="data-clientes-pedido" hidden_name="cliente_id" placeholder="Escribe el nombre del cliente..." submit_selector="#btn-guardar-pedido" clientes_json=clientes_json %}
+            <script>
+              // Se parte con el cliente actual ya elegido.
+              document.getElementById("cliente-id-pedido").value = "{{ pedido.cliente.id }}";
+              document.getElementById("buscar-cliente-pedido").value = "{{ pedido.cliente.nombre|escapejs }}";
+            </script>
+          {% else %}
+            <input class="form-control" value="{{ pedido.cliente.nombre }}" disabled>
+            <div class="form-text">El pedido ya está en una ruta. Para cambiar el cliente, quítalo de la ruta primero.</div>
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="nota">Qué se despacha <span class="text-muted">(opcional)</span></label>
+          <textarea id="nota" name="nota" class="form-control" rows="3" maxlength="{{ nota_max }}">{{ nota }}</textarea>
+          {% if pedido.estado == "ASIGNADO" %}
+          <div class="form-text">Si cambias esto, el chofer de la ruta recibe un aviso.</div>
+          {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+          <button id="btn-guardar-pedido" type="submit" class="btn btn-primary">Guardar cambios</button>
+          <a href="{% url 'detalle_pedido' pedido.id %}" class="btn btn-link">Volver</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

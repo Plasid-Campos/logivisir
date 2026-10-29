@@ -188,9 +188,20 @@ class Pedido(models.Model):
     nota = models.TextField(blank=True, default="")
     creado_en = models.DateTimeField(auto_now_add=True)
     creado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    # Trazabilidad de la cancelacion (CU-03): quien, cuando y por que.
+    cancelado_en = models.DateTimeField(null=True, blank=True)
+    cancelado_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="pedidos_cancelados",
+    )
+    motivo_cancelacion = models.CharField(max_length=200, blank=True, default="")
 
     class Meta:
         ordering = ["-creado_en"]
+
+    # Solo un pedido que aun no se entrega puede cambiarse o cancelarse.
+    @property
+    def editable(self):
+        return self.estado in ("PENDIENTE", "ASIGNADO")
 
     def __str__(self):
         return f"Pedido #{self.id} - {self.cliente.nombre} ({self.get_estado_display()})"

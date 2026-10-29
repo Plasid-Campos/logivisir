@@ -53,6 +53,8 @@ de sus empresas clientes.
 - Clientes sin ubicación en el mapa: aviso con el total, filtro, botón para reintentar
   (de a uno o por lotes de 15, respetando el límite de Nominatim) y coordenadas pegadas
   desde Google Maps en la edición del cliente.
+- Pedidos editables y cancelables antes de la entrega: si ya estaban en una ruta, la
+  parada se quita y el chofer recibe un aviso; se registra quién canceló, cuándo y por qué.
 - Rutas con estados (Planificada → En proceso → Completada) y paradas ordenables.
 - Edición de rutas: nombre siempre; chofer aunque la ruta ya haya empezado (se avisa al
   nuevo y al anterior); fecha solo si aún no empezó. Las rutas pasadas quedan fijas.
@@ -155,7 +157,7 @@ que crea `seed_demo` (contraseña `demo12345` en todos):
 python manage.py test
 ```
 
-96 tests que cubren el optimizador de rutas, el aislamiento multi-tenant, pedidos,
+183 tests que cubren el optimizador de rutas, el aislamiento multi-tenant, pedidos,
 solicitudes de cuenta, el panel del equipo LogiVisir, la analítica y las vistas.
 
 ---
@@ -173,7 +175,7 @@ backend/
     analytics.py    # despachos, ranking y segmentación RF con K-Means
     tenancy.py      # aislamiento por empresa (tenant)
     notifications.py# correos a chofer y cliente
-    tests/          # 96 tests
+    tests/          # 183 tests
     management/commands/
       seed_demo.py            # datos de demostración
       importar_clientes_excel.py
