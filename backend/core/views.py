@@ -1639,3 +1639,93 @@ def _urls_mapa(lat, lon):
 
 
 
+# =========================================================
+# EDITAR RUTA (nombre, fecha y chofer)
+# =========================================================
+def _reglas_edicion_ruta(ruta):
+    """
+    - El nombre se puede cambiar siempre.
+    - El chofer se puede cambiar aunque la ruta ya haya empezado (p. ej. se
+      enfermo a mitad del reparto): el nuevo ve solo lo pendiente.
+    - La fecha solo si la ruta no ha empezado: no se mueve de dia una ruta
+      con entregas hechas.
+    - Rutas pasadas, completadas o canceladas: solo el nombre (historial).
+    """
+    cerrada = ruta.estado in ("COMPLETADA", "CANCELADA") or ruta.fecha < timezone.localdate()
+    empezada = ruta.paradas.exclude(estado_entrega="PENDIENTE").exists()
+    return {
+        "cerrada": cerrada,
+        "empezada": empezada,
+        "puede_cambiar_chofer": not cerrada,
+        "puede_cambiar_fecha": not cerrada and not empezada,
+    }
+
+
+@user_passes_test(es_admin_o_owner)
+def editar_ruta_view(request, ruta_id):
+    empresa = get_empresa(request)
+    ruta = get_object_or_404_scoped(Ruta, empresa, id=ruta_id)
+    reglas = _reglas_edicion_ruta(ruta)
+    hoy = timezone.localdate()
+    choferes = Chofer.objects.filter(perfil__empresa=empresa, activo=True).select_related("perfil__user")
+    error = None
+
+    if request.method == "POST":
+        nombre = (request.POST.get("nombre") or "").strip()
+        nueva_fecha = ruta.fecha
+        nuevo_chofer = ruta.chofer
+
+        if not nombre:
+            error = "El nombre de la ruta es obligatorio."
+
+        if not error and reglas["puede_cambiar_fecha"]:
+            try:
+                nueva_fecha = date.fromisoformat(request.POST.get("fecha", ""))
+            except ValueError:
+                error = "La fecha no es válida."
+            else:
+                if nueva_fecha < hoy:
+                    error = f"La fecha no puede ser anterior a hoy ({hoy.strftime('%d-%m-%Y')})."
+
+        if not error and reglas["puede_cambiar_chofer"]:
+            nuevo_chofer = choferes.filter(id=request.POST.get("chofer_id")).first()
+            if nuevo_chofer is None:
+                error = "Elige un chofer activo de tu empresa."
+
+        if not error:
+            chofer_anterior = ruta.chofer
+            cambio_chofer = nuevo_chofer.id != chofer_anterior.id
+            cambio_fecha = nueva_fecha != ruta.fecha
+            cambio_nombre = nombre != ruta.nombre
+
+            ruta.nombre, ruta.fecha, ruta.chofer = nombre, nueva_fecha, nuevo_chofer
+            ruta.save()
+
+            if cambio_chofer:
+                avisar_ruta_quitada(ruta, chofer_anterior)
+                avisar_ruta_asignada(ruta, request)
+                messages.success(
+                    request,
+                    f"Ruta reasignada a {nuevo_chofer.perfil.user.get_full_name() or nuevo_chofer.perfil.user.username}. "
+                    "Se avisó al chofer nuevo y al anterior.",
+                )
+            elif cambio_fecha or cambio_nombre:
+                detalle = (
+                    f"la fecha cambió a {fecha_legible(nueva_fecha).removeprefix('el ')}."
+                    if cambio_fecha else f"el nombre cambió a {nombre}."
+                )
+                avisar_ruta_actualizada(ruta, detalle)
+                messages.success(request, "Ruta actualizada. Se avisó al chofer.")
+            else:
+                messages.info(request, "No hubo cambios.")
+            return redirect("detalle_ruta", ruta_id=ruta.id)
+
+    return render(request, "core/editar_ruta.html", {
+        "ruta": ruta,
+        "choferes": choferes,
+        "reglas": reglas,
+        "hoy": hoy,
+        "error": error,
+    })
+
+

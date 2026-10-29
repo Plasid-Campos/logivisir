@@ -41,6 +41,7 @@ urlpatterns = [
     path("rutas/", core_views.lista_rutas_view, name="lista_rutas"),
     path("rutas/crear/", core_views.crear_ruta_view, name="crear_ruta"),
     path("rutas/<int:ruta_id>/", core_views.detalle_ruta_view, name="detalle_ruta"),
+    path("rutas/<int:ruta_id>/editar/", core_views.editar_ruta_view, name="editar_ruta"),
     path("rutas/<int:ruta_id>/agregar-parada/", core_views.agregar_parada_view, name="agregar_parada"),
     path("paradas/<int:parada_id>/eliminar/", core_views.eliminar_parada_view, name="eliminar_parada"),
     path("paradas/<int:parada_id>/toggle/", core_views.toggle_parada_entregada_view, name="toggle_parada"),

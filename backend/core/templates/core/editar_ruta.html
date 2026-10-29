@@ -1,0 +1,65 @@
+{% extends "core/base.html" %}
+
+{% block title %}Editar ruta | LogiVisir Solutions{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 640px;">
+  <h3 class="mb-1">Editar ruta</h3>
+  <p class="text-muted">{{ ruta.nombre }} · {{ ruta.fecha|date:"d-m-Y" }} · {{ ruta.get_estado_display }}</p>
+
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+  {% if reglas.cerrada %}
+    <div class="alert alert-secondary small">
+      <i class="bi bi-lock me-1"></i>Esta ruta ya pasó o está cerrada: solo se puede cambiar el nombre, para no alterar el historial.
+    </div>
+  {% elif reglas.empezada %}
+    <div class="alert alert-info small">
+      <i class="bi bi-info-circle me-1"></i>La ruta ya tiene entregas registradas, así que no se puede cambiar de día.
+      Sí puedes cambiar el chofer: el nuevo verá solo las paradas pendientes.
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label class="form-label" for="nombre">Nombre de la ruta</label>
+          <input id="nombre" name="nombre" class="form-control" required maxlength="150" value="{{ ruta.nombre }}">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="fecha">Fecha</label>
+          <input id="fecha" type="date" name="fecha" class="form-control"
+                 min="{{ hoy|date:'Y-m-d' }}" value="{{ ruta.fecha|date:'Y-m-d' }}"
+                 {% if not reglas.puede_cambiar_fecha %}disabled{% endif %}>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="chofer_id">Chofer</label>
+          <select id="chofer_id" name="chofer_id" class="form-select" {% if not reglas.puede_cambiar_chofer %}disabled{% endif %}>
+            {% if not ruta.chofer.activo %}
+              <option value="" selected>{{ ruta.chofer.perfil.user.get_full_name|default:ruta.chofer.perfil.user.username }} (inactivo) — elige otro</option>
+            {% endif %}
+            {% for ch in choferes %}
+              <option value="{{ ch.id }}" {% if ch.id == ruta.chofer_id %}selected{% endif %}>
+                {{ ch.perfil.user.get_full_name|default:ch.perfil.user.username }}{% if ch.patente %} ({{ ch.patente }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          {% if reglas.puede_cambiar_chofer %}
+            <div class="form-text">Si cambias el chofer, avisamos al nuevo (con la ruta) y al anterior (para que no salga a repartir).</div>
+          {% endif %}
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary">Guardar cambios</button>
+          <a href="{% url 'detalle_ruta' ruta.id %}" class="btn btn-link">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

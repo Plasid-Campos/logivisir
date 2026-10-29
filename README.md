@@ -49,6 +49,8 @@ de sus empresas clientes.
   con reintento sin el sufijo de unidad ("Local 3", "Depto 12"...) cuando el primer
   intento falla.
 - Rutas con estados (Planificada → En proceso → Completada) y paradas ordenables.
+- Edición de rutas: nombre siempre; chofer aunque la ruta ya haya empezado (se avisa al
+  nuevo y al anterior); fecha solo si aún no empezó. Las rutas pasadas quedan fijas.
 - Pedidos simples (cliente + qué se despacha, en texto) que se asignan a paradas de ruta.
 - Configuración de la dirección de salida de la empresa (menú **Empresa**): se ubica
   automáticamente en el mapa o con coordenadas pegadas desde Google Maps.

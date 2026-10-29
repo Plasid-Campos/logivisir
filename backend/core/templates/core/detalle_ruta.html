@@ -9,7 +9,12 @@
 
   <div class="card mb-3">
     <div class="card-body">
-      <h5 class="card-title">{{ ruta.nombre }}</h5>
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <h5 class="card-title mb-2">{{ ruta.nombre }}</h5>
+        <a href="{% url 'editar_ruta' ruta.id %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-pencil me-1"></i>Editar ruta
+        </a>
+      </div>
       <p class="mb-1"><strong>Fecha:</strong> {{ ruta.fecha }}</p>
       <p class="mb-1">
         <strong>Chofer:</strong>
