@@ -41,6 +41,8 @@ de sus empresas clientes.
 - Multi-tenant: varias empresas en una misma instancia, con datos totalmente aislados.
 - Roles de la empresa cliente: Dueño, Administrador y Chofer, cada uno con su propia
   navegación y permisos.
+- El dueño gestiona sus usuarios (menú **Usuarios**): los ve, los desactiva o reactiva
+  (sin borrar su historial) y les restablece la clave con una temporal.
 - **Panel del equipo LogiVisir**, separado de las empresas: lista de empresas clientes
   (plan, contacto, estado, usuarios), alta de usuarios, restablecer claves y
   suspender/reactivar el servicio. Por privacidad, el equipo LogiVisir **no ve** los

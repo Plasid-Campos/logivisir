@@ -23,6 +23,9 @@ urlpatterns = [
 
     # --------- USUARIOS / PERFILES ---------
     path("crear-usuario/", core_views.crear_usuario_view, name="crear_usuario"),
+    path("usuarios/", core_views.lista_usuarios_view, name="lista_usuarios"),
+    path("usuarios/<int:user_id>/estado/", core_views.cambiar_estado_usuario_view, name="cambiar_estado_usuario"),
+    path("usuarios/<int:user_id>/restablecer-clave/", core_views.restablecer_clave_usuario_view, name="restablecer_clave_usuario"),
 
     # --------- CHOFERES (OWNER + ADMIN) ---------
     path("choferes/", core_views.lista_choferes_view, name="lista_choferes"),

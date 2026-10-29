@@ -117,6 +117,13 @@ def login_view(request):
         password = request.POST.get("password")
 
         usuario = authenticate(request, username=username, password=password)
+        if usuario is None:
+            # authenticate no distingue "clave mala" de "cuenta desactivada":
+            # si la clave es correcta pero la cuenta esta inactiva, se explica.
+            inactivo = User.objects.filter(username=username, is_active=False).first()
+            if inactivo and inactivo.check_password(password or ""):
+                mensaje_error = "Tu cuenta está desactivada. Habla con el dueño de tu empresa para reactivarla."
+                return render(request, "core/login.html", {"mensaje_error": mensaje_error, "next": next_url})
         if usuario is not None:
             perfil = getattr(usuario, "perfilusuario", None)
 
@@ -410,8 +417,19 @@ def editar_chofer_view(request, chofer_id):
 def eliminar_chofer_view(request, chofer_id):
     empresa = get_empresa(request)
     chofer = get_object_or_404_scoped(Chofer, empresa, lookup_field="perfil__empresa", id=chofer_id)
-    usuario = chofer.perfil.user
-    usuario.delete()
+
+    # Con rutas no se puede borrar (las rutas protegen al chofer) ni se debe:
+    # se perderia el historial de entregas. Se desactiva.
+    if chofer.rutas.exists():
+        _desactivar_usuario(chofer.perfil)
+        messages.warning(
+            request,
+            "El chofer tiene rutas registradas, así que se desactivó en vez de borrarse: "
+            "ya no puede ingresar ni recibir rutas, pero su historial se conserva.",
+        )
+    else:
+        chofer.perfil.user.delete()
+        messages.success(request, "Chofer eliminado.")
     return redirect("lista_choferes")
 
 # =========================================================
@@ -1727,5 +1745,90 @@ def editar_ruta_view(request, ruta_id):
         "hoy": hoy,
         "error": error,
     })
+
+
+# =========================================================
+# USUARIOS DE LA EMPRESA (solo el dueño): ver, desactivar, restablecer clave
+# =========================================================
+def _perfil_gestionable(request, user_id):
+    """
+    Perfil de un usuario de la misma empresa que el dueño puede gestionar:
+    administradores y choferes. Nunca el propio dueño ni otra empresa (404).
+    """
+    empresa = get_empresa(request)
+    return get_object_or_404(
+        PerfilUsuario.objects.select_related("user", "empresa"),
+        user_id=user_id, empresa=empresa, rol__in=("ADMIN", "CHOFER"),
+    )
+
+
+def _desactivar_usuario(perfil):
+    """
+    Desactivar en vez de borrar: el usuario no puede entrar (y su sesión
+    abierta deja de valer), pero sus rutas y entregas quedan en el historial.
+    """
+    perfil.user.is_active = False
+    perfil.user.save(update_fields=["is_active"])
+    Chofer.objects.filter(perfil=perfil).update(activo=False)
+
+
+@user_passes_test(es_owner)
+def lista_usuarios_view(request):
+    empresa = get_empresa(request)
+    perfiles = (
+        PerfilUsuario.objects.filter(empresa=empresa)
+        .select_related("user")
+        .order_by("-user__is_active", "rol", "user__first_name", "user__username")
+    )
+    return render(request, "core/lista_usuarios.html", {"perfiles": perfiles})
+
+
+@user_passes_test(es_owner)
+@require_POST
+def cambiar_estado_usuario_view(request, user_id):
+    perfil = _perfil_gestionable(request, user_id)
+    usuario = perfil.user
+    nombre = usuario.get_full_name() or usuario.username
+
+    if usuario.is_active:
+        _desactivar_usuario(perfil)
+        messages.warning(request, f"{nombre} quedó desactivado: ya no puede ingresar.")
+        rutas_proximas = Ruta.objects.filter(
+            chofer__perfil=perfil, fecha__gte=timezone.localdate(), activa=True,
+        ).exclude(estado__in=("COMPLETADA", "CANCELADA"))
+        if rutas_proximas.exists():
+            nombres = ", ".join(r.nombre for r in rutas_proximas[:5])
+            messages.error(
+                request,
+                f"{nombre} tiene {rutas_proximas.count()} ruta(s) próxima(s) sin terminar: {nombres}. "
+                "Reasígnalas a otro chofer desde Editar ruta.",
+            )
+    else:
+        usuario.is_active = True
+        usuario.save(update_fields=["is_active"])
+        Chofer.objects.filter(perfil=perfil).update(activo=True)
+        messages.success(request, f"{nombre} fue reactivado y ya puede ingresar.")
+    return redirect("lista_usuarios")
+
+
+@user_passes_test(es_owner)
+@require_POST
+def restablecer_clave_usuario_view(request, user_id):
+    perfil = _perfil_gestionable(request, user_id)
+    usuario = perfil.user
+    temp_password = get_random_string(14, allowed_chars=TEMP_PASSWORD_CHARS)
+    usuario.set_password(temp_password)
+    usuario.save()
+    perfil.debe_cambiar_password = True
+    perfil.save(update_fields=["debe_cambiar_password"])
+    _enviar_credenciales(request, usuario, perfil.empresa, temp_password)
+
+    messages.success(
+        request,
+        f"Clave de {usuario.username} restablecida. Clave temporal: {temp_password} "
+        "(deberá cambiarla al ingresar; también se la enviamos por correo).",
+    )
+    return redirect("lista_usuarios")
+
 
 

@@ -115,6 +115,13 @@
                 Analítica
               </a>
             </li>
+            {% if USER_ROL == "OWNER" %}
+            <li class="nav-item">
+              <a class="nav-link nav-link-main" href="{% url 'lista_usuarios' %}">
+                Usuarios
+              </a>
+            </li>
+            {% endif %}
             <li class="nav-item">
               <a class="nav-link nav-link-main" href="{% url 'configurar_empresa' %}">
                 Empresa
