@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load formato %}
 
 {% block title %}{{ empresa.nombre }} | Staff LogiVisir{% endblock %}
 
@@ -10,13 +11,21 @@
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
         <div>
           <h1 class="panel-title mb-1">{{ empresa.nombre }}</h1>
-          <p class="panel-subtitle mb-0">Plan {{ plan }} · cliente desde {{ empresa.creada_en|date:"d-m-Y" }}</p>
+          <p class="panel-subtitle mb-0">Plan {{ plan }}{% if empresa.suscripcion_vence %} · vence {{ empresa.suscripcion_vence|date:"d-m-Y" }}{% endif %} · cliente desde {{ empresa.creada_en|date:"d-m-Y" }}</p>
         </div>
         <div>
           {% if empresa.activa %}<span class="badge-soft success">Activa</span>{% else %}<span class="badge-soft warning">Suspendida</span>{% endif %}
         </div>
       </div>
     </div>
+
+    {% if dueno_es_staff %}
+    <div class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      El dueño registrado de esta empresa es una cuenta del equipo LogiVisir. Esa cuenta no puede ver
+      los datos de la empresa: crea un usuario con rol <strong>Dueño de la empresa</strong> (abajo) y pasará a ser su dueño.
+    </div>
+    {% endif %}
 
     <div class="row g-3">
       <div class="col-lg-7">
@@ -25,13 +34,15 @@
           <div class="table-responsive">
             <table class="table saas-table align-middle">
               <thead>
-                <tr><th>Usuario</th><th>Rol</th><th>Último ingreso</th><th class="text-end"></th></tr>
+                <tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Creado</th><th>Último ingreso</th><th class="text-end"></th></tr>
               </thead>
               <tbody>
                 {% for p in usuarios %}
                 <tr>
                   <td class="fw-semibold">{{ p.user.username }}<br><small class="text-muted">{{ p.user.get_full_name|default:"—" }}{% if p.user.email %} · {{ p.user.email }}{% endif %}</small></td>
                   <td>{{ p.get_rol_display }}</td>
+                  <td>{% if p.user.is_active %}<span class="badge-soft success">Activo</span>{% else %}<span class="badge-soft warning">Inactivo</span><br><small class="text-muted">{{ p.desactivado_en|date:"d-m-Y"|default:"" }}</small>{% endif %}</td>
+                  <td>{{ p.user.date_joined|date:"d-m-Y" }}</td>
                   <td>{{ p.user.last_login|date:"d-m-Y H:i"|default:"Nunca" }}</td>
                   <td class="text-end">
                     <form method="POST" action="{% url 'staff_restablecer_clave' p.user.id %}"
@@ -42,11 +53,109 @@
                   </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="4" class="text-center text-muted py-3">Esta empresa todavía no tiene usuarios.</td></tr>
+                <tr><td colspan="6" class="text-center text-muted py-3">Esta empresa todavía no tiene usuarios.</td></tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
+        </div>
+
+
+        <div class="saas-card p-4 mb-3" id="pagos">
+          <h5 class="section-mini-title mb-3">Pagos de la membresía</h5>
+          <div class="table-responsive mb-3">
+            <table class="table saas-table align-middle mb-0">
+              <thead><tr><th>Fecha</th><th>Plan</th><th>Período</th><th class="text-end">Monto</th><th>Medio</th><th class="text-end"></th></tr></thead>
+              <tbody>
+                {% for pg in pagos %}
+                <tr {% if pg.anulado %}class="text-muted"{% endif %}>
+                  <td>{{ pg.fecha_pago|date:"d-m-Y" }}<br><small class="text-muted">{{ pg.referencia|default:"" }}</small></td>
+                  <td>{{ pg.get_plan_display }} · {{ pg.meses }} mes{{ pg.meses|pluralize:"es" }}</td>
+                  <td>{{ pg.periodo_desde|date:"d-m-Y" }} al {{ pg.periodo_hasta|date:"d-m-Y" }}</td>
+                  <td class="text-end">{% if pg.anulado %}<s>${{ pg.monto|clp }}</s>{% else %}${{ pg.monto|clp }}{% endif %}</td>
+                  <td>{{ pg.get_medio_display }}</td>
+                  <td class="text-end">
+                    {% if pg.anulado %}
+                      <span class="badge-soft danger" title="{{ pg.motivo_anulacion }}">Anulado</span>
+                    {% else %}
+                      <form method="POST" action="{% url 'staff_anular_pago' pg.id %}"
+                            onsubmit="var m = prompt('Motivo de la anulación:'); if (!m) return false; this.motivo.value = m; return true;">
+                        {% csrf_token %}
+                        <input type="hidden" name="motivo">
+                        <button class="btn btn-sm btn-outline-danger">Anular</button>
+                      </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-3">Todavía no hay pagos registrados.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <h6 class="fw-semibold mb-2">Registrar un pago</h6>
+          <p class="text-muted small">
+            Si la membresía está vigente, el período se suma a continuación del vencimiento actual;
+            si ya venció, parte hoy. El vencimiento se actualiza solo.
+          </p>
+          <form method="POST" action="{% url 'staff_registrar_pago' empresa.id %}" class="row g-2">
+            {% csrf_token %}
+            <div class="col-md-4">
+              <label class="form-label" for="pago_plan">Plan</label>
+              <select id="pago_plan" name="plan" class="form-select" onchange="actualizarMonto()">
+                {% for valor, etiqueta in planes %}
+                  <option value="{{ valor }}" {% if empresa.plan == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="pago_meses">Meses</label>
+              <select id="pago_meses" name="meses" class="form-select" onchange="actualizarMonto()">
+                {% for m in meses_permitidos %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="pago_monto">Monto (CLP)</label>
+              <input id="pago_monto" name="monto" type="number" min="1" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="pago_fecha">Fecha de pago</label>
+              <input id="pago_fecha" name="fecha_pago" type="date" class="form-control" value="{{ hoy|date:'Y-m-d' }}" max="{{ hoy|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="pago_medio">Medio</label>
+              <select id="pago_medio" name="medio" class="form-select">
+                {% for valor, etiqueta in medios %}<option value="{{ valor }}">{{ etiqueta }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="pago_ref">N.º de comprobante</label>
+              <input id="pago_ref" name="referencia" class="form-control" maxlength="100" placeholder="Ej: transferencia 48213">
+            </div>
+            <div class="col-12">
+              <input name="notas" class="form-control" maxlength="255" placeholder="Nota interna (opcional)">
+            </div>
+            {% if not empresa.activa %}
+            <div class="col-12 form-check ms-1">
+              <input class="form-check-input" type="checkbox" name="reactivar" value="1" id="pago_reactivar" checked>
+              <label class="form-check-label" for="pago_reactivar">Reactivar la empresa al registrar el pago</label>
+            </div>
+            {% endif %}
+            <div class="col-12">
+              <button class="btn btn-primary w-100">Registrar pago y renovar</button>
+            </div>
+          </form>
+          {{ precios|json_script:"precios-plan" }}
+          <script>
+            const PRECIOS = JSON.parse(document.getElementById("precios-plan").textContent);
+            function actualizarMonto() {
+              const plan = document.getElementById("pago_plan").value;
+              const meses = parseInt(document.getElementById("pago_meses").value, 10);
+              document.getElementById("pago_monto").value = (PRECIOS[plan] || 0) * meses;
+            }
+            actualizarMonto();
+          </script>
         </div>
 
         <div class="saas-card p-4">
@@ -91,6 +200,31 @@
             <p class="mb-1"><strong>Rubro:</strong> {{ solicitud.rubro|default:"—" }}</p>
             <p class="mb-0"><strong>Solicitud:</strong> <a href="{% url 'detalle_solicitud' solicitud.id %}">{{ solicitud.codigo_referencia }}</a></p>
           {% endif %}
+        </div>
+
+        <div class="saas-card p-4 mb-3">
+          <h5 class="section-mini-title mb-1">Membresía {% include "core/_membresia_badge.html" with estado=membresia %}</h5>
+          <p class="text-muted small">Corrección manual. Lo normal es renovar registrando un pago.</p>
+          <form method="POST" action="{% url 'staff_membresia_empresa' empresa.id %}" class="row g-2">
+            {% csrf_token %}
+            <div class="col-6">
+              <label class="form-label" for="plan">Plan</label>
+              <select id="plan" name="plan" class="form-select">
+                <option value="">Sin plan</option>
+                {% for valor, etiqueta in planes %}
+                  <option value="{{ valor }}" {% if empresa.plan == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label" for="suscripcion_vence">Vence</label>
+              <input id="suscripcion_vence" name="suscripcion_vence" type="date" class="form-control"
+                     value="{{ empresa.suscripcion_vence|date:'Y-m-d' }}">
+            </div>
+            <div class="col-12">
+              <button class="btn btn-outline-primary w-100">Guardar membresía</button>
+            </div>
+          </form>
         </div>
 
         <div class="saas-card p-4 mb-3">

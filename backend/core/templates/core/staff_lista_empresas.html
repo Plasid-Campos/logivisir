@@ -26,6 +26,7 @@
             <tr>
               <th>Empresa</th>
               <th>Plan</th>
+              <th>Membresía</th>
               <th>Contacto principal</th>
               <th class="text-end">Usuarios</th>
               <th>Estado</th>
@@ -38,6 +39,7 @@
             <tr>
               <td class="fw-semibold">{{ f.empresa.nombre }}{% if f.empresa.rut_empresa %}<br><small class="text-muted">{{ f.empresa.rut_empresa }}</small>{% endif %}</td>
               <td>{{ f.plan }}</td>
+              <td>{% include "core/_membresia_badge.html" with estado=f.membresia %}{% if f.empresa.suscripcion_vence %}<br><small class="text-muted">vence {{ f.empresa.suscripcion_vence|date:"d-m-Y" }}</small>{% endif %}</td>
               <td>{{ f.empresa.owner.get_full_name|default:f.empresa.owner.username }}<br><small class="text-muted">{{ f.empresa.owner.email|default:"—" }}</small></td>
               <td class="text-end">{{ f.num_usuarios }}</td>
               <td>
@@ -49,7 +51,7 @@
               </td>
             </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-4">Todavía no hay empresas clientes.</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-4">Todavía no hay empresas clientes.</td></tr>
             {% endfor %}
           </tbody>
         </table>

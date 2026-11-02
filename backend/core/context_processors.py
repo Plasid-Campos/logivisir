@@ -4,7 +4,8 @@ def user_role(request):
     notif_no_leidas = 0
     notif_recientes = []
     if request.user.is_authenticated:
-        perfil = getattr(request.user, "perfilusuario", None)
+        # El equipo LogiVisir ve solo su menú, nunca el de una empresa cliente.
+        perfil = None if request.user.is_staff else getattr(request.user, "perfilusuario", None)
         rol = getattr(perfil, "rol", None)
         empresa = getattr(perfil, "empresa", None)
         notif_no_leidas = request.user.notificaciones.filter(leida=False).count()

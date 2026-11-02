@@ -12,6 +12,10 @@ def datos_solicitud(**overrides):
         "email_contacto": "juanita@nueva.cl",
         "telefono_contacto": "+56911112222",
         "rubro": "Panadería",
+        "rut_empresa": "76.086.428-5",
+        "direccion": "Gran Avenida 4400",
+        "comuna": "San Miguel",
+        "ciudad": "Santiago",
         "plan_solicitado": "PRO",
         "mensaje": "Repartimos 30 pedidos diarios.",
     }

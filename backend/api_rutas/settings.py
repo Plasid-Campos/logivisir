@@ -215,3 +215,14 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     f"LogiVisir Solutions <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "no-reply@logivisir.com",
 )
 
+
+
+# Datos para que los prospectos transfieran el pago de su plan. Se definen en
+# el .env del servidor; si falta el numero de cuenta, la pagina muestra los
+# datos de ejemplo con el aviso "datos de demostracion: no transferir".
+PAGO_TITULAR = os.environ.get("PAGO_TITULAR", "LogiVisir Solutions SpA")
+PAGO_BANCO = os.environ.get("PAGO_BANCO", "Banco Estado")
+PAGO_TIPO_CUENTA = os.environ.get("PAGO_TIPO_CUENTA", "Cuenta corriente")
+PAGO_NUMERO_CUENTA = os.environ.get("PAGO_NUMERO_CUENTA", "")
+PAGO_RUT = os.environ.get("PAGO_RUT", "77.777.777-7")
+PAGO_CORREO = os.environ.get("PAGO_CORREO", "pagos@logivisir.com")

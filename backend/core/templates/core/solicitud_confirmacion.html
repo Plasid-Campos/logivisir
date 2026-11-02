@@ -1,5 +1,5 @@
 {% extends "core/base.html" %}
-{% load static %}
+{% load static formato %}
 
 {% block title %}Solicitud enviada | LogiVisir Solutions{% endblock %}
 
@@ -8,42 +8,66 @@
   <div class="container py-5">
     <div class="row justify-content-center">
       <div class="col-lg-7">
-
         <div class="request-card text-center">
           <div class="confirmation-check mb-3">
             <i class="bi bi-check-lg"></i>
           </div>
-
           <h1 class="section-title">¡Solicitud recibida!</h1>
           <p class="section-subtitle mx-auto">
             Gracias, {{ solicitud.nombre_contacto }}. Guarda tu código de referencia,
-            lo necesitarás para identificar tu pago.
+            lo necesitarás para identificar tu pago. También te lo enviamos a {{ solicitud.email_contacto }}.
           </p>
 
           <div class="codigo-referencia my-4">{{ solicitud.codigo_referencia }}</div>
 
           <div class="text-start">
-            <h5 class="mb-3"><i class="bi bi-bank me-2"></i>Datos para transferencia</h5>
+            <h5 class="mb-3"><i class="bi bi-1-circle me-2"></i>Transfiere el primer mes de tu plan</h5>
+            {% if pago.es_demo %}
+              <div class="alert alert-warning small">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Datos de demostración del proyecto: <strong>no transfieras dinero</strong>.
+              </div>
+            {% endif %}
             <ul class="pago-datos list-unstyled">
-              <li><strong>Titular:</strong> Logivisir Solutions SpA</li>
-              <li><strong>Banco:</strong> Banco Estado</li>
-              <li><strong>Cuenta corriente:</strong> 000-0-000000-0</li>
-              <li><strong>RUT:</strong> 77.777.777-7</li>
-              <li><strong>Correo para comprobante:</strong> pagos@logivisir.com</li>
-              <li><strong>Glosa / asunto del correo:</strong> {{ solicitud.codigo_referencia }}</li>
+              <li><strong>Monto:</strong> ${{ monto|clp }} (plan {{ solicitud.get_plan_solicitado_display }}, 1 mes)</li>
+              <li><strong>Titular:</strong> {{ pago.titular }}</li>
+              <li><strong>RUT:</strong> {{ pago.rut }}</li>
+              <li><strong>Banco:</strong> {{ pago.banco }}</li>
+              <li><strong>{{ pago.tipo_cuenta }}:</strong> {{ pago.numero_cuenta }}</li>
+              <li><strong>Glosa o comentario:</strong> {{ solicitud.codigo_referencia }}</li>
             </ul>
+
+            <h5 class="mb-3 mt-4"><i class="bi bi-2-circle me-2"></i>Sube el comprobante</h5>
+            {% if solicitud.comprobante %}
+              <div class="alert alert-success">
+                <i class="bi bi-check-circle me-1"></i>
+                Comprobante recibido el {{ solicitud.comprobante_subido_en|date:"d-m-Y H:i" }}.
+                {% if solicitud.estado == "NUEVA" %}Si te equivocaste de archivo, puedes subirlo de nuevo.{% endif %}
+              </div>
+            {% endif %}
+            {% if solicitud.estado == "NUEVA" %}
+              {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+              <form method="POST" enctype="multipart/form-data" class="d-flex flex-column flex-md-row gap-2">
+                {% csrf_token %}
+                <input type="file" name="comprobante" class="form-control" accept=".pdf,.jpg,.jpeg,.png"
+                       aria-label="Comprobante de la transferencia" required>
+                <button class="btn btn-primary">Enviar comprobante</button>
+              </form>
+              <p class="text-muted small mt-2 mb-0">
+                PDF, JPG o PNG de hasta 5 MB. También puedes enviarlo a {{ pago.correo }} indicando tu código,
+                o subirlo más tarde en <a href="{% url 'subir_comprobante' %}?codigo={{ solicitud.codigo_referencia }}">esta página</a>.
+              </p>
+            {% endif %}
 
             <div class="alert alert-info mt-4 mb-0">
               <i class="bi bi-info-circle me-1"></i>
-              Una vez que recibamos y validemos tu pago, crearemos tu cuenta y te
-              enviaremos tu usuario y contraseña al correo <strong>{{ solicitud.email_contacto }}</strong>
-              dentro de las próximas 24 horas hábiles.
+              Cuando validemos tu pago crearemos tu cuenta y te enviaremos tu usuario y contraseña a
+              <strong>{{ solicitud.email_contacto }}</strong> dentro de las próximas 24 horas hábiles.
             </div>
           </div>
 
           <a href="{% url 'home' %}" class="btn btn-outline-primary mt-4">Volver al inicio</a>
         </div>
-
       </div>
     </div>
   </div>

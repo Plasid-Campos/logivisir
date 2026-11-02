@@ -13,8 +13,8 @@
           <span class="section-badge">Contratar Logivisir</span>
           <h1 class="section-title mt-3">Solicita tu cuenta</h1>
           <p class="section-subtitle mx-auto">
-            Cuéntanos de tu negocio y qué plan te interesa. Nuestro equipo validará
-            tu pago y te enviaremos tus accesos por correo en menos de 24 horas.
+            Cuéntanos de tu empresa y qué plan te interesa. Al enviar verás los datos para transferir;
+            cuando validemos el pago te enviaremos tus accesos por correo en menos de 24 horas hábiles.
           </p>
         </div>
 
@@ -23,10 +23,10 @@
             <div class="alert alert-danger">{{ error }}</div>
           {% endif %}
 
-          <form method="POST">
+          <form method="POST" novalidate>
             {% csrf_token %}
 
-            <label class="form-label fw-semibold mb-2">Elige un plan</label>
+            <label class="form-label fw-semibold mb-2">1. Elige un plan</label>
             <div class="row g-2 mb-4">
               {% for valor, texto in planes %}
               <div class="col-md-4">
@@ -37,34 +37,62 @@
               {% endfor %}
             </div>
 
+            <label class="form-label fw-semibold mb-2">2. Datos de la empresa</label>
+            <div class="row g-3 mb-4">
+              <div class="col-md-7">
+                <label class="form-label" for="nombre_empresa">Nombre de la empresa</label>
+                <input type="text" id="nombre_empresa" name="nombre_empresa" class="form-control" maxlength="150"
+                       value="{{ datos.nombre_empresa }}" required>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label" for="rut_empresa">RUT de la empresa</label>
+                <input type="text" id="rut_empresa" name="rut_empresa" class="form-control" maxlength="12"
+                       placeholder="77.123.456-9" value="{{ datos.rut_empresa }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="rubro">Rubro</label>
+                <input type="text" id="rubro" name="rubro" class="form-control" maxlength="100"
+                       placeholder="Panadería, distribuidora, repostería..." value="{{ datos.rubro }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="direccion">Dirección desde donde salen los repartos</label>
+                <input type="text" id="direccion" name="direccion" class="form-control" maxlength="200"
+                       placeholder="Calle y número" value="{{ datos.direccion }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="comuna">Comuna</label>
+                <input type="text" id="comuna" name="comuna" class="form-control" maxlength="100"
+                       value="{{ datos.comuna }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="ciudad">Ciudad</label>
+                <input type="text" id="ciudad" name="ciudad" class="form-control" maxlength="100"
+                       value="{{ datos.ciudad }}">
+              </div>
+            </div>
+
+            <label class="form-label fw-semibold mb-2">3. Tus datos de contacto</label>
             <div class="row g-3">
               <div class="col-md-6">
-                <label class="form-label">Nombre de tu empresa</label>
-                <input type="text" name="nombre_empresa" class="form-control" required>
+                <label class="form-label" for="nombre_contacto">Tu nombre</label>
+                <input type="text" id="nombre_contacto" name="nombre_contacto" class="form-control" maxlength="150"
+                       value="{{ datos.nombre_contacto }}" required>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Rubro</label>
-                <input type="text" name="rubro" class="form-control" placeholder="Panadería, distribuidora, repostería...">
+                <label class="form-label" for="telefono_contacto">Teléfono</label>
+                <input type="text" id="telefono_contacto" name="telefono_contacto" class="form-control" maxlength="20"
+                       placeholder="+56 9 1234 5678" value="{{ datos.telefono_contacto }}" required>
               </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Tu nombre (contacto)</label>
-                <input type="text" name="nombre_contacto" class="form-control" required>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Teléfono</label>
-                <input type="text" name="telefono_contacto" class="form-control" required>
-              </div>
-
               <div class="col-12">
-                <label class="form-label">Correo electrónico</label>
-                <input type="email" name="email_contacto" class="form-control" required>
+                <label class="form-label" for="email_contacto">Correo electrónico</label>
+                <input type="email" id="email_contacto" name="email_contacto" class="form-control"
+                       value="{{ datos.email_contacto }}" required>
+                <div class="form-text">A este correo llegarán los datos de pago y, después, tus accesos.</div>
               </div>
-
               <div class="col-12">
-                <label class="form-label">Cuéntanos brevemente qué necesitas (opcional)</label>
-                <textarea name="mensaje" rows="3" class="form-control"
-                          placeholder="Ej: repartimos 40 pedidos diarios en 3 comunas..."></textarea>
+                <label class="form-label" for="mensaje">Cuéntanos brevemente qué necesitas (opcional)</label>
+                <textarea id="mensaje" name="mensaje" rows="3" class="form-control"
+                          placeholder="Ej: 2 camionetas y 40 pedidos diarios en 3 comunas...">{{ datos.mensaje }}</textarea>
               </div>
             </div>
 
@@ -72,7 +100,7 @@
               Enviar solicitud
             </button>
             <p class="text-muted small text-center mt-3 mb-0">
-              Al enviar, te mostraremos los datos para pagar y un código de referencia único.
+              Usamos estos datos solo para crear la cuenta de tu empresa.
             </p>
           </form>
         </div>

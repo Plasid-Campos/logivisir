@@ -10,7 +10,7 @@ Macarrón*.
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Django](https://img.shields.io/badge/Django-5.2-092E20?logo=django&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-73%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-226%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
@@ -43,7 +43,12 @@ de sus empresas clientes.
   navegación y permisos.
 - El dueño gestiona sus usuarios (menú **Usuarios**): los ve, los desactiva o reactiva
   (sin borrar su historial) y les restablece la clave con una temporal.
-- **Panel del equipo LogiVisir**, separado de las empresas: lista de empresas clientes
+- **Panel del equipo LogiVisir**, separado de las empresas: empresas clientes, membresías
+  (plan y vencimiento), ingreso mensual recurrente, uso de la plataforma y km ahorrados;
+  usuarios de una empresa solo al elegirla; registro de pagos que renueva la membresía.
+- Solicitud de cuenta con RUT validado, dirección, datos para transferir y subida del
+  comprobante de pago.
+- Lista de empresas clientes
   (plan, contacto, estado, usuarios), alta de usuarios, restablecer claves y
   suspender/reactivar el servicio. Por privacidad, el equipo LogiVisir **no ve** los
   clientes, rutas, pedidos ni choferes de ninguna empresa (tampoco desde `/admin/`).
@@ -141,10 +146,11 @@ que crea `seed_demo` (contraseña `demo12345` en todos):
 
 | Usuario | Rol | Qué ve |
 |---|---|---|
-| `logivisir_demo` | Equipo LogiVisir | Empresas clientes y solicitudes (sin sus datos) |
-| `owner_demo` | Dueño de la Panadería Demo | Panel completo, rutas, clientes, analítica |
-| `admin_demo` | Administrador | Operación diaria |
-| `chofer_demo` | Chofer | Panel de reparto del día |
+| `equipo_logivisir` | Equipo LogiVisir | Panel del servicio, empresas, usuarios por empresa, pagos y solicitudes (sin los datos de las empresas) |
+| `panaderia_dueno` | Dueña de la Panadería Demo | Todo lo del administrador + usuarios de su empresa |
+| `panaderia_admin` | Administrador de la Panadería Demo | Operación diaria: clientes, pedidos, choferes, rutas, analítica |
+| `panaderia_chofer` | Chofer de la Panadería Demo | Panel de reparto del día |
+| `loaguirre_dueno` | Dueña de Distribuidora Lo Aguirre (demo) | Otra empresa cliente, más chica |
 
 > `seed_demo` usa nombres de clientes **inventados**, pero direcciones reales del sur de
 > Santiago, verificadas con su número en OpenStreetMap. Con `--reset` borra la empresa demo y la vuelve a crear.
@@ -157,7 +163,7 @@ que crea `seed_demo` (contraseña `demo12345` en todos):
 python manage.py test
 ```
 
-183 tests que cubren el optimizador de rutas, el aislamiento multi-tenant, pedidos,
+226 tests que cubren el optimizador de rutas, el aislamiento multi-tenant, pedidos, pagos de membresías,
 solicitudes de cuenta, el panel del equipo LogiVisir, la analítica y las vistas.
 
 ---
@@ -175,7 +181,7 @@ backend/
     analytics.py    # despachos, ranking y segmentación RF con K-Means
     tenancy.py      # aislamiento por empresa (tenant)
     notifications.py# correos a chofer y cliente
-    tests/          # 183 tests
+    tests/          # 226 tests
     management/commands/
       seed_demo.py            # datos de demostración
       importar_clientes_excel.py

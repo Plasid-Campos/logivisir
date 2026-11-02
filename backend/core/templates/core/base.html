@@ -134,8 +134,23 @@
           {# ====== STAFF LOGIVISIR (equipo interno, no es un tenant) ====== #}
           {% elif request.user.is_staff %}
             <li class="nav-item">
+              <a class="nav-link nav-link-main" href="{% url 'staff_panel' %}">
+                Panel
+              </a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link nav-link-main" href="{% url 'staff_lista_empresas' %}">
                 Empresas clientes
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link nav-link-main" href="{% url 'staff_usuarios' %}">
+                Usuarios
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link nav-link-main" href="{% url 'staff_pagos' %}">
+                Pagos
               </a>
             </li>
             <li class="nav-item">
@@ -168,8 +183,13 @@
       {% if request.user.is_authenticated %}
         <div class="d-flex align-items-center ms-lg-3 navbar-user">
           {% if USER_EMPRESA %}
-            <span class="badge text-bg-light border me-2 small">
+            <span class="badge text-bg-light border me-2 small" title="Empresa y rol con que ingresaste">
               <i class="bi bi-building me-1"></i>{{ USER_EMPRESA.nombre }}
+              · {% if USER_ROL == "OWNER" %}Dueño/a{% elif USER_ROL == "ADMIN" %}Administrador/a{% else %}Chofer{% endif %}
+            </span>
+          {% elif request.user.is_staff %}
+            <span class="badge text-bg-light border me-2 small" title="Rol con que ingresaste">
+              <i class="bi bi-briefcase me-1"></i>Equipo LogiVisir
             </span>
           {% endif %}
           <a href="{% url 'cambiar_password' %}" class="navbar-text me-2 small text-muted text-decoration-none"

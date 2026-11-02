@@ -28,6 +28,7 @@
               <th>Contacto</th>
               <th>Plan</th>
               <th>Estado</th>
+              <th>Comprobante</th>
               <th>Fecha</th>
               <th class="text-end">Acciones</th>
             </tr>
@@ -50,13 +51,14 @@
                   <span class="badge-soft">Rechazada</span>
                 {% endif %}
               </td>
+              <td>{% if s.comprobante %}<span class="badge-soft success"><i class="bi bi-paperclip"></i> Recibido</span>{% else %}<span class="text-muted small">—</span>{% endif %}</td>
               <td>{{ s.creada_en|date:"d-m-Y H:i" }}</td>
               <td class="text-end">
                 <a href="{% url 'detalle_solicitud' s.id %}" class="btn btn-sm btn-outline-primary">Ver</a>
               </td>
             </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-4">No hay solicitudes todavía.</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-4">No hay solicitudes todavía.</td></tr>
             {% endfor %}
           </tbody>
         </table>

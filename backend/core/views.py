@@ -1,9 +1,11 @@
 import csv
+import os
+import re
 
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import send_mail
-from django.http import HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth import views as auth_views
@@ -11,6 +13,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Count, Q
@@ -31,6 +34,7 @@ from .notifications import (
 )
 from .cuentas import (
     acusar_recibo_solicitud, avisar_cambio_password, enviar_bienvenida, validar_email_nuevo_usuario,
+    datos_transferencia, normalizar_rut,
 )
 from .models import (
     PerfilUsuario,
@@ -42,8 +46,10 @@ from .models import (
     Empresa,
     Notificacion,
     SolicitudCuenta,
+    Pago,
 )
 from .tenancy import get_empresa, get_object_or_404_scoped
+from . import membresias
 
 # =========================================================
 # CONFIG
@@ -62,48 +68,128 @@ def home_view(request):
 PLANES_VALIDOS = dict(SolicitudCuenta.PLAN_CHOICES).keys()
 
 
+CAMPOS_SOLICITUD = (
+    "nombre_empresa", "rut_empresa", "rubro", "direccion", "comuna", "ciudad",
+    "nombre_contacto", "telefono_contacto", "email_contacto", "mensaje",
+)
+EXTENSIONES_COMPROBANTE = (".pdf", ".jpg", ".jpeg", ".png")
+MAX_COMPROBANTE_MB = 5
+SESION_SOLICITUDES = "solicitudes_enviadas"
+
+
+def _error_comprobante(archivo):
+    if not archivo:
+        return "Adjunta el comprobante de la transferencia."
+    if os.path.splitext(archivo.name)[1].lower() not in EXTENSIONES_COMPROBANTE:
+        return "El comprobante debe ser PDF, JPG o PNG."
+    if archivo.size > MAX_COMPROBANTE_MB * 1024 * 1024:
+        return f"El comprobante no puede pesar más de {MAX_COMPROBANTE_MB} MB."
+    return None
+
+
+def _guardar_comprobante(solicitud, archivo):
+    if solicitud.comprobante:
+        solicitud.comprobante.delete(save=False)
+    solicitud.comprobante = archivo
+    solicitud.comprobante_subido_en = timezone.now()
+    solicitud.save(update_fields=["comprobante", "comprobante_subido_en"])
+
+
 def solicitar_cuenta_view(request):
     error = None
     plan_preseleccionado = request.GET.get("plan", "")
     if plan_preseleccionado not in PLANES_VALIDOS:
         plan_preseleccionado = ""
+    datos = {campo: "" for campo in CAMPOS_SOLICITUD}
+    datos["ciudad"] = "Santiago"
 
     if request.method == "POST":
-        nombre_empresa = (request.POST.get("nombre_empresa") or "").strip()
-        nombre_contacto = (request.POST.get("nombre_contacto") or "").strip()
-        email_contacto = (request.POST.get("email_contacto") or "").strip()
-        telefono_contacto = (request.POST.get("telefono_contacto") or "").strip()
-        rubro = (request.POST.get("rubro") or "").strip()
+        datos = {campo: (request.POST.get(campo) or "").strip() for campo in CAMPOS_SOLICITUD}
         plan_solicitado = request.POST.get("plan_solicitado")
-        mensaje = (request.POST.get("mensaje") or "").strip()
+        plan_preseleccionado = plan_solicitado if plan_solicitado in PLANES_VALIDOS else ""
+        rut = normalizar_rut(datos["rut_empresa"])
 
-        if not (nombre_empresa and nombre_contacto and email_contacto and telefono_contacto):
-            error = "Completa nombre de la empresa, contacto, correo y teléfono."
+        obligatorios = ("nombre_empresa", "rut_empresa", "direccion", "comuna",
+                        "nombre_contacto", "telefono_contacto", "email_contacto")
+        if not all(datos[c] for c in obligatorios):
+            error = "Completa los datos de la empresa (nombre, RUT, dirección y comuna) y los de contacto."
         elif plan_solicitado not in PLANES_VALIDOS:
             error = "Selecciona un plan válido."
+        elif rut is None:
+            error = "El RUT de la empresa no es válido. Revisa el número y el dígito verificador."
+        elif Empresa.objects.filter(rut_empresa=rut).exists():
+            error = "Ya existe una empresa registrada con ese RUT. Si ya eres cliente, inicia sesión."
         else:
+            try:
+                validate_email(datos["email_contacto"])
+            except ValidationError:
+                error = "Revisa el correo electrónico."
+        if error is None:
             solicitud = SolicitudCuenta.objects.create(
-                nombre_empresa=nombre_empresa,
-                nombre_contacto=nombre_contacto,
-                email_contacto=email_contacto,
-                telefono_contacto=telefono_contacto,
-                rubro=rubro,
-                plan_solicitado=plan_solicitado,
-                mensaje=mensaje,
+                nombre_empresa=datos["nombre_empresa"], rut_empresa=rut, rubro=datos["rubro"],
+                direccion=datos["direccion"], comuna=datos["comuna"], ciudad=datos["ciudad"] or "Santiago",
+                nombre_contacto=datos["nombre_contacto"], telefono_contacto=datos["telefono_contacto"],
+                email_contacto=datos["email_contacto"], plan_solicitado=plan_solicitado,
+                mensaje=datos["mensaje"],
             )
-            acusar_recibo_solicitud(solicitud)
+            # Solo quien envió la solicitud (o el equipo) puede ver su confirmación.
+            enviadas = request.session.get(SESION_SOLICITUDES, [])
+            request.session[SESION_SOLICITUDES] = (enviadas + [solicitud.id])[-10:]
+            acusar_recibo_solicitud(solicitud, request)
             return redirect("solicitud_confirmacion", solicitud_id=solicitud.id)
 
     return render(request, "core/solicitar_cuenta.html", {
         "error": error,
         "plan_preseleccionado": plan_preseleccionado,
         "planes": SolicitudCuenta.PLAN_CHOICES,
+        "datos": datos,
     })
 
 
 def solicitud_confirmacion_view(request, solicitud_id):
+    es_propia = solicitud_id in request.session.get(SESION_SOLICITUDES, [])
+    if not (es_propia or request.user.is_staff):
+        raise Http404
     solicitud = get_object_or_404(SolicitudCuenta, id=solicitud_id)
-    return render(request, "core/solicitud_confirmacion.html", {"solicitud": solicitud})
+    error = None
+    if request.method == "POST" and solicitud.estado == "NUEVA":
+        archivo = request.FILES.get("comprobante")
+        error = _error_comprobante(archivo)
+        if error is None:
+            _guardar_comprobante(solicitud, archivo)
+            messages.success(request, "Recibimos tu comprobante. Te avisaremos por correo cuando validemos el pago.")
+            return redirect("solicitud_confirmacion", solicitud_id=solicitud.id)
+    return render(request, "core/solicitud_confirmacion.html", {
+        "solicitud": solicitud,
+        "pago": datos_transferencia(),
+        "monto": membresias.PRECIOS_PLAN.get(solicitud.plan_solicitado, 0),
+        "error": error,
+    })
+
+
+def subir_comprobante_view(request):
+    """
+    Para quien cerró la página de confirmación: identifica su solicitud con el
+    código SOL y el correo con que la envió (ambos deben coincidir).
+    """
+    error = None
+    codigo = (request.POST.get("codigo") or request.GET.get("codigo") or "").strip().upper()
+    email = (request.POST.get("email") or "").strip()
+    if request.method == "POST":
+        numero = re.sub(r"\D", "", codigo)
+        solicitud = SolicitudCuenta.objects.filter(
+            id=int(numero) if numero else 0, email_contacto__iexact=email,
+        ).first()
+        if solicitud is None:
+            error = "No encontramos una solicitud con ese código y ese correo."
+        elif solicitud.estado != "NUEVA":
+            error = "Esta solicitud ya fue revisada; no necesitas subir el comprobante."
+        else:
+            error = _error_comprobante(request.FILES.get("comprobante"))
+            if error is None:
+                _guardar_comprobante(solicitud, request.FILES["comprobante"])
+                return render(request, "core/subir_comprobante.html", {"listo": True, "solicitud": solicitud})
+    return render(request, "core/subir_comprobante.html", {"error": error, "codigo": codigo, "email": email})
 
 # =========================================================
 # LOGIN / LOGOUT
@@ -129,7 +215,7 @@ def login_view(request):
 
             # Empresa suspendida por LogiVisir (ej: plan impago): sus
             # usuarios no entran hasta que el staff la reactive.
-            if perfil and not perfil.empresa.activa:
+            if perfil and not usuario.is_staff and not perfil.empresa.activa:
                 mensaje_error = (
                     "La cuenta de tu empresa está suspendida. "
                     "Contacta a LogiVisir Solutions para reactivarla."
@@ -152,13 +238,13 @@ def login_view(request):
             ):
                 return redirect(next_url)
 
+            # El equipo LogiVisir no es un tenant: siempre entra a su propio
+            # panel, aunque la cuenta tambien figure como usuario de una empresa.
+            if usuario.is_staff:
+                return redirect("staff_panel")
+
             if perfil and perfil.rol == "CHOFER":
                 return redirect("chofer_ruta_hoy")
-
-            # Staff de Logivisir no es un tenant: no tiene PerfilUsuario ni
-            # empresa, asi que no puede ir al dashboard normal.
-            if not perfil and usuario.is_staff:
-                return redirect("staff_lista_empresas")
 
             return redirect("dashboard")
 
@@ -175,7 +261,12 @@ def logout_view(request):
 # =========================================================
 # VALIDACIONES DE ROL
 # =========================================================
+# Los roles de empresa (OWNER, ADMIN, CHOFER) nunca aplican al equipo
+# LogiVisir: aunque una cuenta del staff figure como usuario de una empresa,
+# no puede ver sus clientes, rutas, pedidos ni choferes (privacidad).
 def es_owner(user):
+    if user.is_staff:
+        return False
     try:
         return user.perfilusuario.rol == "OWNER"
     except Exception:
@@ -183,6 +274,8 @@ def es_owner(user):
 
 
 def es_admin_o_owner(user):
+    if user.is_staff:
+        return False
     try:
         return user.perfilusuario.rol in ("ADMIN", "OWNER")
     except Exception:
@@ -190,6 +283,8 @@ def es_admin_o_owner(user):
 
 
 def es_chofer(user):
+    if user.is_staff:
+        return False
     try:
         return user.perfilusuario.rol == "CHOFER"
     except Exception:
@@ -248,6 +343,8 @@ def cambiar_password_obligatorio_view(request):
 # =========================================================
 @login_required
 def dashboard_view(request):
+    if request.user.is_staff:
+        return redirect("staff_panel")
     perfil = getattr(request.user, "perfilusuario", None)
     empresa = get_empresa(request)
 
@@ -800,6 +897,10 @@ def optimizar_ruta_view(request, ruta_id):
     resultado = optimizar_paradas(ruta)
 
     if resultado.get("optimizado"):
+        ruta.km_antes = resultado["km_antes"]
+        ruta.km_despues = resultado["km_despues"]
+        ruta.optimizada_en = timezone.now()
+        ruta.save(update_fields=["km_antes", "km_despues", "optimizada_en"])
         avisar_ruta_actualizada(ruta, "se reordenaron las paradas.")
         fuente = "distancia real de calle" if resultado.get("por_red_vial") else "línea recta (sin conexión a OSRM)"
         mensaje = f"Ruta optimizada: {resultado['cantidad']} paradas reordenadas (usando {fuente})."
@@ -1365,6 +1466,15 @@ def lista_solicitudes_view(request):
 
 
 @user_passes_test(es_staff_logivisir)
+def staff_comprobante_view(request, solicitud_id):
+    solicitud = get_object_or_404(SolicitudCuenta, id=solicitud_id)
+    if not solicitud.comprobante:
+        raise Http404
+    nombre = f"comprobante_{solicitud.codigo_referencia}{os.path.splitext(solicitud.comprobante.name)[1]}"
+    return FileResponse(solicitud.comprobante.open("rb"), filename=nombre)
+
+
+@user_passes_test(es_staff_logivisir)
 def detalle_solicitud_view(request, solicitud_id):
     solicitud = get_object_or_404(SolicitudCuenta, id=solicitud_id)
     return render(request, "core/staff_detalle_solicitud.html", {"solicitud": solicitud})
@@ -1403,7 +1513,25 @@ def crear_cuenta_solicitud_view(request, solicitud_id):
         email=solicitud.email_contacto,
         first_name=solicitud.nombre_contacto,
     )
-    empresa = Empresa.objects.create(nombre=solicitud.nombre_empresa, owner=usuario)
+    rut = solicitud.rut_empresa or None
+    if rut and Empresa.objects.filter(rut_empresa=rut).exists():
+        rut = None  # el RUT ya lo usa otra empresa; el equipo lo revisa en la ficha
+    empresa = Empresa.objects.create(
+        nombre=solicitud.nombre_empresa, owner=usuario, plan=solicitud.plan_solicitado,
+        rut_empresa=rut,
+        # Dirección de salida propuesta: el dueño la confirma en el mapa (menú Empresa).
+        direccion_origen=solicitud.direccion or None,
+        comuna_origen=solicitud.comuna or None,
+        ciudad_origen=solicitud.ciudad or None,
+    )
+    # El pago ya fue validado: queda registrado y define el primer mes de servicio.
+    membresias.registrar_pago(
+        empresa, plan=solicitud.plan_solicitado,
+        monto=membresias.PRECIOS_PLAN[solicitud.plan_solicitado],
+        fecha_pago=timezone.localdate(), meses=1, medio="TRANSFERENCIA",
+        referencia=solicitud.codigo_referencia, notas="Pago de la solicitud de cuenta",
+        usuario=request.user,
+    )
     PerfilUsuario.objects.create(
         user=usuario, empresa=empresa, rol="OWNER", debe_cambiar_password=True,
     )
@@ -1458,11 +1586,31 @@ def rechazar_solicitud_view(request, solicitud_id):
 # limite de privacidad (Ley 19.628/21.719): los datos de los clientes finales
 # pertenecen a la empresa, no a LogiVisir.
 ROLES_CREABLES_STAFF = ("OWNER", "ADMIN")
+DIAS_AVISO_VENCIMIENTO = 15
+
+
+ORDEN_ROLES = {"OWNER": 0, "ADMIN": 1, "CHOFER": 2}
+
+
+def _ordenar_por_rol(perfiles):
+    """Activos primero; luego dueño, administradores y choferes; por fecha de creación."""
+    return sorted(perfiles, key=lambda p: (not p.user.is_active, ORDEN_ROLES.get(p.rol, 9), p.user.date_joined))
 
 
 def _plan_de_empresa(empresa):
-    solicitud = empresa.solicitud_origen.first()
-    return solicitud.get_plan_solicitado_display() if solicitud else "Sin plan registrado"
+    return empresa.get_plan_display() if empresa.plan else "Sin plan registrado"
+
+
+def _estado_membresia(empresa, hoy=None):
+    """Vigente, por vencer (15 días o menos), vencida o sin fecha registrada."""
+    if not empresa.suscripcion_vence:
+        return "sin_fecha"
+    dias = (empresa.suscripcion_vence - (hoy or timezone.localdate())).days
+    if dias < 0:
+        return "vencida"
+    if dias <= DIAS_AVISO_VENCIMIENTO:
+        return "por_vencer"
+    return "vigente"
 
 
 @user_passes_test(es_staff_logivisir)
@@ -1478,7 +1626,8 @@ def staff_lista_empresas_view(request):
         empresas = empresas.filter(activa=False)
 
     filas = [
-        {"empresa": e, "plan": _plan_de_empresa(e), "num_usuarios": e.num_usuarios}
+        {"empresa": e, "plan": _plan_de_empresa(e), "num_usuarios": e.num_usuarios,
+         "membresia": _estado_membresia(e)}
         for e in empresas
     ]
     return render(request, "core/staff_lista_empresas.html", {
@@ -1489,17 +1638,254 @@ def staff_lista_empresas_view(request):
 @user_passes_test(es_staff_logivisir)
 def staff_detalle_empresa_view(request, empresa_id):
     empresa = get_object_or_404(Empresa.objects.select_related("owner"), id=empresa_id)
-    usuarios = (
-        PerfilUsuario.objects.filter(empresa=empresa)
-        .select_related("user")
-        .order_by("rol", "user__username")
-    )
+    usuarios = _ordenar_por_rol(PerfilUsuario.objects.filter(empresa=empresa).select_related("user"))
     return render(request, "core/staff_detalle_empresa.html", {
         "empresa": empresa,
         "plan": _plan_de_empresa(empresa),
         "solicitud": empresa.solicitud_origen.first(),
         "usuarios": usuarios,
         "roles_creables": [r for r in PerfilUsuario.ROL_CHOICES if r[0] in ROLES_CREABLES_STAFF],
+        "membresia": _estado_membresia(empresa),
+        "planes": Empresa.PLAN_CHOICES,
+        "dueno_es_staff": empresa.owner.is_staff,
+        "pagos": empresa.pagos.select_related("registrado_por", "anulado_por"),
+        "medios": Pago.MEDIO_CHOICES,
+        "meses_permitidos": membresias.MESES_PERMITIDOS,
+        "precios": membresias.PRECIOS_PLAN,
+        "hoy": timezone.localdate(),
+    })
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def staff_registrar_pago_view(request, empresa_id):
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    volver = redirect("staff_detalle_empresa", empresa_id=empresa.id)
+    plan = request.POST.get("plan")
+    medio = request.POST.get("medio")
+    try:
+        meses = int(request.POST.get("meses") or 1)
+        monto = int((request.POST.get("monto") or "").replace(".", "").strip())
+        fecha_pago = date.fromisoformat(request.POST.get("fecha_pago") or "")
+    except ValueError:
+        messages.error(request, "Revisa el monto y la fecha del pago.")
+        return volver
+    if (plan not in membresias.PRECIOS_PLAN or medio not in dict(Pago.MEDIO_CHOICES)
+            or meses not in membresias.MESES_PERMITIDOS or monto <= 0):
+        messages.error(request, "Completa plan, meses, monto y medio de pago.")
+        return volver
+    if fecha_pago > timezone.localdate():
+        messages.error(request, "La fecha del pago no puede ser futura.")
+        return volver
+    pago = membresias.registrar_pago(
+        empresa, plan=plan, monto=monto, fecha_pago=fecha_pago, meses=meses, medio=medio,
+        referencia=(request.POST.get("referencia") or "").strip()[:100],
+        notas=(request.POST.get("notas") or "").strip()[:255],
+        usuario=request.user, reactivar=request.POST.get("reactivar") == "1",
+    )
+    messages.success(
+        request,
+        f"Pago registrado: membresía {pago.get_plan_display()} hasta el {pago.periodo_hasta.strftime('%d-%m-%Y')}.",
+    )
+    return volver
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def staff_anular_pago_view(request, pago_id):
+    pago = get_object_or_404(Pago.objects.select_related("empresa"), id=pago_id)
+    motivo = (request.POST.get("motivo") or "").strip()
+    if not motivo:
+        messages.error(request, "Indica el motivo de la anulación.")
+    elif membresias.anular_pago(pago, usuario=request.user, motivo=motivo[:200]):
+        messages.warning(request, "Pago anulado. Queda en el historial con su motivo.")
+    return redirect("staff_detalle_empresa", empresa_id=pago.empresa_id)
+
+
+@user_passes_test(es_staff_logivisir)
+def staff_pagos_view(request):
+    pagos = Pago.objects.select_related("empresa", "registrado_por")
+    empresa_id = request.GET.get("empresa") or ""
+    mes = request.GET.get("mes") or ""  # formato AAAA-MM
+    if empresa_id.isdigit():
+        pagos = pagos.filter(empresa_id=empresa_id)
+    else:
+        empresa_id = ""
+    if mes:
+        try:
+            desde = date.fromisoformat(f"{mes}-01")
+            pagos = pagos.filter(fecha_pago__gte=desde, fecha_pago__lt=membresias.sumar_meses(desde, 1))
+        except ValueError:
+            mes = ""
+    if request.GET.get("formato") == "csv":
+        response = _csv_response("pagos_logivisir.csv")
+        writer = csv.writer(response)
+        writer.writerow(["Fecha de pago", "Empresa", "Plan", "Meses", "Período desde", "Período hasta",
+                         "Monto (CLP)", "Medio", "Referencia", "Estado", "Registrado por"])
+        for p in pagos:
+            writer.writerow([p.fecha_pago.isoformat(), p.empresa.nombre, p.get_plan_display(), p.meses,
+                             p.periodo_desde.isoformat(), p.periodo_hasta.isoformat(), p.monto,
+                             p.get_medio_display(), p.referencia, "Anulado" if p.anulado else "Válido",
+                             p.registrado_por.username if p.registrado_por else ""])
+        return response
+    validos = [p for p in pagos if not p.anulado]
+    return render(request, "core/staff_pagos.html", {
+        "pagos": pagos,
+        "total": sum(p.monto for p in validos),
+        "cantidad_validos": len(validos),
+        "empresas": Empresa.objects.order_by("nombre"),
+        "empresa_filtro": empresa_id,
+        "mes_filtro": mes,
+        "query": urlencode({k: v for k, v in (("empresa", empresa_id), ("mes", mes)) if v}),
+    })
+
+
+@user_passes_test(es_staff_logivisir)
+@require_POST
+def staff_membresia_empresa_view(request, empresa_id):
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    plan = request.POST.get("plan") or None
+    vence_txt = (request.POST.get("suscripcion_vence") or "").strip()
+    if plan and plan not in dict(Empresa.PLAN_CHOICES):
+        messages.error(request, "Plan no válido.")
+        return redirect("staff_detalle_empresa", empresa_id=empresa.id)
+    try:
+        vence = date.fromisoformat(vence_txt) if vence_txt else None
+    except ValueError:
+        messages.error(request, "La fecha de vencimiento no es válida.")
+        return redirect("staff_detalle_empresa", empresa_id=empresa.id)
+    empresa.plan = plan
+    empresa.suscripcion_vence = vence
+    empresa.save(update_fields=["plan", "suscripcion_vence"])
+    messages.success(request, f"Membresía de {empresa.nombre} actualizada.")
+    return redirect("staff_detalle_empresa", empresa_id=empresa.id)
+
+
+# ---------------------------------------------------------
+# Panel del equipo LogiVisir: datos del negocio SaaS
+# ---------------------------------------------------------
+# Solo cifras agregadas de uso del servicio (cantidad de rutas, km ahorrados,
+# ingresos a la plataforma). Nunca se listan clientes, pedidos, rutas ni
+# choferes de una empresa.
+DIAS_USO = 30
+
+
+def _km_ahorrados(rutas):
+    total = 0.0
+    for antes, despues in rutas.exclude(km_antes=None).exclude(km_despues=None).values_list("km_antes", "km_despues"):
+        total += max(antes - despues, 0.0)
+    return round(total, 1)
+
+
+@user_passes_test(es_staff_logivisir)
+def staff_panel_view(request):
+    hoy = timezone.localdate()
+    desde = timezone.now() - timedelta(days=DIAS_USO)
+    empresas = list(Empresa.objects.select_related("owner").order_by("nombre"))
+
+    filas = []
+    conteo_membresia = {"vigente": 0, "por_vencer": 0, "vencida": 0, "sin_fecha": 0}
+    conteo_plan = {etiqueta: 0 for _, etiqueta in Empresa.PLAN_CHOICES}
+    conteo_plan["Sin plan registrado"] = 0
+    ubicaciones = {}
+    for e in empresas:
+        rutas = Ruta.objects.filter(empresa=e)
+        usuarios = User.objects.filter(perfilusuario__empresa=e)
+        estado = _estado_membresia(e, hoy)
+        conteo_membresia[estado] += 1
+        conteo_plan[_plan_de_empresa(e)] += 1
+        lugar = e.ciudad_origen or e.comuna_origen
+        lugar = f"{e.comuna_origen}, {e.ciudad_origen}" if e.comuna_origen and e.ciudad_origen else (lugar or "Sin dirección registrada")
+        ubicaciones[lugar] = ubicaciones.get(lugar, 0) + 1
+        ultimo = usuarios.exclude(last_login=None).order_by("-last_login").values_list("last_login", flat=True).first()
+        filas.append({
+            "empresa": e,
+            "plan": _plan_de_empresa(e),
+            "membresia": estado,
+            "lugar": lugar,
+            "usuarios": usuarios.count(),
+            "usuarios_activos_mes": usuarios.filter(last_login__gte=desde).count(),
+            "ultimo_ingreso": ultimo,
+            "rutas_mes": rutas.filter(creada_en__gte=desde).count(),
+            "optimizaciones_mes": rutas.filter(optimizada_en__gte=desde).count(),
+            "km_ahorrados": _km_ahorrados(rutas),
+            "km_ahorrados_mes": _km_ahorrados(rutas.filter(optimizada_en__gte=desde)),
+        })
+
+    resumen = {
+        "empresas": len(empresas),
+        "activas": sum(1 for e in empresas if e.activa),
+        "suspendidas": sum(1 for e in empresas if not e.activa),
+        "solicitudes_nuevas": SolicitudCuenta.objects.filter(estado__in=("NUEVA", "PAGO_VALIDADO")).count(),
+        "usuarios_activos_mes": sum(f["usuarios_activos_mes"] for f in filas),
+        "rutas_mes": sum(f["rutas_mes"] for f in filas),
+        "optimizaciones_mes": sum(f["optimizaciones_mes"] for f in filas),
+        "km_ahorrados": round(sum(f["km_ahorrados"] for f in filas), 1),
+        "km_ahorrados_mes": round(sum(f["km_ahorrados_mes"] for f in filas), 1),
+    }
+    inicio_mes = hoy.replace(day=1)
+    ingresos = {
+        "mrr": membresias.mrr(empresas, hoy),
+        "mes_actual": membresias.ingresos_entre(inicio_mes, hoy),
+        "morosas": conteo_membresia["vencida"],
+        "ultimos_pagos": Pago.objects.filter(anulado=False).select_related("empresa")[:5],
+    }
+    por_mes = membresias.ingresos_por_mes(6, hoy)
+    maximo = max([t for _, t in por_mes] + [1])
+    ingresos["por_mes"] = [(m, t, round(t * 100 / maximo)) for m, t in por_mes]
+    por_vencer = sorted(
+        [f for f in filas if f["membresia"] in ("por_vencer", "vencida")],
+        key=lambda f: f["empresa"].suscripcion_vence,
+    )
+    return render(request, "core/staff_panel.html", {
+        "resumen": resumen,
+        "filas": sorted(filas, key=lambda f: -f["km_ahorrados"]),
+        "conteo_membresia": conteo_membresia,
+        "conteo_plan": conteo_plan,
+        "ubicaciones": sorted(ubicaciones.items(), key=lambda x: -x[1]),
+        "por_vencer": por_vencer,
+        "dias_uso": DIAS_USO,
+        "dias_aviso": DIAS_AVISO_VENCIMIENTO,
+        "ingresos": ingresos,
+    })
+
+
+@user_passes_test(es_staff_logivisir)
+def staff_usuarios_view(request):
+    """
+    Usuarios de las empresas clientes, solo a pedido: primero se elige la
+    empresa. Sin empresa elegida se muestran solo totales por rol.
+    """
+    empresas = Empresa.objects.order_by("nombre")
+    resumen = []
+    for e in empresas:
+        perfiles = PerfilUsuario.objects.filter(empresa=e)
+        resumen.append({
+            "empresa": e,
+            "duenos": perfiles.filter(rol="OWNER").count(),
+            "admins": perfiles.filter(rol="ADMIN").count(),
+            "choferes": perfiles.filter(rol="CHOFER").count(),
+            "activos": perfiles.filter(user__is_active=True).count(),
+            "inactivos": perfiles.filter(user__is_active=False).count(),
+        })
+
+    empresa = None
+    perfiles = []
+    empresa_id = request.GET.get("empresa")
+    if empresa_id:
+        empresa = get_object_or_404(Empresa, id=empresa_id)
+        perfiles = PerfilUsuario.objects.filter(empresa=empresa).select_related("user")
+        rol = request.GET.get("rol")
+        if rol in dict(PerfilUsuario.ROL_CHOICES):
+            perfiles = perfiles.filter(rol=rol)
+        perfiles = _ordenar_por_rol(perfiles)
+    return render(request, "core/staff_usuarios.html", {
+        "empresas": empresas,
+        "resumen": resumen,
+        "empresa": empresa,
+        "perfiles": perfiles,
+        "rol_filtro": request.GET.get("rol") or "",
+        "roles": PerfilUsuario.ROL_CHOICES,
     })
 
 
@@ -1540,6 +1926,10 @@ def staff_crear_usuario_empresa_view(request, empresa_id):
     PerfilUsuario.objects.create(
         user=usuario, empresa=empresa, rol=rol, debe_cambiar_password=True,
     )
+    if rol == "OWNER" and empresa.owner.is_staff:
+        # La empresa pasa a tener un dueño propio en vez de una cuenta del equipo.
+        empresa.owner = usuario
+        empresa.save(update_fields=["owner"])
     _enviar_credenciales(request, usuario, empresa, temp_password)
 
     messages.success(
@@ -1905,6 +2295,8 @@ def _desactivar_usuario(perfil):
     """
     perfil.user.is_active = False
     perfil.user.save(update_fields=["is_active"])
+    perfil.desactivado_en = timezone.now()
+    perfil.save(update_fields=["desactivado_en"])
     Chofer.objects.filter(perfil=perfil).update(activo=False)
 
 
@@ -1942,6 +2334,8 @@ def cambiar_estado_usuario_view(request, user_id):
     else:
         usuario.is_active = True
         usuario.save(update_fields=["is_active"])
+        perfil.desactivado_en = None
+        perfil.save(update_fields=["desactivado_en"])
         Chofer.objects.filter(perfil=perfil).update(activo=True)
         messages.success(request, f"{nombre} fue reactivado y ya puede ingresar.")
     return redirect("lista_usuarios")

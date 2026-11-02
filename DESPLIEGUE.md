@@ -69,10 +69,11 @@ rutas ya realizadas y una ruta para hoy. También crea estos usuarios, todos con
 
 | Usuario | Rol |
 |---|---|
-| `logivisir_demo` | Equipo LogiVisir (empresas clientes; no ve sus datos) |
-| `owner_demo` | Dueño/a de la Panadería Demo (todo + analítica) |
-| `admin_demo` | Administrador/a |
-| `chofer_demo` | Chofer (panel móvil) |
+| `equipo_logivisir` | Equipo LogiVisir (panel, empresas, usuarios, pagos y solicitudes; no ve los datos de las empresas) |
+| `panaderia_dueno` | Dueña de la Panadería Demo (todo + usuarios de su empresa) |
+| `panaderia_admin` | Administrador de la Panadería Demo (operación diaria) |
+| `panaderia_chofer` | Chofer de la Panadería Demo (panel móvil) |
+| `loaguirre_dueno` | Dueña de Distribuidora Lo Aguirre (demo) |
 
 ## 5. Crear la aplicación web
 
@@ -102,8 +103,8 @@ application = get_wsgi_application()
 - **Force HTTPS:** activado.
 - Presiona el botón verde **Reload**.
 
-Abre `https://USUARIO.pythonanywhere.com` y entra con `logivisir_demo` (vista de
-LogiVisir) o con `owner_demo` (vista de la empresa cliente).
+Abre `https://USUARIO.pythonanywhere.com` y entra con `equipo_logivisir` (vista de
+LogiVisir) o con `panaderia_dueno` (vista de la empresa cliente).
 
 ## 6. Actualizar después de subir cambios a GitHub
 
@@ -157,3 +158,23 @@ filtra, bórrala en https://myaccount.google.com/apppasswords y crea otra.
   - Los clientes demo ya traen coordenadas, así que no dependen de la geocodificación.
 - **Correo:** solo por Gmail (paso 7). Gmail permite unos 500 correos al día, de sobra para la demostración.
 - **Errores:** si algo falla, el detalle está en **Web** → **Error log**.
+
+## 8. Datos de transferencia para los clientes nuevos
+
+La página de confirmación de una solicitud y el correo de acuse muestran los
+datos para pagar el plan. Mientras no se configure el número de cuenta, se ven
+datos de ejemplo con el aviso **«Datos de demostración del proyecto: no
+transfieras dinero»**. Para usar los datos reales, agrega al `.env`:
+
+```
+PAGO_TITULAR=LogiVisir Solutions SpA
+PAGO_RUT=77.777.777-7
+PAGO_BANCO=Banco Estado
+PAGO_TIPO_CUENTA=Cuenta corriente
+PAGO_NUMERO_CUENTA=el-numero-real
+PAGO_CORREO=pagos@logivisir.com
+```
+
+y presiona **Reload**. Los comprobantes que suben los prospectos quedan en
+`media/comprobantes/` con un nombre aleatorio; el equipo los abre desde la
+solicitud (botón «Ver comprobante»).

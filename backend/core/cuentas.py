@@ -97,14 +97,73 @@ def avisar_cambio_password(usuario, request=None):
     return _enviar("Tu contraseña de LogiVisir fue cambiada", cuerpo, usuario.email)
 
 
-def acusar_recibo_solicitud(solicitud):
+# ---------------------------------------------------------------------------
+# RUT chileno
+# ---------------------------------------------------------------------------
+def _digito_verificador(cuerpo):
+    suma, factor = 0, 2
+    for d in reversed(cuerpo):
+        suma += int(d) * factor
+        factor = 2 if factor == 7 else factor + 1
+    resto = 11 - suma % 11
+    return "0" if resto == 11 else "K" if resto == 10 else str(resto)
+
+
+def normalizar_rut(texto):
+    """
+    Devuelve el RUT con puntos y guion (77.123.456-7) si es válido, o None.
+    Acepta cualquier formato: 771234567, 77123456-7, 77.123.456-7.
+    """
+    limpio = "".join(c for c in (texto or "").upper() if c.isdigit() or c == "K")
+    if len(limpio) < 8 or not limpio[:-1].isdigit():
+        return None
+    cuerpo, dv = limpio[:-1], limpio[-1]
+    if _digito_verificador(cuerpo) != dv:
+        return None
+    return f"{int(cuerpo):,}".replace(",", ".") + f"-{dv}"
+
+
+# ---------------------------------------------------------------------------
+# Datos para transferir el pago del plan
+# ---------------------------------------------------------------------------
+def datos_transferencia():
+    numero = getattr(settings, "PAGO_NUMERO_CUENTA", "")
+    return {
+        "titular": settings.PAGO_TITULAR,
+        "banco": settings.PAGO_BANCO,
+        "tipo_cuenta": settings.PAGO_TIPO_CUENTA,
+        "numero_cuenta": numero or "000-0-000000-0",
+        "rut": settings.PAGO_RUT,
+        "correo": settings.PAGO_CORREO,
+        "es_demo": not numero,
+    }
+
+
+def acusar_recibo_solicitud(solicitud, request=None):
+    from .membresias import PRECIOS_PLAN
+    pago = datos_transferencia()
+    monto = f"{PRECIOS_PLAN.get(solicitud.plan_solicitado, 0):,}".replace(",", ".")
+    aviso_demo = (
+        "IMPORTANTE: estos son datos de demostración del proyecto; no transfieras dinero.\n\n"
+        if pago["es_demo"] else ""
+    )
     cuerpo = (
         f"Hola {solicitud.nombre_contacto},\n\n"
         f"Recibimos tu solicitud para contratar LogiVisir (plan {solicitud.get_plan_solicitado_display()}) "
         f"para {solicitud.nombre_empresa}.\n\n"
         f"Código de referencia: {solicitud.codigo_referencia}\n\n"
-        "Nuestro equipo la revisará y te contactará para validar el pago. Cuando esté listo, "
-        "te enviaremos a este correo los datos para ingresar a la plataforma."
+        "Para activar tu cuenta, transfiere el primer mes del plan:\n"
+        f"  Monto: ${monto}\n"
+        f"  Titular: {pago['titular']}\n"
+        f"  RUT: {pago['rut']}\n"
+        f"  Banco: {pago['banco']}\n"
+        f"  {pago['tipo_cuenta']}: {pago['numero_cuenta']}\n"
+        f"  Glosa o comentario: {solicitud.codigo_referencia}\n\n"
+        f"{aviso_demo}"
+        "Después sube el comprobante aquí, con tu código y este correo:\n"
+        f"  {_url(request, 'subir_comprobante')}\n"
+        f"(o envíalo a {pago['correo']} indicando tu código).\n\n"
+        "Cuando validemos el pago te enviaremos a este correo los datos para ingresar a la plataforma."
     )
     return _enviar(
         f"Recibimos tu solicitud {solicitud.codigo_referencia} - LogiVisir Solutions",

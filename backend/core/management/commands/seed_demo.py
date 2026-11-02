@@ -6,11 +6,12 @@ Logivisir de punta a punta sin cargar información real de clientes.
     python manage.py seed_demo --reset    # la borra y la vuelve a crear
 
 Usuarios que deja creados (contraseña: demo12345):
-    logivisir_demo -> Equipo LogiVisir (empresas clientes y solicitudes;
+    equipo_logivisir -> Equipo LogiVisir (panel, empresas, usuarios, pagos y solicitudes;
                       no ve clientes, rutas ni pedidos de ninguna empresa)
-    owner_demo     -> Dueño de la Panadería Demo (panel completo + analítica)
-    admin_demo     -> Administrador de la Panadería Demo
-    chofer_demo    -> Chofer de la Panadería Demo (panel de reparto del día)
+    panaderia_dueno  -> Dueña de la Panadería Demo (todo + usuarios de su empresa)
+    panaderia_admin  -> Administrador de la Panadería Demo (operación diaria)
+    panaderia_chofer -> Chofer de la Panadería Demo (panel de reparto del día)
+    loaguirre_dueno, loaguirre_admin, loaguirre_chofer1 -> Distribuidora Lo Aguirre (demo)
 
 Los nombres de los clientes son inventados, pero las direcciones son
 reales: cada una se verificó con Nominatim (OpenStreetMap) con su número
@@ -27,14 +28,35 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.notifications import fecha_legible, url_ruta_chofer
+from core.optimizer import _distancia_total, optimizar_ruta
+from core.membresias import PRECIOS_PLAN, sumar_meses
 
 from core.models import (
     Empresa, PerfilUsuario, Chofer, Cliente,
-    Pedido, Ruta, ParadaRuta, SolicitudCuenta, Notificacion,
+    Pedido, Ruta, ParadaRuta, SolicitudCuenta, Notificacion, Pago,
 )
 
 EMPRESA_NOMBRE = "Panadería Demo"
-SOLICITUDES_DEMO = (EMPRESA_NOMBRE, "Distribuidora Los Andes (demo)")
+SEGUNDA_EMPRESA = "Distribuidora Lo Aguirre (demo)"
+SOLICITUDES_DEMO = (EMPRESA_NOMBRE, "Distribuidora Los Andes (demo)", SEGUNDA_EMPRESA)
+
+# Segunda empresa cliente, más chica, para que el panel del equipo LogiVisir
+# compare membresías, ubicación y uso entre empresas. Nombres inventados.
+ORIGEN_LO_AGUIRRE = {
+    "direccion_origen": "Avenida Pajaritos 2500",
+    "comuna_origen": "Maipú",
+    "ciudad_origen": "Santiago",
+    "latitud_origen": -33.5095,
+    "longitud_origen": -70.7570,
+}
+CLIENTES_LO_AGUIRRE = [
+    ("Almacén La Esquina", "Avenida Pajaritos 1800", -33.5040, -70.7520),
+    ("Minimarket El Trébol", "Avenida 5 de Abril 300", -33.5130, -70.7610),
+    ("Botillería Los Héroes", "Avenida Los Pajaritos 3200", -33.5150, -70.7660),
+    ("Kiosco Plaza Maipú", "Avenida 5 de Abril 50", -33.5105, -70.7565),
+    ("Almacén Santa Ana", "Camino a Rinconada 900", -33.5230, -70.7740),
+    ("Supermercado Del Valle", "Avenida Sur 1500", -33.4990, -70.7690),
+]
 PASSWORD = "demo12345"
 
 ORIGEN = {
@@ -45,7 +67,9 @@ ORIGEN = {
     "longitud_origen": -70.644544,
 }
 
-STAFF_USERNAME = "logivisir_demo"
+STAFF_USERNAME = "equipo_logivisir"
+# Nombres usados hasta noviembre de 2026: se borran al recrear la demo.
+USUARIOS_ANTIGUOS = ("owner_demo", "admin_demo", "chofer_demo", "logivisir_demo")
 
 # Solo para describir que se despacha en cada pedido (texto libre, sin precios:
 # LogiVisir no maneja montos del negocio de sus empresas clientes).
@@ -118,14 +142,20 @@ class Command(BaseCommand):
                 ))
                 return
             self._borrar(existente)
+        segunda = Empresa.objects.filter(nombre=SEGUNDA_EMPRESA).first()
+        if segunda:
+            self._borrar(segunda)
 
-        owner_user = self._usuario("owner_demo", "Camila", "Rojas")
-        admin_user = self._usuario("admin_demo", "Diego", "Fuentes")
-        chofer_user = self._usuario("chofer_demo", "Marco", "Peña")
+        User.objects.filter(username__in=USUARIOS_ANTIGUOS).delete()
+        owner_user = self._usuario("panaderia_dueno", "Camila", "Rojas")
+        admin_user = self._usuario("panaderia_admin", "Diego", "Fuentes")
+        chofer_user = self._usuario("panaderia_chofer", "Marco", "Peña")
 
         empresa = Empresa.objects.create(
-            nombre=EMPRESA_NOMBRE, rut_empresa="77.123.456-7",
-            owner=owner_user, **ORIGEN,
+            nombre=EMPRESA_NOMBRE, rut_empresa="77.123.456-9",
+            owner=owner_user, plan="PRO",
+            suscripcion_vence=timezone.localdate() + timedelta(days=18),
+            **ORIGEN,
         )
         PerfilUsuario.objects.create(user=owner_user, empresa=empresa, rol="OWNER")
         PerfilUsuario.objects.create(user=admin_user, empresa=empresa, rol="ADMIN")
@@ -138,6 +168,7 @@ class Command(BaseCommand):
         )
 
         self._staff_y_solicitudes(empresa)
+        self._historial_pagos(empresa, "PRO", periodos=4)
 
         clientes = []
         for (nombre, comuna, direccion, lat, lon, perfil, tipo) in CLIENTES:
@@ -155,16 +186,116 @@ class Command(BaseCommand):
         self._generar_pedidos(empresa, clientes, owner_user)
         self._generar_rutas_pasadas(empresa, chofer)
         self._generar_ruta_de_hoy(empresa, chofer, clientes)
+        self._ultimos_ingresos([owner_user, admin_user, chofer_user])
+        self._segunda_empresa()
 
         self.stdout.write(self.style.SUCCESS(
             f'Listo. Empresa "{EMPRESA_NOMBRE}" creada con '
             f"{len(clientes)} clientes, {Pedido.objects.filter(empresa=empresa).count()} pedidos "
             f"y una ruta para hoy.\n"
-            f"Entra en /login con  owner_demo  /  {PASSWORD}  (dueño de la panadería)\n"
-            f"o con  {STAFF_USERNAME}  /  {PASSWORD}  (equipo LogiVisir)"
+            f"Usuarios (clave {PASSWORD} en todos):\n"
+            f"  {STAFF_USERNAME:<18} equipo LogiVisir\n"
+            f"  panaderia_dueno    dueña de la Panadería Demo\n"
+            f"  panaderia_admin    administrador de la Panadería Demo\n"
+            f"  panaderia_chofer   chofer de la Panadería Demo\n"
+            f"  loaguirre_dueno    dueña de Distribuidora Lo Aguirre (demo)"
         ))
 
     # ---------------------------------------------------------------
+
+    def _historial_pagos(self, empresa, plan, periodos):
+        """
+        Pagos mensuales hacia atrás desde el vencimiento actual, pagados 2 días
+        antes de cada período (datos del negocio de LogiVisir, ficticios).
+        """
+        hoy = timezone.localdate()
+        staff = User.objects.filter(username=STAFF_USERNAME).first()
+        hasta = empresa.suscripcion_vence
+        for _ in range(periodos):
+            desde = sumar_meses(hasta + timedelta(days=1), -1)
+            anterior = desde - timedelta(days=1)
+            Pago.objects.create(
+                empresa=empresa, plan=plan, monto=PRECIOS_PLAN[plan],
+                fecha_pago=min(desde - timedelta(days=2), hoy), meses=1,
+                periodo_desde=desde, periodo_hasta=hasta, medio="TRANSFERENCIA",
+                referencia=f"TRF-{random.randint(10000, 99999)}", vence_anterior=anterior,
+                registrado_por=staff,
+            )
+            hasta = anterior
+
+    def _ultimos_ingresos(self, usuarios):
+        ahora = timezone.now()
+        for i, u in enumerate(usuarios):
+            u.last_login = ahora - timedelta(hours=2 + i * 5)
+            u.save(update_fields=["last_login"])
+
+    def _registrar_optimizacion(self, ruta, origen):
+        """Guarda los km antes/después como si la ruta se hubiera optimizado ese día."""
+        paradas = list(ruta.paradas.select_related("cliente"))
+        puntos = [(p.id, p.cliente.latitud, p.cliente.longitud) for p in paradas if p.cliente.latitud is not None]
+        if len(puntos) < 2:
+            return
+        ingreso = [pid for pid, _, _ in puntos]
+        optimo = optimizar_ruta(origen, puntos)
+        momento = timezone.make_aware(timezone.datetime.combine(ruta.fecha, timezone.datetime.min.time())) + timedelta(hours=6)
+        Ruta.objects.filter(id=ruta.id).update(
+            km_antes=round(_distancia_total(origen, puntos, ingreso), 1),
+            km_despues=round(_distancia_total(origen, puntos, optimo), 1),
+            optimizada_en=momento, creada_en=momento - timedelta(hours=12),
+        )
+
+    def _segunda_empresa(self):
+        hoy = timezone.localdate()
+        dueno = self._usuario("loaguirre_dueno", "Patricia", "Aguirre")
+        admin = self._usuario("loaguirre_admin", "Jorge", "Muñoz")
+        chofer1 = self._usuario("loaguirre_chofer1", "Luis", "Soto")
+        chofer2 = self._usuario("loaguirre_chofer2", "Pedro", "Vera")
+        empresa = Empresa.objects.create(
+            nombre=SEGUNDA_EMPRESA, rut_empresa="76.555.210-9", owner=dueno,
+            plan="BASICO", suscripcion_vence=hoy + timedelta(days=5),
+            **ORIGEN_LO_AGUIRRE,
+        )
+        PerfilUsuario.objects.create(user=dueno, empresa=empresa, rol="OWNER")
+        PerfilUsuario.objects.create(user=admin, empresa=empresa, rol="ADMIN")
+        p1 = PerfilUsuario.objects.create(user=chofer1, empresa=empresa, rol="CHOFER")
+        p2 = PerfilUsuario.objects.create(
+            user=chofer2, empresa=empresa, rol="CHOFER",
+            desactivado_en=timezone.now() - timedelta(days=9),
+        )
+        chofer2.is_active = False
+        chofer2.save(update_fields=["is_active"])
+        chofer = Chofer.objects.create(perfil=p1, rut="17.321.654-0", licencia="Clase A2", patente="KTRS-19")
+        Chofer.objects.create(perfil=p2, rut="18.456.789-2", licencia="Clase B", patente="JJPL-55", activo=False)
+        self._ultimos_ingresos([dueno, admin, chofer1])
+        self._historial_pagos(empresa, "BASICO", periodos=2)
+        SolicitudCuenta.objects.create(
+            nombre_empresa=SEGUNDA_EMPRESA, nombre_contacto="Patricia Aguirre",
+            email_contacto="loaguirre_dueno@example.com", telefono_contacto="+56 9 7777 2211",
+            rubro="Distribución de abarrotes", plan_solicitado="BASICO", estado="CUENTA_CREADA",
+            empresa_creada=empresa, rut_empresa="76.555.210-9",
+            direccion=ORIGEN_LO_AGUIRRE["direccion_origen"], comuna="Maipú", ciudad="Santiago",
+        )
+        clientes = [
+            Cliente.objects.create(
+                empresa=empresa, nombre=n, direccion=d, comuna="Maipú", ciudad="Santiago",
+                latitud=lat, longitud=lon, geocodificado=True,
+            )
+            for n, d, lat, lon in CLIENTES_LO_AGUIRRE
+        ]
+        origen = (ORIGEN_LO_AGUIRRE["latitud_origen"], ORIGEN_LO_AGUIRRE["longitud_origen"])
+        for dias in (2, 6, 9, 13, 16, 20, 27):
+            fecha = hoy - timedelta(days=dias)
+            ruta = Ruta.objects.create(
+                empresa=empresa, nombre=f"Reparto {fecha.strftime('%d-%m')}",
+                fecha=fecha, chofer=chofer, estado="COMPLETADA",
+            )
+            elegidos = random.sample(clientes, 5)
+            for orden, cliente in enumerate(elegidos, start=1):
+                ParadaRuta.objects.create(
+                    ruta=ruta, cliente=cliente, orden=orden,
+                    estado_entrega="ENTREGADO", entregado=True,
+                )
+            self._registrar_optimizacion(ruta, origen)
 
     def _usuario(self, username, first, last):
         User.objects.filter(username=username).delete()
@@ -200,15 +331,18 @@ class Command(BaseCommand):
         SolicitudCuenta.objects.filter(nombre_empresa__in=SOLICITUDES_DEMO).delete()
         SolicitudCuenta.objects.create(
             nombre_empresa=EMPRESA_NOMBRE, nombre_contacto="Camila Rojas",
-            email_contacto="owner_demo@example.com", telefono_contacto="+56 9 5555 1234",
+            email_contacto="panaderia_dueno@example.com", telefono_contacto="+56 9 5555 1234",
             rubro="Panadería", plan_solicitado="PRO", estado="CUENTA_CREADA",
-            empresa_creada=empresa,
+            empresa_creada=empresa, rut_empresa="77.123.456-9",
+            direccion=ORIGEN["direccion_origen"], comuna=ORIGEN["comuna_origen"], ciudad="Santiago",
         )
         SolicitudCuenta.objects.create(
             nombre_empresa="Distribuidora Los Andes (demo)", nombre_contacto="Rodrigo Saavedra",
             email_contacto="contacto.losandes@example.com", telefono_contacto="+56 9 4444 7788",
             rubro="Distribución de abarrotes", plan_solicitado="BASICO",
             mensaje="Tenemos 2 camionetas y unos 80 clientes en la zona sur de Santiago.",
+            rut_empresa="76.543.210-3", direccion="Avenida La Florida 9500", comuna="La Florida",
+            ciudad="Santiago",
         )
 
     def _nota_despacho(self):
@@ -272,6 +406,7 @@ class Command(BaseCommand):
                     ruta=ruta, cliente=pedido.cliente, orden=orden, pedido=pedido,
                     estado_entrega="ENTREGADO", entregado=True,
                 )
+            self._registrar_optimizacion(ruta, (empresa.latitud_origen, empresa.longitud_origen))
             if n_ruta % 4 == 3:  # una parada fallida cada 4 rutas
                 orden += 1
                 ParadaRuta.objects.create(

@@ -1,0 +1,85 @@
+{% extends "core/base.html" %}
+{% load formato %}
+
+{% block title %}Pagos | Equipo LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4">
+    <div class="saas-card p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <h1 class="panel-title mb-1">Pagos de membresías</h1>
+          <p class="panel-subtitle mb-0">
+            Lo que cada empresa cliente le paga a LogiVisir. Para registrar un pago, entra a la ficha de la empresa.
+          </p>
+        </div>
+        <a href="?{{ query }}{% if query %}&{% endif %}formato=csv" class="btn btn-outline-primary btn-saas">
+          <i class="bi bi-download me-1"></i> Exportar CSV
+        </a>
+      </div>
+    </div>
+
+    <div class="saas-card p-3 p-md-4 mb-4">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label" for="empresa">Empresa</label>
+          <select id="empresa" name="empresa" class="form-select">
+            <option value="">Todas las empresas</option>
+            {% for e in empresas %}
+              <option value="{{ e.id }}" {% if empresa_filtro == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="mes">Mes de pago</label>
+          <input id="mes" name="mes" type="month" class="form-control" value="{{ mes_filtro }}">
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+          <button class="btn btn-primary w-100">Filtrar</button>
+          <a href="{% url 'staff_pagos' %}" class="btn btn-outline-secondary">Limpiar</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="saas-card p-3 p-md-4">
+      <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
+        <h5 class="section-mini-title mb-0">{{ cantidad_validos }} pago{{ cantidad_validos|pluralize }} válido{{ cantidad_validos|pluralize }}</h5>
+        <strong>Total: ${{ total|clp }}</strong>
+      </div>
+      <div class="table-responsive">
+        <table class="table saas-table align-middle">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Empresa</th>
+              <th>Plan</th>
+              <th>Período</th>
+              <th class="text-end">Monto</th>
+              <th>Medio</th>
+              <th>Referencia</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pagos %}
+            <tr {% if p.anulado %}class="text-muted"{% endif %}>
+              <td>{{ p.fecha_pago|date:"d-m-Y" }}</td>
+              <td class="fw-semibold"><a href="{% url 'staff_detalle_empresa' p.empresa.id %}">{{ p.empresa.nombre }}</a></td>
+              <td>{{ p.get_plan_display }} · {{ p.meses }} mes{{ p.meses|pluralize:"es" }}</td>
+              <td>{{ p.periodo_desde|date:"d-m-Y" }} al {{ p.periodo_hasta|date:"d-m-Y" }}</td>
+              <td class="text-end">{% if p.anulado %}<s>${{ p.monto|clp }}</s>{% else %}${{ p.monto|clp }}{% endif %}</td>
+              <td>{{ p.get_medio_display }}</td>
+              <td>{{ p.referencia|default:"—" }}</td>
+              <td>{% if p.anulado %}<span class="badge-soft danger">Anulado</span>{% else %}<span class="badge-soft success">Válido</span>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-4">No hay pagos con este filtro.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "core/base.html" %}
+
+{% block title %}Usuarios de empresas clientes | Equipo LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4">
+    <div class="saas-card p-4 mb-4">
+      <h1 class="panel-title mb-1">Usuarios de las empresas clientes</h1>
+      <p class="panel-subtitle mb-0">
+        Elige una empresa para ver sus usuarios: rol, estado, cuándo se crearon y cuándo se desactivaron.
+        Solo se muestran las cuentas de acceso, no los datos operativos de la empresa.
+      </p>
+    </div>
+
+    <div class="saas-card p-3 p-md-4 mb-4">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-6">
+          <label class="form-label" for="empresa">Empresa</label>
+          <select id="empresa" name="empresa" class="form-select" onchange="this.form.submit()">
+            <option value="">— Elige una empresa —</option>
+            {% for e in empresas %}
+              <option value="{{ e.id }}" {% if empresa and empresa.id == e.id %}selected{% endif %}>{{ e.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if empresa %}
+        <div class="col-md-4">
+          <label class="form-label" for="rol">Rol</label>
+          <select id="rol" name="rol" class="form-select" onchange="this.form.submit()">
+            <option value="">Todos los roles</option>
+            {% for valor, etiqueta in roles %}
+              <option value="{{ valor }}" {% if rol_filtro == valor %}selected{% endif %}>{{ etiqueta }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100">Ver usuarios</button>
+        </div>
+      </form>
+    </div>
+
+    {% if empresa %}
+    <div class="saas-card p-3 p-md-4">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h5 class="section-mini-title mb-0">Usuarios de {{ empresa.nombre }}</h5>
+        <a href="{% url 'staff_detalle_empresa' empresa.id %}" class="btn btn-sm btn-outline-primary">Ver ficha de la empresa</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table saas-table align-middle">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Creado</th>
+              <th>Último ingreso</th>
+              <th>Desactivado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in perfiles %}
+            <tr>
+              <td class="fw-semibold">{{ p.user.get_full_name|default:p.user.username }}<br><small class="text-muted">{{ p.user.username }}{% if p.user.email %} · {{ p.user.email }}{% endif %}</small></td>
+              <td>{{ p.get_rol_display }}</td>
+              <td>{% if p.user.is_active %}<span class="badge-soft success">Activo</span>{% else %}<span class="badge-soft warning">Inactivo</span>{% endif %}</td>
+              <td>{{ p.user.date_joined|date:"d-m-Y" }}</td>
+              <td>{{ p.user.last_login|date:"d-m-Y H:i"|default:"Nunca" }}</td>
+              <td>{% if not p.user.is_active %}{{ p.desactivado_en|date:"d-m-Y H:i"|default:"Sin registro" }}{% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-4">No hay usuarios con ese filtro.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="saas-card p-3 p-md-4">
+      <h5 class="section-mini-title mb-3">Cantidad de usuarios por empresa</h5>
+      <div class="table-responsive">
+        <table class="table saas-table align-middle">
+          <thead>
+            <tr>
+              <th>Empresa</th>
+              <th class="text-end">Dueños</th>
+              <th class="text-end">Administradores</th>
+              <th class="text-end">Choferes</th>
+              <th class="text-end">Activos</th>
+              <th class="text-end">Inactivos</th>
+              <th class="text-end"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in resumen %}
+            <tr>
+              <td class="fw-semibold">{{ r.empresa.nombre }}</td>
+              <td class="text-end">{{ r.duenos }}</td>
+              <td class="text-end">{{ r.admins }}</td>
+              <td class="text-end">{{ r.choferes }}</td>
+              <td class="text-end">{{ r.activos }}</td>
+              <td class="text-end">{{ r.inactivos }}</td>
+              <td class="text-end"><a href="?empresa={{ r.empresa.id }}" class="btn btn-sm btn-outline-primary">Ver usuarios</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">Todavía no hay empresas clientes.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

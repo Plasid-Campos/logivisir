@@ -97,9 +97,9 @@ class PanelStaffEmpresasTests(TestCase):
         otro_staff.refresh_from_db()
         self.assertTrue(otro_staff.check_password("Segura123!"))
 
-    def test_login_de_staff_lleva_al_panel_de_empresas(self):
+    def test_login_de_staff_lleva_al_panel_de_logivisir(self):
         resp = self.client.post(reverse("login"), {"username": "staff_lv", "password": "Segura123!"})
-        self.assertRedirects(resp, reverse("staff_lista_empresas"))
+        self.assertRedirects(resp, reverse("staff_panel"))
 
 
 class SuspensionDeEmpresaTests(TestCase):

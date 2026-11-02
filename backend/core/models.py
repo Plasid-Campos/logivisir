@@ -1,5 +1,14 @@
+import os
+import uuid
+
 from django.db import models
 from django.contrib.auth.models import User
+
+
+def _ruta_comprobante(instancia, nombre_archivo):
+    # Nombre aleatorio: el archivo no se puede adivinar desde la URL.
+    extension = os.path.splitext(nombre_archivo)[1].lower()
+    return f"comprobantes/{uuid.uuid4().hex}{extension}"
 
 
 class Empresa(models.Model):
@@ -25,8 +34,24 @@ class Empresa(models.Model):
     activa = models.BooleanField(default=True)
     creada_en = models.DateTimeField(auto_now_add=True)
 
+    # Membresia del servicio: la administra el equipo LogiVisir.
+    PLAN_CHOICES = (
+        ("BASICO", "Básico"),
+        ("PRO", "Pro"),
+        ("EMPRESARIAL", "Empresarial"),
+    )
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, blank=True, null=True)
+    suscripcion_vence = models.DateField(blank=True, null=True)
+
     def __str__(self):
         return self.nombre
+
+    @property
+    def dias_para_vencer(self):
+        if not self.suscripcion_vence:
+            return None
+        from django.utils import timezone
+        return (self.suscripcion_vence - timezone.localdate()).days
 
     def direccion_origen_completa(self):
         partes = [self.direccion_origen, self.comuna_origen, self.ciudad_origen, "Chile"]
@@ -60,6 +85,16 @@ class SolicitudCuenta(models.Model):
     plan_solicitado = models.CharField(max_length=20, choices=PLAN_CHOICES)
     mensaje = models.TextField(blank=True, null=True)
 
+    # Datos de la empresa: se copian a la Empresa al crear la cuenta.
+    rut_empresa = models.CharField(max_length=20, blank=True, default="")
+    direccion = models.CharField(max_length=200, blank=True, default="")
+    comuna = models.CharField(max_length=100, blank=True, default="")
+    ciudad = models.CharField(max_length=100, blank=True, default="")
+
+    # Comprobante de la transferencia que sube el prospecto.
+    comprobante = models.FileField(upload_to=_ruta_comprobante, blank=True, null=True)
+    comprobante_subido_en = models.DateTimeField(blank=True, null=True)
+
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="NUEVA")
     notas_internas = models.TextField(blank=True, null=True)
     creada_en = models.DateTimeField(auto_now_add=True)
@@ -91,6 +126,7 @@ class PerfilUsuario(models.Model):
     )
     rol = models.CharField(max_length=10, choices=ROL_CHOICES)
     debe_cambiar_password = models.BooleanField(default=False)
+    desactivado_en = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.rol}"
@@ -166,6 +202,11 @@ class Ruta(models.Model):
     # Evita reenviar el correo "tu pedido va en camino" cada vez que la ruta
     # vuelve a pasar por EN_PROCESO (ej: se revierte una entrega y se re-marca).
     notificacion_enviada = models.BooleanField(default=False)
+
+    # Resultado de la ultima optimizacion (KPI de km ahorrados).
+    km_antes = models.FloatField(blank=True, null=True)
+    km_despues = models.FloatField(blank=True, null=True)
+    optimizada_en = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.nombre} - {self.fecha} - {self.chofer}"
@@ -277,3 +318,44 @@ class Notificacion(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username}: {self.titulo}"
+
+
+class Pago(models.Model):
+    """
+    Pago de la membresía de una empresa cliente a LogiVisir. Son datos del
+    negocio de LogiVisir (no de las ventas de sus clientes). Registrar un
+    pago extiende el vencimiento de la membresía; anularlo lo revierte.
+    """
+    MEDIO_CHOICES = (
+        ("TRANSFERENCIA", "Transferencia"),
+        ("TARJETA", "Tarjeta"),
+        ("EFECTIVO", "Efectivo"),
+        ("OTRO", "Otro"),
+    )
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="pagos")
+    plan = models.CharField(max_length=20, choices=Empresa.PLAN_CHOICES)
+    monto = models.PositiveIntegerField(help_text="Monto en pesos chilenos")
+    fecha_pago = models.DateField()
+    meses = models.PositiveSmallIntegerField(default=1)
+    periodo_desde = models.DateField()
+    periodo_hasta = models.DateField()
+    medio = models.CharField(max_length=20, choices=MEDIO_CHOICES, default="TRANSFERENCIA")
+    referencia = models.CharField(max_length=100, blank=True, default="")
+    notas = models.CharField(max_length=255, blank=True, default="")
+    vence_anterior = models.DateField(blank=True, null=True)
+    registrado_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="pagos_registrados",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    anulado = models.BooleanField(default=False)
+    anulado_en = models.DateTimeField(blank=True, null=True)
+    anulado_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="pagos_anulados",
+    )
+    motivo_anulacion = models.CharField(max_length=200, blank=True, default="")
+
+    class Meta:
+        ordering = ["-fecha_pago", "-creado_en"]
+
+    def __str__(self):
+        return f"{self.empresa} - {self.monto} ({self.fecha_pago})"

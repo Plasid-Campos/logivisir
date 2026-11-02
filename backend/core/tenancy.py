@@ -9,6 +9,10 @@ from django.shortcuts import get_object_or_404
 
 def get_empresa(request):
     """Devuelve la Empresa del usuario autenticado o corta con 403."""
+    if request.user.is_staff:
+        # El equipo LogiVisir no accede a los datos de sus empresas clientes,
+        # aunque su cuenta figure como usuario de alguna.
+        raise PermissionDenied("El equipo LogiVisir no accede a los datos de las empresas clientes.")
     perfil = getattr(request.user, "perfilusuario", None)
     empresa = getattr(perfil, "empresa", None)
     if empresa is None:

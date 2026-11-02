@@ -14,6 +14,7 @@ urlpatterns = [
     # --------- SOLICITUD DE CUENTA (venta del servicio) ---------
     path("solicitar-cuenta/", core_views.solicitar_cuenta_view, name="solicitar_cuenta"),
     path("solicitar-cuenta/<int:solicitud_id>/confirmacion/", core_views.solicitud_confirmacion_view, name="solicitud_confirmacion"),
+    path("solicitar-cuenta/comprobante/", core_views.subir_comprobante_view, name="subir_comprobante"),
 
     # --------- AUTENTICACIÓN ---------
     path("login/", core_views.login_view, name="login"),
@@ -82,12 +83,19 @@ urlpatterns = [
     path("staff/empresas/", core_views.staff_lista_empresas_view, name="staff_lista_empresas"),
     path("staff/empresas/<int:empresa_id>/", core_views.staff_detalle_empresa_view, name="staff_detalle_empresa"),
     path("staff/empresas/<int:empresa_id>/estado/", core_views.staff_cambiar_estado_empresa_view, name="staff_cambiar_estado_empresa"),
+    path("staff/", core_views.staff_panel_view, name="staff_panel"),
+    path("staff/usuarios/", core_views.staff_usuarios_view, name="staff_usuarios"),
+    path("staff/empresas/<int:empresa_id>/membresia/", core_views.staff_membresia_empresa_view, name="staff_membresia_empresa"),
+    path("staff/empresas/<int:empresa_id>/pagos/registrar/", core_views.staff_registrar_pago_view, name="staff_registrar_pago"),
+    path("staff/pagos/<int:pago_id>/anular/", core_views.staff_anular_pago_view, name="staff_anular_pago"),
+    path("staff/pagos/", core_views.staff_pagos_view, name="staff_pagos"),
     path("staff/empresas/<int:empresa_id>/usuarios/crear/", core_views.staff_crear_usuario_empresa_view, name="staff_crear_usuario_empresa"),
     path("staff/usuarios/<int:user_id>/restablecer-clave/", core_views.staff_restablecer_clave_view, name="staff_restablecer_clave"),
 
     # --------- STAFF LOGIVISIR (solicitudes de cuenta) ---------
     path("staff/solicitudes/", core_views.lista_solicitudes_view, name="lista_solicitudes"),
     path("staff/solicitudes/<int:solicitud_id>/", core_views.detalle_solicitud_view, name="detalle_solicitud"),
+    path("staff/solicitudes/<int:solicitud_id>/comprobante/", core_views.staff_comprobante_view, name="staff_comprobante"),
     path("staff/solicitudes/<int:solicitud_id>/marcar-pago/", core_views.marcar_pago_validado_view, name="marcar_pago_validado"),
     path("staff/solicitudes/<int:solicitud_id>/crear-cuenta/", core_views.crear_cuenta_solicitud_view, name="crear_cuenta_solicitud"),
     path("staff/solicitudes/<int:solicitud_id>/rechazar/", core_views.rechazar_solicitud_view, name="rechazar_solicitud"),
