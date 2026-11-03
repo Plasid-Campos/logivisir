@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <title>{% block title %}LogiVisir Solutions{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="{% static 'core/img/marca/favicon.ico' %}" sizes="any">
+    <link rel="icon" type="image/png" href="{% static 'core/img/marca/favicon.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'core/img/marca/apple-touch-icon.png' %}">
+    <meta name="theme-color" content="#0b1220">
 
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -16,7 +20,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
     <!-- CSS GLOBAL (landing + base visual) -->
-    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}?v=5">
 
     <!-- CSS APP (solo post-login) -->
     {% if request.user.is_authenticated %}
@@ -30,30 +34,23 @@
 <header class="site-header">
 
 <!-- NAVBAR PRINCIPAL -->
-<nav class="navbar navbar-expand-lg main-navbar">
+<nav class="navbar navbar-expand-xl main-navbar" aria-label="Menú principal">
   <div class="container">
+    {% with url_actual=request.resolver_match.url_name %}
 
-    <!-- LOGO + TEXTO MARCA -->
-    <a class="navbar-brand d-flex align-items-center gap-3"
-       href="{% if request.user.is_authenticated and USER_ROL == 'CHOFER' %}
-                {% url 'chofer_ruta_hoy' %}
-              {% else %}
-                {% url 'home' %}
-              {% endif %}">
-      <div class="logo-wrapper">
-        <img src="{% static 'core/img/logivisir_logo.png' %}"
-             alt="LogiVisir Solutions"
-             class="navbar-logo">
-      </div>
-      <div class="brand-text d-none d-md-flex">
-        <span class="brand-main">LOGIVISIR</span>
-        <span class="brand-sub">SOLUTIONS · SAAS ROUTING</span>
-      </div>
+    <!-- LOGO -->
+    <a class="navbar-brand d-flex align-items-center"
+       href="{% if request.user.is_authenticated and USER_ROL == 'CHOFER' %}{% url 'chofer_ruta_hoy' %}{% elif request.user.is_authenticated and request.user.is_staff %}{% url 'staff_panel' %}{% else %}{% url 'home' %}{% endif %}">
+      <img src="{% static 'core/img/marca/logivisir_logo.png' %}"
+           alt="LogiVisir" class="navbar-logo" width="136" height="40">
     </a>
+    {% if request.user.is_authenticated and request.user.is_staff %}
+      <span class="nav-chip-equipo d-none d-sm-inline">Equipo</span>
+    {% endif %}
 
     {% if request.user.is_authenticated %}
-      <!-- CAMPANA DE AVISOS (fuera del menú colapsable: visible también en el celular) -->
-      <a href="{% url 'lista_notificaciones' %}" class="notif-bell ms-auto me-2 order-lg-last ms-lg-3"
+      <!-- CAMPANA DE AVISOS (visible también con el menú cerrado) -->
+      <a href="{% url 'lista_notificaciones' %}" class="notif-bell ms-auto me-2 order-xl-last ms-xl-2"
          aria-label="Avisos{% if NOTIF_NO_LEIDAS %}: {{ NOTIF_NO_LEIDAS }} sin leer{% endif %}"
          title="Avisos">
         <i class="bi bi-bell{% if NOTIF_NO_LEIDAS %}-fill{% endif %}"></i>
@@ -61,156 +58,79 @@
       </a>
     {% endif %}
 
-    <!-- BOTÓN HAMBURGUESA -->
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
             data-bs-target="#mainNavbar" aria-controls="mainNavbar"
-            aria-expanded="false" aria-label="Toggle navigation">
+            aria-expanded="false" aria-label="Abrir menú">
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <!-- LINKS -->
     <div class="collapse navbar-collapse justify-content-end" id="mainNavbar">
-      <ul class="navbar-nav mb-2 mb-lg-0">
+      <ul class="navbar-nav align-items-xl-center">
 
         {% if request.user.is_authenticated %}
 
-          {# ====== CHOFER ====== #}
           {% if USER_ROL == "CHOFER" %}
-            <li class="nav-item">
-              <a class="nav-link nav-link-main"
-                 href="{% url 'chofer_ruta_hoy' %}">
-                Mi ruta
-              </a>
-            </li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if url_actual == 'chofer_ruta_hoy' %} active{% endif %}" href="{% url 'chofer_ruta_hoy' %}">Mi ruta</a></li>
 
-          {# ====== ADMIN / OWNER ====== #}
           {% elif USER_ROL == "ADMIN" or USER_ROL == "OWNER" %}
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'dashboard' %}">
-                Panel
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'lista_rutas' %}">
-                Rutas
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'lista_clientes' %}">
-                Clientes
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'lista_choferes' %}">
-                Choferes
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'lista_pedidos' %}">
-                Pedidos
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'analitica' %}">
-                Analítica
-              </a>
-            </li>
-            {% if USER_ROL == "OWNER" %}
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'lista_usuarios' %}">
-                Usuarios
-              </a>
-            </li>
-            {% endif %}
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'configurar_empresa' %}">
-                Empresa
-                {% if USER_EMPRESA and USER_EMPRESA.latitud_origen is None %}
-                  <i class="bi bi-exclamation-circle-fill text-warning" title="Falta la dirección de salida"></i>
-                {% endif %}
-              </a>
-            </li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if url_actual == 'dashboard' %} active{% endif %}" href="{% url 'dashboard' %}">Panel</a></li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if 'ruta' in url_actual %} active{% endif %}" href="{% url 'lista_rutas' %}">Rutas</a></li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if 'pedido' in url_actual %} active{% endif %}" href="{% url 'lista_pedidos' %}">Pedidos</a></li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if 'cliente' in url_actual %} active{% endif %}" href="{% url 'lista_clientes' %}">Clientes</a></li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if 'chofer' in url_actual %} active{% endif %}" href="{% url 'lista_choferes' %}">Choferes</a></li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if url_actual == 'analitica' %} active{% endif %}" href="{% url 'analitica' %}">Analítica</a></li>
 
-          {# ====== STAFF LOGIVISIR (equipo interno, no es un tenant) ====== #}
+          {# Equipo LogiVisir: nunca enlaces a vistas de empresa #}
           {% elif request.user.is_staff %}
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'staff_panel' %}">
-                Panel
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'staff_lista_empresas' %}">
-                Empresas clientes
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'staff_usuarios' %}">
-                Usuarios
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'staff_pagos' %}">
-                Pagos
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link nav-link-main" href="{% url 'lista_solicitudes' %}">
-                Solicitudes
-              </a>
-            </li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if url_actual == 'staff_panel' %} active{% endif %}" href="{% url 'staff_panel' %}">Panel</a></li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if 'empresa' in url_actual %} active{% endif %}" href="{% url 'staff_lista_empresas' %}">Empresas</a></li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if url_actual == 'staff_pagos' %} active{% endif %}" href="{% url 'staff_pagos' %}">Pagos</a></li>
+            <li class="nav-item"><a class="nav-link nav-link-main{% if 'solicitud' in url_actual %} active{% endif %}" href="{% url 'lista_solicitudes' %}">Solicitudes{% if SOLICITUDES_NUEVAS %} <span class="nav-count" title="Solicitudes nuevas">{{ SOLICITUDES_NUEVAS }}</span>{% endif %}</a></li>
           {% endif %}
+
+          <!-- MENÚ DE USUARIO -->
+          <li class="nav-item dropdown nav-user">
+            <a class="nav-link nav-user-toggle dropdown-toggle" href="#" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-circle"></i>
+              <span class="nav-user-name">{% if USER_EMPRESA %}{{ USER_EMPRESA.nombre }}{% elif request.user.is_staff %}Equipo LogiVisir{% else %}{{ request.user.username }}{% endif %}</span>
+              {% if USER_EMPRESA and USER_EMPRESA.latitud_origen is None and USER_ROL != "CHOFER" %}
+                <i class="bi bi-exclamation-circle-fill text-warning" title="Falta la dirección de salida"></i>
+              {% endif %}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end nav-user-menu">
+              <li class="dropdown-header">
+                <strong>{{ request.user.get_full_name|default:request.user.username }}</strong><br>
+                {% if USER_EMPRESA %}{{ USER_EMPRESA.nombre }} · {% if USER_ROL == "OWNER" %}Dueño/a{% elif USER_ROL == "ADMIN" %}Administrador/a{% else %}Chofer{% endif %}{% elif request.user.is_staff %}Equipo LogiVisir{% endif %}
+              </li>
+              {% if USER_ROL == "OWNER" %}
+                <li><a class="dropdown-item" href="{% url 'lista_usuarios' %}"><i class="bi bi-people"></i> Usuarios</a></li>
+              {% endif %}
+              {% if USER_ROL == "OWNER" or USER_ROL == "ADMIN" %}
+                <li><a class="dropdown-item" href="{% url 'configurar_empresa' %}"><i class="bi bi-shop"></i> Datos de la empresa
+                  {% if USER_EMPRESA and USER_EMPRESA.latitud_origen is None %}<i class="bi bi-exclamation-circle-fill text-warning ms-1" title="Falta la dirección de salida"></i>{% endif %}</a></li>
+              {% elif request.user.is_staff %}
+                <li><a class="dropdown-item" href="{% url 'staff_usuarios' %}"><i class="bi bi-people"></i> Usuarios por empresa</a></li>
+              {% endif %}
+              <li><a class="dropdown-item" href="{% url 'cambiar_password' %}"><i class="bi bi-key"></i> Cambiar contraseña</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Cerrar sesión</a></li>
+            </ul>
+          </li>
 
         {% else %}
-          <li class="nav-item">
-            <a class="nav-link nav-link-main" href="{% url 'home' %}">Inicio</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link nav-link-main" href="{% url 'home' %}#soluciones">Soluciones</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link nav-link-main" href="{% url 'home' %}#como-funciona">Cómo funciona</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link nav-link-main" href="{% url 'home' %}#planes">Planes</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link nav-link-main" href="{% url 'home' %}#contacto">Contacto</a>
+          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#soluciones">Soluciones</a></li>
+          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#como-funciona">Cómo funciona</a></li>
+          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#planes">Planes</a></li>
+          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#contacto">Contacto</a></li>
+          <li class="nav-item nav-cta">
+            <a href="{% url 'login' %}" class="nav-link nav-link-main">Iniciar sesión</a>
+            <a href="{% url 'solicitar_cuenta' %}" class="btn btn-acceso-clientes">Comenzar ahora</a>
           </li>
         {% endif %}
-
       </ul>
-
-      {% if request.user.is_authenticated %}
-        <div class="d-flex align-items-center ms-lg-3 navbar-user">
-          {% if USER_EMPRESA %}
-            <span class="badge text-bg-light border me-2 small" title="Empresa y rol con que ingresaste">
-              <i class="bi bi-building me-1"></i>{{ USER_EMPRESA.nombre }}
-              · {% if USER_ROL == "OWNER" %}Dueño/a{% elif USER_ROL == "ADMIN" %}Administrador/a{% else %}Chofer{% endif %}
-            </span>
-          {% elif request.user.is_staff %}
-            <span class="badge text-bg-light border me-2 small" title="Rol con que ingresaste">
-              <i class="bi bi-briefcase me-1"></i>Equipo LogiVisir
-            </span>
-          {% endif %}
-          <a href="{% url 'cambiar_password' %}" class="navbar-text me-2 small text-muted text-decoration-none"
-             title="Cambiar contraseña">
-            <i class="bi bi-person-circle me-1"></i>{{ request.user.get_full_name|default:request.user.username }}
-          </a>
-          <a href="{% url 'logout' %}" class="btn btn-outline-primary btn-sm">
-            Cerrar sesión
-          </a>
-        </div>
-      {% else %}
-        <div class="d-flex align-items-center gap-2 ms-lg-3">
-          <a href="{% url 'login' %}" class="nav-link nav-link-main">
-            Iniciar sesión
-          </a>
-          <a href="{% url 'solicitar_cuenta' %}" class="btn btn-acceso-clientes">
-            Comenzar ahora
-          </a>
-        </div>
-      {% endif %}
     </div>
+    {% endwith %}
   </div>
 </nav>
 </header>
@@ -237,7 +157,7 @@
     <div class="row gy-4">
       <div class="col-md-4">
         <div class="footer-logo mb-2">
-          <img src="{% static 'core/img/logivisir_logo.png' %}"
+          <img src="{% static 'core/img/marca/logivisir_logo.png' %}"
                alt="LogiVisir Solutions" class="footer-logo-img">
         </div>
         <p class="small text-muted mb-1">

@@ -60,7 +60,10 @@ PAGINA_TAMANO = 25
 # HOME / LANDING
 # =========================================================
 def home_view(request):
-    return render(request, "core/home.html")
+    return render(request, "core/home.html", {
+        "planes": membresias.planes_publicos(),
+        "funciones_comunes": membresias.FUNCIONES_TODOS_LOS_PLANES,
+    })
 
 # =========================================================
 # SOLICITUD DE CUENTA (venta del servicio, público)

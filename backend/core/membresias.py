@@ -15,6 +15,53 @@ from .models import Empresa, Pago
 PRECIOS_PLAN = {"BASICO": 49990, "PRO": 89990, "EMPRESARIAL": 149990}
 MESES_PERMITIDOS = (1, 3, 6, 12)
 
+# Lo que la página de inicio muestra de cada plan. Todos los planes traen todas
+# las funciones; cambian el tamaño de operación sugerido y el soporte.
+PLANES_PUBLICOS = (
+    {
+        "codigo": "BASICO", "nombre": "Básico", "destacado": False,
+        "para": "Para negocios que están partiendo a ordenar su reparto (1 a 2 vehículos).",
+        "incluye": (
+            "Todas las funciones de LogiVisir",
+            "Soporte por correo",
+        ),
+    },
+    {
+        "codigo": "PRO", "nombre": "Pro", "destacado": True,
+        "para": "Para operaciones con varias rutas y choferes cada día (3 a 6 vehículos).",
+        "incluye": (
+            "Todas las funciones de LogiVisir",
+            "Carga inicial de clientes asistida",
+            "Soporte prioritario",
+        ),
+    },
+    {
+        "codigo": "EMPRESARIAL", "nombre": "Empresarial", "destacado": False,
+        "para": "Para distribuidoras con flota mayor o más de un local (7 vehículos o más).",
+        "incluye": (
+            "Todas las funciones de LogiVisir",
+            "Carga inicial de clientes asistida",
+            "Capacitación al equipo",
+            "Soporte dedicado",
+        ),
+    },
+)
+
+
+FUNCIONES_TODOS_LOS_PLANES = (
+    "Rutas optimizadas con distancias de calle reales",
+    "Panel móvil del chofer con foto o motivo de no entrega",
+    "Analítica y segmentación de clientes (K-Means)",
+    "Avisos en la plataforma y por correo",
+    "Usuarios dueño, administrador y chofer",
+    "Exportación de despachos a CSV",
+)
+
+
+def planes_publicos():
+    """Planes con su precio vigente, para no repetir montos en las plantillas."""
+    return [dict(p, precio=PRECIOS_PLAN[p["codigo"]]) for p in PLANES_PUBLICOS]
+
 
 def sumar_meses(fecha, meses):
     """Misma fecha N meses después; si ese día no existe, el último del mes."""

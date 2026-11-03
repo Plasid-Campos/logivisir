@@ -143,3 +143,20 @@ class IngresosPanelTests(TestCase):
         resp = self.client.get(reverse("staff_panel"))
         self.assertContains(resp, "$149.990")
         self.assertContains(resp, "Ingreso mensual recurrente")
+
+
+class PreciosPaginaInicioTests(TestCase):
+    """La página pública muestra los mismos precios que se cobran en la solicitud."""
+
+    def test_home_muestra_precios_vigentes(self):
+        resp = self.client.get(reverse("home"))
+        self.assertEqual(resp.status_code, 200)
+        for codigo, precio in membresias.PRECIOS_PLAN.items():
+            monto = f"${precio:,}".replace(",", ".")
+            self.assertContains(resp, monto)
+            self.assertContains(resp, f"?plan={codigo}")
+
+    def test_home_no_ofrece_funciones_que_no_existen(self):
+        resp = self.client.get(reverse("home"))
+        self.assertNotContains(resp, "Catálogo de productos")
+        self.assertNotContains(resp, "29.990")

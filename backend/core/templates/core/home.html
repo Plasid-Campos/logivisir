@@ -1,5 +1,5 @@
 {% extends "core/base.html" %}
-{% load static %}
+{% load static formato %}
 
 {% block title %}Optimización de rutas para pymes | LogiVisir Solutions{% endblock %}
 
@@ -203,63 +203,35 @@
 
     <div class="section-head">
       <h2 class="section-title">Un plan para cada tamaño de operación</h2>
-      <p class="section-subtitle">Valores referenciales — los ajustamos a tu operación real.</p>
+      <p class="section-subtitle">Precio mensual por empresa, sin cobro por chofer. Todos los planes incluyen todas las funciones.</p>
     </div>
 
     <div class="row g-4 justify-content-center align-items-stretch">
-
+      {% for plan in planes %}
       <div class="col-md-6 col-lg-4">
-        <div class="pricing-card">
-          <span class="pricing-plan">Básico</span>
-          <div class="pricing-price">$29.990<span>/mes</span></div>
-          <p class="pricing-desc">Para negocios que están partiendo a ordenar su reparto.</p>
+        <div class="pricing-card{% if plan.destacado %} pricing-featured{% endif %}">
+          {% if plan.destacado %}<span class="pricing-badge">Más elegido</span>{% endif %}
+          <span class="pricing-plan">{{ plan.nombre }}</span>
+          <div class="pricing-price">${{ plan.precio|clp }}<span>/mes</span></div>
+          <p class="pricing-desc">{{ plan.para }}</p>
           <ul class="pricing-features">
-            <li><i class="bi bi-check2"></i> 1 ruta activa por día</li>
-            <li><i class="bi bi-check2"></i> Hasta 50 clientes</li>
-            <li><i class="bi bi-check2"></i> 1 chofer</li>
-            <li><i class="bi bi-check2"></i> Optimización de rutas</li>
-            <li><i class="bi bi-check2"></i> Soporte por correo</li>
+            {% for item in plan.incluye %}<li><i class="bi bi-check2"></i> {{ item }}</li>{% endfor %}
           </ul>
-          <a href="{% url 'solicitar_cuenta' %}?plan=BASICO" class="btn btn-plan-outline">Elegir Básico</a>
+          <a href="{% url 'solicitar_cuenta' %}?plan={{ plan.codigo }}"
+             class="btn {% if plan.destacado %}btn-plan-solid{% else %}btn-plan-outline{% endif %}">Elegir {{ plan.nombre }}</a>
         </div>
       </div>
-
-      <div class="col-md-6 col-lg-4">
-        <div class="pricing-card pricing-featured">
-          <span class="pricing-badge">Más elegido</span>
-          <span class="pricing-plan">Pro</span>
-          <div class="pricing-price">$59.990<span>/mes</span></div>
-          <p class="pricing-desc">Para operaciones con varias rutas y choferes en movimiento.</p>
-          <ul class="pricing-features">
-            <li><i class="bi bi-check2"></i> Rutas activas ilimitadas</li>
-            <li><i class="bi bi-check2"></i> Clientes ilimitados</li>
-            <li><i class="bi bi-check2"></i> Choferes ilimitados</li>
-            <li><i class="bi bi-check2"></i> Optimización automática de rutas</li>
-            <li><i class="bi bi-check2"></i> Catálogo de productos y pedidos</li>
-            <li><i class="bi bi-check2"></i> Soporte prioritario</li>
-          </ul>
-          <a href="{% url 'solicitar_cuenta' %}?plan=PRO" class="btn btn-plan-solid">Elegir Pro</a>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-lg-4">
-        <div class="pricing-card">
-          <span class="pricing-plan">Empresarial</span>
-          <div class="pricing-price">A medida</div>
-          <p class="pricing-desc">Para cadenas o distribuidoras con múltiples sucursales.</p>
-          <ul class="pricing-features">
-            <li><i class="bi bi-check2"></i> Todo lo incluido en Pro</li>
-            <li><i class="bi bi-check2"></i> Múltiples sucursales</li>
-            <li><i class="bi bi-check2"></i> Reportes avanzados</li>
-            <li><i class="bi bi-check2"></i> Soporte dedicado</li>
-          </ul>
-          <a href="{% url 'solicitar_cuenta' %}?plan=EMPRESARIAL" class="btn btn-plan-outline">Conversemos</a>
-        </div>
-      </div>
-
+      {% endfor %}
     </div>
 
-    <p class="pricing-note">* Precios de referencia. El valor final depende del tamaño de tu operación.</p>
+    <div class="pricing-common">
+      <p class="pricing-common-title">Todos los planes incluyen</p>
+      <ul class="pricing-common-list">
+        {% for item in funciones_comunes %}<li><i class="bi bi-check2-circle"></i> {{ item }}</li>{% endfor %}
+      </ul>
+    </div>
+
+    <p class="pricing-note">* Valores mensuales en pesos chilenos. Se paga por transferencia, por 1, 3, 6 o 12 meses.</p>
 
   </div>
 </section>
