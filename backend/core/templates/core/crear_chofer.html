@@ -1,71 +1,80 @@
 {% extends "core/base.html" %}
 
-{% block title %}Crear Chofer{% endblock %}
+{% block title %}Nuevo chofer | LogiVisir{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h3>Crear Chofer</h3>
+<section class="app-section">
+  <div class="container py-4" style="max-width: 640px;">
 
-    {% if mensaje %}
-        <div class="alert alert-success">{{ mensaje }}</div>
-    {% endif %}
-    {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
-    {% endif %}
+    <a href="{% url 'lista_choferes' %}" class="link-volver"><i class="bi bi-arrow-left"></i> Choferes</a>
 
-    <form method="POST">
+    {% if creado %}
+      <!-- Resultado: datos de acceso para entregar al chofer -->
+      <div class="saas-card rapido-card mt-2">
+        <div class="rapido-ok"><i class="bi bi-check-circle-fill"></i> {{ creado.nombre }} ya puede entrar</div>
+        <p class="text-muted mb-3">Entrégale estos datos (por ejemplo, por WhatsApp). Al entrar por primera vez elegirá su propia clave. También le enviamos un correo de bienvenida, sin la clave.</p>
+        <div class="acceso-box" id="acceso">
+          <div><small>Página</small><b>{{ request.scheme }}://{{ request.get_host }}{% url 'login' %}</b></div>
+          <div><small>Usuario</small><b>{{ creado.username }}</b></div>
+          {% if creado.clave %}<div><small>Clave temporal</small><b>{{ creado.clave }}</b></div>{% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="button" class="btn btn-outline-primary btn-saas" id="copiar-acceso"><i class="bi bi-clipboard me-1"></i> Copiar datos</button>
+          <a href="{% url 'crear_chofer' %}" class="btn btn-primary btn-saas"><i class="bi bi-plus-lg me-1"></i> Crear otro chofer</a>
+          <a href="{% url 'armar_ruta' %}" class="btn btn-link">Armar una ruta</a>
+        </div>
+        <p class="small text-muted mt-3 mb-0"><i class="bi bi-shield-lock me-1"></i>Esta clave se muestra solo una vez. Si se pierde, el dueño puede generar otra desde Usuarios.</p>
+      </div>
+
+    {% else %}
+      <h1 class="panel-title mt-2 mb-1">Nuevo chofer</h1>
+      <p class="text-muted mb-4">Solo necesitas 3 datos. Creamos su usuario y una clave temporal automáticamente.</p>
+
+      {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+      <form method="POST" class="saas-card rapido-card" novalidate>
         {% csrf_token %}
-
-        <div class="mb-3">
-            <label>Nombre</label>
-            <input type="text" name="nombre" class="form-control" required>
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <label class="form-label fw-semibold" for="nombre">Nombre</label>
+            <input type="text" id="nombre" name="nombre" class="form-control form-control-lg" value="{{ datos.nombre }}" required autofocus autocomplete="off">
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label fw-semibold" for="apellido">Apellido</label>
+            <input type="text" id="apellido" name="apellido" class="form-control form-control-lg" value="{{ datos.apellido }}" required autocomplete="off">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold" for="email">Correo</label>
+            <input type="email" id="email" name="email" class="form-control form-control-lg" value="{{ datos.email }}" placeholder="manuel@gmail.com" required inputmode="email">
+            <div class="form-text">Sirve para que recupere su clave si la olvida.</div>
+          </div>
         </div>
 
-        <div class="mb-3">
-            <label>Apellido</label>
-            <input type="text" name="apellido" class="form-control" required>
-        </div>
+        <details class="mas-datos mt-3" {% if datos.rut or datos.telefono or datos.licencia or datos.patente %}open{% endif %}>
+          <summary>Más datos (opcional): RUT, teléfono, licencia, patente</summary>
+          <div class="row g-3 mt-1">
+            <div class="col-sm-6"><label class="form-label" for="rut">RUT</label><input type="text" id="rut" name="rut" class="form-control" value="{{ datos.rut }}" placeholder="12.345.678-9"></div>
+            <div class="col-sm-6"><label class="form-label" for="telefono">Teléfono</label><input type="tel" id="telefono" name="telefono" class="form-control" value="{{ datos.telefono }}" placeholder="+56 9 ..."></div>
+            <div class="col-sm-6"><label class="form-label" for="licencia">Licencia</label><input type="text" id="licencia" name="licencia" class="form-control" value="{{ datos.licencia }}"></div>
+            <div class="col-sm-6"><label class="form-label" for="patente">Patente</label><input type="text" id="patente" name="patente" class="form-control" value="{{ datos.patente }}" placeholder="AB-CD-12"></div>
+          </div>
+        </details>
 
-        <div class="mb-3">
-            <label>Nombre de usuario</label>
-            <input type="text" name="username" class="form-control" required>
-        </div>
+        <button class="btn btn-primary btn-lg w-100 mt-4"><i class="bi bi-person-plus me-1"></i> Crear chofer</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
 
-        <div class="mb-3">
-            <label>Contraseña</label>
-            <input type="password" name="password" class="form-control" required>
-        </div>
-
-        <hr>
-
-        <div class="mb-3">
-            <label>RUT</label>
-            <input type="text" name="rut" class="form-control" required>
-        </div>
-
-        <div class="mb-3">
-            <label for="email" class="form-label">Correo electrónico</label>
-            <input type="email" class="form-control" id="email" name="email"
-                    placeholder="correo@empresa.cl" required>
-        </div>
-
-        <div class="mb-3">
-            <label>Teléfono</label>
-            <input type="text" name="telefono" class="form-control">
-        </div>
-
-        <div class="mb-3">
-            <label>Licencia</label>
-            <input type="text" name="licencia" class="form-control">
-        </div>
-
-        <div class="mb-3">
-            <label>Patente</label>
-            <input type="text" name="patente" class="form-control">
-        </div>
-
-        <button class="btn btn-primary">Crear Chofer</button>
-        <a href="{% url 'lista_choferes' %}" class="btn btn-link">Volver</a>
-    </form>
-</div>
+{% if creado %}
+<script>
+  document.getElementById("copiar-acceso").addEventListener("click", function () {
+    const texto = Array.from(document.querySelectorAll("#acceso > div"))
+      .map(d => d.querySelector("small").innerText + ": " + d.querySelector("b").innerText).join("\n");
+    navigator.clipboard.writeText("Tu acceso a LogiVisir\n" + texto).then(() => {
+      this.innerHTML = '<i class="bi bi-check2 me-1"></i> Copiado';
+    });
+  });
+</script>
+{% endif %}
 {% endblock %}

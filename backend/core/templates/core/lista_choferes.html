@@ -68,7 +68,7 @@
                     <div>
                       {{ c.perfil.user.get_full_name|default:c.perfil.user.username }}
                     </div>
-                    <small class="text-muted">RUT: {{ c.rut }}</small>
+                    {% if c.rut %}<small class="text-muted">RUT: {{ c.rut }}</small>{% endif %}
                   </div>
                 </div>
               </td>

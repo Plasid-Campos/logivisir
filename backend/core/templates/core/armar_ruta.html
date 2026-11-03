@@ -1,0 +1,109 @@
+{% extends "core/base.html" %}
+
+{% block title %}Armar ruta | LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4" style="max-width: 760px;">
+
+    <a href="{% url 'lista_rutas' %}" class="link-volver"><i class="bi bi-arrow-left"></i> Rutas</a>
+    <h1 class="panel-title mt-2 mb-1">Armar ruta</h1>
+    <p class="text-muted mb-4">Elige el chofer, marca los pedidos y listo: creamos las paradas, las ordenamos por el camino más corto y le avisamos al chofer.</p>
+
+    {% if sin_origen %}
+      <div class="alert alert-warning d-flex gap-2 align-items-start">
+        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+        <div>Falta la dirección de salida de tu empresa: sin ella la ruta se crea, pero no se puede optimizar.
+          <a href="{% url 'configurar_empresa' %}">Ponerla ahora</a></div>
+      </div>
+    {% endif %}
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+    {% if not choferes %}
+      <div class="saas-card rapido-card text-center">
+        <i class="bi bi-person-badge fs-1 text-primary"></i>
+        <h2 class="h5 mt-2">Primero crea un chofer</h2>
+        <p class="text-muted">La ruta necesita a alguien que la haga. Toma menos de un minuto.</p>
+        <a href="{% url 'crear_chofer' %}" class="btn btn-primary btn-saas">Crear chofer</a>
+      </div>
+    {% elif not pendientes %}
+      <div class="saas-card rapido-card text-center">
+        <i class="bi bi-box-seam fs-1 text-primary"></i>
+        <h2 class="h5 mt-2">No hay pedidos pendientes</h2>
+        <p class="text-muted">Registra los pedidos del día y vuelve aquí para armar la ruta.</p>
+        <a href="{% url 'crear_pedido' %}" class="btn btn-primary btn-saas">Nuevo pedido</a>
+        <a href="{% url 'crear_ruta' %}" class="btn btn-link">Crear una ruta vacía</a>
+      </div>
+    {% else %}
+    <form method="POST" class="saas-card rapido-card" id="form-armar">
+      {% csrf_token %}
+
+      <div class="row g-3">
+        <div class="col-sm-6">
+          <label class="form-label fw-semibold" for="chofer_id">Chofer</label>
+          <select id="chofer_id" name="chofer_id" class="form-select form-select-lg" required>
+            {% if choferes|length > 1 %}<option value="">Elegir…</option>{% endif %}
+            {% for c in choferes %}
+              <option value="{{ c.id }}" {% if chofer_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.perfil.user.get_full_name|default:c.perfil.user.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-6">
+          <span class="form-label fw-semibold d-block mb-2">Fecha</span>
+          <div class="fecha-rapida">
+            <input type="radio" class="btn-check" name="fecha" id="f-hoy" value="{{ hoy|date:'Y-m-d' }}" {% if fecha == hoy|date:'Y-m-d' %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="f-hoy">Hoy</label>
+            <input type="radio" class="btn-check" name="fecha" id="f-manana" value="{{ manana|date:'Y-m-d' }}" {% if fecha == manana|date:'Y-m-d' %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="f-manana">Mañana</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-end mt-4 mb-2">
+        <span class="fw-semibold">Pedidos pendientes <span class="text-muted fw-normal">(<span id="cuenta">{{ elegidos|length }}</span> de {{ pendientes|length }} marcados)</span></span>
+        <button type="button" class="btn btn-sm btn-link p-0" id="todos">Marcar / desmarcar todos</button>
+      </div>
+
+      <div class="pedidos-check">
+        {% for p in pendientes %}
+          <label class="pedido-item">
+            <input type="checkbox" class="form-check-input" name="pedidos" value="{{ p.id }}" {% if p.id in elegidos %}checked{% endif %}>
+            <div>
+              <b>{{ p.cliente.nombre }}</b>
+              <small>{{ p.cliente.direccion }}{% if p.cliente.comuna %}, {{ p.cliente.comuna }}{% endif %}{% if p.nota %} · {{ p.nota|truncatechars:60 }}{% endif %}</small>
+            </div>
+            {% if p.cliente.latitud is None %}<span class="badge text-bg-warning" title="Sin ubicación: quedará al final de la ruta">Sin mapa</span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+
+      <details class="mas-datos mt-3" {% if nombre %}open{% endif %}>
+        <summary>Nombre de la ruta (opcional)</summary>
+        <input type="text" name="nombre" class="form-control mt-2" value="{{ nombre }}" placeholder="Reparto {{ hoy|date:'d-m' }}">
+      </details>
+
+      <button class="btn btn-primary btn-lg w-100 mt-4"><i class="bi bi-magic me-1"></i> Crear y optimizar ruta</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+<script>
+  (function () {
+    const form = document.getElementById("form-armar");
+    if (!form) return;
+    const cajas = () => Array.from(form.querySelectorAll('input[name="pedidos"]'));
+    const contar = () => { document.getElementById("cuenta").textContent = cajas().filter(c => c.checked).length; };
+    form.addEventListener("change", contar);
+    document.getElementById("todos").addEventListener("click", function () {
+      const marcar = cajas().some(c => !c.checked);
+      cajas().forEach(c => { c.checked = marcar; });
+      contar();
+    });
+    form.addEventListener("submit", function () {
+      const b = form.querySelector('button.btn-lg');
+      b.disabled = true; b.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Calculando la mejor ruta…';
+    });
+  })();
+</script>
+{% endblock %}

@@ -15,7 +15,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.core.paginator import Paginator
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
@@ -472,31 +472,32 @@ def lista_choferes_view(request):
 
 @user_passes_test(es_admin_o_owner)
 def crear_chofer_view(request):
-    mensaje = None
-    error = None
+    """
+    Alta rápida: basta nombre, apellido y correo. El usuario y la clave
+    temporal se generan solos y se muestran una vez en pantalla para que el
+    dueño se los entregue al chofer (la clave nunca viaja por correo).
+    """
     empresa = get_empresa(request)
+    error = None
+    creado = None
+    datos = {}
 
     if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        nombre = request.POST.get("nombre")
-        apellido = request.POST.get("apellido")
-        email = request.POST.get("email")
+        datos = {k: (request.POST.get(k) or "").strip() for k in (
+            "nombre", "apellido", "email", "rut", "telefono", "licencia", "patente", "username", "password",
+        )}
+        username = datos["username"] or _generar_username_persona(datos["nombre"], datos["apellido"])
+        password = datos["password"] or get_random_string(10, allowed_chars=TEMP_PASSWORD_CHARS)
 
-        rut = request.POST.get("rut")
-        telefono = request.POST.get("telefono")
-        licencia = request.POST.get("licencia")
-        patente = request.POST.get("patente")
-
-        if User.objects.filter(username=username).exists():
+        if not datos["nombre"] or not datos["apellido"]:
+            error = "Escribe el nombre y el apellido del chofer."
+        elif User.objects.filter(username=username).exists():
             error = f"El nombre de usuario '{username}' ya existe. Usa otro."
-        elif Chofer.objects.filter(rut=rut).exists():
-            error = f"Ya existe un chofer con el RUT {rut}."
-        elif validar_email_nuevo_usuario(email):
-            error = validar_email_nuevo_usuario(email)
-        elif not password:
-            error = "La contraseña es obligatoria."
-        else:
+        elif datos["rut"] and Chofer.objects.filter(rut=datos["rut"]).exists():
+            error = f"Ya existe un chofer con el RUT {datos['rut']}."
+        elif validar_email_nuevo_usuario(datos["email"]):
+            error = validar_email_nuevo_usuario(datos["email"])
+        elif datos["password"]:
             try:
                 validate_password(password)
             except ValidationError as e:
@@ -504,32 +505,38 @@ def crear_chofer_view(request):
 
         if not error:
             try:
-                user = User.objects.create_user(
-                    username=username,
-                    password=password,
-                    first_name=nombre,
-                    last_name=apellido,
-                    email=email.strip(),
-                )
-                perfil = PerfilUsuario.objects.create(
-                    user=user, rol="CHOFER", empresa=empresa, debe_cambiar_password=True,
-                )
-                Chofer.objects.create(
-                    perfil=perfil,
-                    rut=rut,
-                    telefono=telefono,
-                    licencia=licencia,
-                    patente=patente,
-                )
+                with transaction.atomic():
+                    user = User.objects.create_user(
+                        username=username, password=password,
+                        first_name=datos["nombre"], last_name=datos["apellido"], email=datos["email"],
+                    )
+                    perfil = PerfilUsuario.objects.create(
+                        user=user, rol="CHOFER", empresa=empresa, debe_cambiar_password=True,
+                    )
+                    Chofer.objects.create(
+                        perfil=perfil, rut=datos["rut"] or None, telefono=datos["telefono"],
+                        licencia=datos["licencia"], patente=datos["patente"],
+                    )
                 enviar_bienvenida(user, empresa, request)
-                mensaje = (
-                    "Chofer creado. Le enviamos un correo de bienvenida; "
-                    "deberá cambiar la contraseña en su primer ingreso."
-                )
+                creado = {
+                    "nombre": user.get_full_name(), "username": username,
+                    "clave": None if datos["password"] else password,
+                }
+                datos = {}
             except IntegrityError:
                 error = "Error al guardar. Verifica usuario y RUT."
 
-    return render(request, "core/crear_chofer.html", {"mensaje": mensaje, "error": error})
+    return render(request, "core/crear_chofer.html", {"error": error, "creado": creado, "datos": datos})
+
+
+def _generar_username_persona(nombre, apellido):
+    """manuel.castro, manuel.castro2, ... (sin tildes ni espacios)."""
+    base = ".".join(p for p in (slugify(nombre).split("-")[0], slugify(apellido).split("-")[0]) if p)[:24] or "chofer"
+    username, sufijo = base, 1
+    while User.objects.filter(username=username).exists():
+        sufijo += 1
+        username = f"{base}{sufijo}"
+    return username
 
 
 @user_passes_test(es_admin_o_owner)
@@ -539,7 +546,7 @@ def editar_chofer_view(request, chofer_id):
     mensaje = None
 
     if request.method == "POST":
-        chofer.rut = request.POST.get("rut")
+        chofer.rut = (request.POST.get("rut") or "").strip() or None
         chofer.telefono = request.POST.get("telefono")
         chofer.licencia = request.POST.get("licencia")
         chofer.patente = request.POST.get("patente")
@@ -632,43 +639,59 @@ def lista_clientes_view(request):
 
 @user_passes_test(es_admin_o_owner)
 def crear_cliente_view(request):
-    mensaje = None
+    """
+    Alta rápida: nombre, dirección y comuna a la vista; el resto es opcional.
+    «Guardar y agregar otro» deja el formulario listo para el siguiente,
+    recordando comuna, ciudad y tipo (lo normal es cargar varios seguidos).
+    """
     error = None
     empresa = get_empresa(request)
+    datos = {"ciudad": empresa.ciudad_origen or "", "tipo_cliente": "NORMAL"}
+    recien = None
 
     if request.method == "POST":
-        rut = (request.POST.get("rut") or "").strip() or None
-        nombre = request.POST.get("nombre")
-        direccion = request.POST.get("direccion")
-        comuna = request.POST.get("comuna")
-        ciudad = request.POST.get("ciudad")
-        telefono = request.POST.get("telefono")
-        email = request.POST.get("email")
-        tipo_cliente = request.POST.get("tipo_cliente")
-        if tipo_cliente not in dict(Cliente.TIPO_CHOICES).keys():
-            tipo_cliente = "NORMAL"
+        datos = {k: (request.POST.get(k) or "").strip() for k in (
+            "rut", "nombre", "direccion", "comuna", "ciudad", "telefono", "email", "tipo_cliente",
+        )}
+        if datos["tipo_cliente"] not in dict(Cliente.TIPO_CHOICES):
+            datos["tipo_cliente"] = "NORMAL"
+        rut = datos["rut"] or None
 
-        if rut and Cliente.objects.filter(empresa=empresa, rut=rut).exists():
+        if not datos["nombre"] or not datos["direccion"]:
+            error = "Escribe al menos el nombre y la dirección del cliente."
+        elif rut and Cliente.objects.filter(empresa=empresa, rut=rut).exists():
             error = f"Ya existe un cliente con el RUT {rut}."
         else:
             cliente = Cliente.objects.create(
-                empresa=empresa,
-                rut=rut, nombre=nombre, direccion=direccion,
-                comuna=comuna, ciudad=ciudad, telefono=telefono, email=email,
-                tipo_cliente=tipo_cliente,
+                empresa=empresa, rut=rut, nombre=datos["nombre"], direccion=datos["direccion"],
+                comuna=datos["comuna"] or None, ciudad=datos["ciudad"] or None,
+                telefono=datos["telefono"] or None, email=datos["email"] or None,
+                tipo_cliente=datos["tipo_cliente"],
             )
-            mensaje = "Cliente creado correctamente."
             from .geocoding import geocodificar_cliente
-            if not geocodificar_cliente(cliente):
-                mensaje += (
-                    " No se pudo ubicar la dirección automáticamente; "
-                    "revisa que esté bien escrita para que la ruta pueda optimizarse."
-                )
+            ubicado = geocodificar_cliente(cliente)
+            if request.POST.get("accion") == "otro":
+                recien = {"cliente": cliente, "ubicado": ubicado}
+                datos = {k: datos[k] for k in ("comuna", "ciudad", "tipo_cliente")}
+            else:
+                if ubicado:
+                    messages.success(request, f"{cliente.nombre} quedó guardado y ubicado en el mapa.")
+                else:
+                    messages.warning(
+                        request,
+                        f"{cliente.nombre} quedó guardado, pero no pudimos ubicar la dirección. "
+                        "Revísala para que la ruta pueda optimizarse.",
+                    )
+                return redirect("lista_clientes")
 
+    comunas = (
+        Cliente.objects.filter(empresa=empresa).exclude(comuna__isnull=True).exclude(comuna="")
+        .values_list("comuna", flat=True).distinct().order_by("comuna")
+    )
     return render(request, "core/crear_cliente.html", {
-        "mensaje": mensaje, "error": error, "tipos_cliente": Cliente.TIPO_CHOICES,
+        "error": error, "datos": datos, "recien": recien,
+        "tipos_cliente": Cliente.TIPO_CHOICES, "comunas": list(comunas),
     })
-
 
 @user_passes_test(es_admin_o_owner)
 def editar_cliente_view(request, cliente_id):
@@ -829,6 +852,98 @@ def detalle_ruta_view(request, ruta_id):
     return render(request, "core/detalle_ruta.html", {
         "ruta": ruta, "paradas": paradas, "clientes": clientes_activos,
         "pedidos_pendientes": pedidos_pendientes, "clientes_json": clientes_json,
+    })
+
+
+@user_passes_test(es_admin_o_owner)
+def armar_ruta_view(request):
+    """
+    La ruta del día en una sola pantalla: chofer, fecha y pedidos pendientes
+    marcados. Al guardar crea las paradas, optimiza y avisa al chofer.
+    """
+    empresa = get_empresa(request)
+    hoy = timezone.localdate()
+    choferes = list(
+        Chofer.objects.filter(perfil__empresa=empresa, activo=True).select_related("perfil__user")
+        .order_by("perfil__user__first_name")
+    )
+    pendientes = list(
+        Pedido.objects.filter(empresa=empresa, estado="PENDIENTE", cliente__activo=True)
+        .select_related("cliente").order_by("cliente__comuna", "cliente__nombre", "creado_en")
+    )
+    error = None
+    elegidos = {p.id for p in pendientes}
+    fecha_txt = hoy.isoformat()
+    chofer_id = str(choferes[0].id) if len(choferes) == 1 else ""
+    nombre = ""
+
+    if request.method == "POST":
+        chofer_id = request.POST.get("chofer_id") or ""
+        fecha_txt = request.POST.get("fecha") or ""
+        nombre = (request.POST.get("nombre") or "").strip()
+        elegidos = {int(x) for x in request.POST.getlist("pedidos") if x.isdigit()}
+        chofer = next((c for c in choferes if str(c.id) == chofer_id), None)
+        try:
+            fecha = date.fromisoformat(fecha_txt)
+        except ValueError:
+            fecha = None
+
+        seleccion = [p for p in pendientes if p.id in elegidos]
+        if chofer is None:
+            error = "Elige el chofer que hará la ruta."
+        elif fecha is None or fecha < hoy:
+            error = "Elige una fecha de hoy en adelante."
+        elif not seleccion:
+            error = "Marca al menos un pedido para la ruta."
+        else:
+            with transaction.atomic():
+                ruta = Ruta.objects.create(
+                    empresa=empresa, chofer=chofer, fecha=fecha,
+                    nombre=nombre or f"Reparto {fecha.strftime('%d-%m')}",
+                )
+                clientes_vistos, repetidos = set(), 0
+                for orden, pedido in enumerate(seleccion, start=1):
+                    if pedido.cliente_id in clientes_vistos:
+                        repetidos += 1  # una parada por cliente; el otro pedido sigue pendiente
+                        continue
+                    clientes_vistos.add(pedido.cliente_id)
+                    ParadaRuta.objects.create(ruta=ruta, cliente=pedido.cliente, orden=orden, pedido=pedido)
+                    pedido.estado = "ASIGNADO"
+                    pedido.save(update_fields=["estado"])
+
+            from .optimizer import optimizar_paradas
+            resultado = optimizar_paradas(ruta)
+            partes = [f"Ruta creada con {len(clientes_vistos)} paradas."]
+            if resultado.get("optimizado"):
+                ruta.km_antes = resultado["km_antes"]
+                ruta.km_despues = resultado["km_despues"]
+                ruta.optimizada_en = timezone.now()
+                ruta.save(update_fields=["km_antes", "km_despues", "optimizada_en"])
+                if resultado.get("ahorro_km") is not None:
+                    partes.append(
+                        f"Optimizada: {resultado['km_antes']} km → {resultado['km_despues']} km "
+                        f"({resultado['ahorro_pct']}% menos)."
+                    )
+                else:
+                    partes.append("Paradas ordenadas por el camino más corto.")
+                if resultado.get("sin_coordenadas"):
+                    partes.append(
+                        "Sin ubicación en el mapa (quedaron al final): " + ", ".join(resultado["sin_coordenadas"]) + "."
+                    )
+            else:
+                partes.append(resultado.get("motivo", "No se pudo optimizar todavía."))
+            if repetidos:
+                partes.append(f"{repetidos} pedido(s) del mismo cliente quedaron pendientes para otra ruta.")
+            envio = avisar_ruta_asignada(ruta, request)
+            partes.append("Avisamos al chofer" + (" en la plataforma y por correo." if envio.get("enviado") else " en la plataforma."))
+            messages.success(request, " ".join(partes))
+            return redirect("detalle_ruta", ruta_id=ruta.id)
+
+    return render(request, "core/armar_ruta.html", {
+        "choferes": choferes, "pendientes": pendientes, "elegidos": elegidos,
+        "fecha": fecha_txt, "hoy": hoy, "manana": hoy + timedelta(days=1),
+        "chofer_id": chofer_id, "nombre": nombre, "error": error,
+        "sin_origen": empresa.latitud_origen is None,
     })
 
 
@@ -1220,6 +1335,7 @@ def crear_pedido_view(request):
     clientes = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
     error = None
     nota = ""
+    cliente_inicial = clientes.filter(id=request.GET.get("cliente")).first() if request.GET.get("cliente", "").isdigit() else None
 
     if request.method == "POST":
         nota = (request.POST.get("nota") or "").strip()
@@ -1242,6 +1358,7 @@ def crear_pedido_view(request):
         "error": error,
         "nota": nota,
         "nota_max": NOTA_PEDIDO_MAX,
+        "cliente_inicial": cliente_inicial,
     })
 
 # =========================================================

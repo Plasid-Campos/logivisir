@@ -211,7 +211,7 @@ def optimizar_paradas(ruta):
     if empresa.latitud_origen is None or empresa.longitud_origen is None:
         return {
             "optimizado": False,
-            "motivo": "Falta la dirección de salida de la empresa. Configúrala en el menú Empresa.",
+            "motivo": "Falta la dirección de salida de la empresa. Configúrala en «Datos de la empresa» (menú con el nombre de tu empresa).",
         }
 
     origen = (empresa.latitud_origen, empresa.longitud_origen)

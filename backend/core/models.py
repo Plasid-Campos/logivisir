@@ -134,7 +134,7 @@ class PerfilUsuario(models.Model):
 
 class Chofer(models.Model):
     perfil = models.OneToOneField(PerfilUsuario, on_delete=models.CASCADE)
-    rut = models.CharField(max_length=20, unique=True)
+    rut = models.CharField(max_length=20, unique=True, blank=True, null=True)
     telefono = models.CharField(max_length=20, blank=True, null=True)
     licencia = models.CharField(max_length=50, blank=True, null=True)
     patente = models.CharField(max_length=10, blank=True, null=True)
@@ -142,7 +142,8 @@ class Chofer(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.perfil.user.first_name} {self.perfil.user.last_name} ({self.rut})"
+        nombre = f"{self.perfil.user.first_name} {self.perfil.user.last_name}".strip()
+        return f"{nombre} ({self.rut})" if self.rut else nombre
 
 
 class Cliente(models.Model):

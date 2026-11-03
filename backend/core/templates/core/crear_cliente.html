@@ -1,67 +1,73 @@
 {% extends "core/base.html" %}
 
-{% block title %}Crear Cliente{% endblock %}
+{% block title %}Nuevo cliente | LogiVisir{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h3>Crear Cliente</h3>
+<section class="app-section">
+  <div class="container py-4" style="max-width: 640px;">
 
-    {% if mensaje %}
-        <div class="alert alert-success">{{ mensaje }}</div>
+    <a href="{% url 'lista_clientes' %}" class="link-volver"><i class="bi bi-arrow-left"></i> Clientes</a>
+    <h1 class="panel-title mt-2 mb-1">Nuevo cliente</h1>
+    <p class="text-muted mb-4">Con el nombre y la dirección basta: LogiVisir lo ubica en el mapa.</p>
+
+    {% if recien %}
+      <div class="rapido-ultimo {% if recien.ubicado %}ok{% else %}warn{% endif %}">
+        {% if recien.ubicado %}
+          <i class="bi bi-geo-alt-fill"></i>
+          <div><b>{{ recien.cliente.nombre }}</b> guardado y ubicado en el mapa.</div>
+        {% else %}
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <div><b>{{ recien.cliente.nombre }}</b> guardado, pero no pudimos ubicar «{{ recien.cliente.direccion }}».
+            <a href="{% url 'editar_cliente' recien.cliente.id %}">Corregir dirección</a></div>
+        {% endif %}
+        <a class="ms-auto small" href="{% url 'crear_pedido' %}?cliente={{ recien.cliente.id }}">Crear pedido</a>
+      </div>
     {% endif %}
-    {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
-    {% endif %}
 
-    <form method="POST">
-        {% csrf_token %}
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
 
-        <div class="mb-3">
-            <label>RUT</label>
-            <input type="text" name="rut" class="form-control">
+    <form method="POST" class="saas-card rapido-card">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label fw-semibold" for="nombre">Nombre del cliente</label>
+          <input type="text" id="nombre" name="nombre" class="form-control form-control-lg" value="{{ datos.nombre|default:'' }}" placeholder="Almacén Doña Rosa" required autofocus autocomplete="off">
         </div>
-
-        <div class="mb-3">
-            <label>Nombre</label>
-            <input type="text" name="nombre" class="form-control" required>
+        <div class="col-12">
+          <label class="form-label fw-semibold" for="direccion">Dirección</label>
+          <input type="text" id="direccion" name="direccion" class="form-control form-control-lg" value="{{ datos.direccion|default:'' }}" placeholder="Gran Avenida 4400" required autocomplete="off">
         </div>
+        <div class="col-sm-6">
+          <label class="form-label fw-semibold" for="comuna">Comuna</label>
+          <input type="text" id="comuna" name="comuna" class="form-control" value="{{ datos.comuna|default:'' }}" list="comunas-usadas" placeholder="San Miguel" autocomplete="off">
+          <datalist id="comunas-usadas">{% for c in comunas %}<option value="{{ c }}">{% endfor %}</datalist>
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label fw-semibold" for="ciudad">Ciudad</label>
+          <input type="text" id="ciudad" name="ciudad" class="form-control" value="{{ datos.ciudad|default:'' }}" placeholder="Santiago">
+        </div>
+      </div>
 
-        <div class="mb-3">
-            <label>Tipo de cliente</label>
-            <select name="tipo_cliente" class="form-select">
-                {% for valor, texto in tipos_cliente %}
-                    <option value="{{ valor }}">{{ texto }}</option>
-                {% endfor %}
+      <details class="mas-datos mt-3" {% if datos.rut or datos.telefono or datos.email %}open{% endif %}>
+        <summary>Más datos (opcional): teléfono, correo, RUT, tipo</summary>
+        <div class="row g-3 mt-1">
+          <div class="col-sm-6"><label class="form-label" for="telefono">Teléfono</label><input type="tel" id="telefono" name="telefono" class="form-control" value="{{ datos.telefono|default:'' }}"></div>
+          <div class="col-sm-6"><label class="form-label" for="email">Correo</label><input type="email" id="email" name="email" class="form-control" value="{{ datos.email|default:'' }}"></div>
+          <div class="col-sm-6"><label class="form-label" for="rut">RUT</label><input type="text" id="rut" name="rut" class="form-control" value="{{ datos.rut|default:'' }}"></div>
+          <div class="col-sm-6">
+            <label class="form-label" for="tipo_cliente">Tipo</label>
+            <select id="tipo_cliente" name="tipo_cliente" class="form-select">
+              {% for valor, texto in tipos_cliente %}<option value="{{ valor }}" {% if datos.tipo_cliente == valor %}selected{% endif %}>{{ texto }}</option>{% endfor %}
             </select>
+          </div>
         </div>
+      </details>
 
-        <div class="mb-3">
-            <label>Dirección</label>
-            <input type="text" name="direccion" class="form-control" required>
-        </div>
-
-        <div class="mb-3">
-            <label>Comuna</label>
-            <input type="text" name="comuna" class="form-control">
-        </div>
-
-        <div class="mb-3">
-            <label>Ciudad</label>
-            <input type="text" name="ciudad" class="form-control">
-        </div>
-
-        <div class="mb-3">
-            <label>Teléfono</label>
-            <input type="text" name="telefono" class="form-control">
-        </div>
-
-        <div class="mb-3">
-            <label>Email</label>
-            <input type="email" name="email" class="form-control">
-        </div>
-
-        <button class="btn btn-primary">Crear Cliente</button>
-        <a href="{% url 'lista_clientes' %}" class="btn btn-link">Volver</a>
+      <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+        <button class="btn btn-primary btn-lg flex-fill" name="accion" value="otro"><i class="bi bi-plus-lg me-1"></i> Guardar y agregar otro</button>
+        <button class="btn btn-outline-primary btn-lg flex-fill" name="accion" value="guardar">Guardar y terminar</button>
+      </div>
     </form>
-</div>
+  </div>
+</section>
 {% endblock %}

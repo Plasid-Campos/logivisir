@@ -40,11 +40,11 @@ def pasos_de(empresa):
             "boton": "Nuevo pedido",
         },
         {
-            "titulo": "Crea una ruta y presiona Optimizar",
-            "ayuda": "LogiVisir ordena las paradas por el camino más corto.",
+            "titulo": "Arma tu primera ruta optimizada",
+            "ayuda": "Eliges chofer y pedidos; el orden sale solo.",
             "hecho": Ruta.objects.filter(empresa=empresa, optimizada_en__isnull=False).exists(),
-            "url": reverse("crear_ruta"),
-            "boton": "Crear ruta",
+            "url": reverse("armar_ruta"),
+            "boton": "Armar ruta",
         },
         {
             "titulo": "Tu chofer registra la primera entrega",
