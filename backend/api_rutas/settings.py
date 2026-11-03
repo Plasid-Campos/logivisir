@@ -112,6 +112,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.user_role',
+                'core.context_processors.contacto',
             ],
         },  
     },
@@ -226,3 +227,8 @@ PAGO_TIPO_CUENTA = os.environ.get("PAGO_TIPO_CUENTA", "Cuenta corriente")
 PAGO_NUMERO_CUENTA = os.environ.get("PAGO_NUMERO_CUENTA", "")
 PAGO_RUT = os.environ.get("PAGO_RUT", "77.777.777-7")
 PAGO_CORREO = os.environ.get("PAGO_CORREO", "pagos@logivisir.com")
+
+# Contacto público del sitio. Si quedan vacíos, el sitio no muestra ese canal
+# (mejor ocultarlo que publicar un dato falso).
+CONTACTO_EMAIL = os.environ.get("CONTACTO_EMAIL", "")
+CONTACTO_WHATSAPP = os.environ.get("CONTACTO_WHATSAPP", "")  # solo dígitos, ej. 56912345678

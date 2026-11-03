@@ -21,3 +21,13 @@ def user_role(request):
         "NOTIF_RECIENTES": notif_recientes,
         "SOLICITUDES_NUEVAS": solicitudes_nuevas,
     }
+
+
+def contacto(request):
+    """Canales de contacto públicos; vacíos si no están configurados."""
+    from django.conf import settings
+    whatsapp = "".join(c for c in getattr(settings, "CONTACTO_WHATSAPP", "") if c.isdigit())
+    return {
+        "CONTACTO_EMAIL": getattr(settings, "CONTACTO_EMAIL", ""),
+        "CONTACTO_WHATSAPP": whatsapp,
+    }

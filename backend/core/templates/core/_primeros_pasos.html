@@ -1,0 +1,31 @@
+{# Guía de primeros pasos: se muestra hasta que la empresa completa los 6 pasos. #}
+{% if guia and not guia.completo %}
+<div class="pp-guia saas-card mb-4" id="primeros-pasos">
+  <div class="pp-guia-head">
+    <div>
+      <span class="pill pill-primary"><i class="bi bi-flag-fill me-1"></i>Primeros pasos</span>
+      <h2 class="pp-guia-title">Deja tu reparto funcionando en 6 pasos</h2>
+      <p class="pp-guia-sub">Cada paso se marca solo cuando lo completas. ¿Dudas? Revisa la <a href="{% url 'ayuda' %}">guía de uso</a>.</p>
+    </div>
+    <div class="pp-guia-progreso" aria-label="{{ guia.hechos }} de {{ guia.total }} pasos listos">
+      <strong>{{ guia.hechos }}/{{ guia.total }}</strong>
+      <div class="pp-barra"><span style="width: {{ guia.porcentaje }}%"></span></div>
+    </div>
+  </div>
+
+  <ol class="pp-pasos">
+    {% for paso in guia.pasos %}
+      <li class="pp-paso{% if paso.hecho %} pp-hecho{% elif forloop.counter0 == guia.siguiente %} pp-siguiente{% endif %}">
+        <span class="pp-n">{% if paso.hecho %}<i class="bi bi-check-lg"></i>{% else %}{{ forloop.counter }}{% endif %}</span>
+        <div class="pp-texto">
+          <b>{{ paso.titulo }}</b>
+          <small>{{ paso.ayuda }}</small>
+        </div>
+        {% if not paso.hecho %}
+          <a class="btn btn-sm {% if forloop.counter0 == guia.siguiente %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ paso.url }}">{{ paso.boton }}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+</div>
+{% endif %}

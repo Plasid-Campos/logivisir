@@ -1,0 +1,130 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Guía de uso | LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4 ayuda">
+
+    <div class="ayuda-hero saas-card mb-4">
+      <span class="pill pill-primary"><i class="bi bi-life-preserver me-1"></i>Guía de uso</span>
+      <h1 class="panel-title mt-2 mb-1">Cómo se usa LogiVisir</h1>
+      <p class="panel-subtitle mb-0">
+        {% if USER_ROL == "CHOFER" %}
+          Todo lo que necesitas para hacer tu ruta del día desde el celular.
+        {% else %}
+          Qué hace cada sección y cuál es el orden recomendado para tu primer día.
+        {% endif %}
+      </p>
+    </div>
+
+    {% if USER_ROL == "CHOFER" %}
+    <!-- ================= CHOFER ================= -->
+    <div class="ayuda-grid">
+      <article class="ayuda-card">
+        <span class="ayuda-icon"><i class="bi bi-signpost-2"></i></span>
+        <h2>1. Abre «Mi ruta»</h2>
+        <p>Ves las paradas de hoy en el orden en que conviene hacerlas. Arriba tienes cuántas llevas y cuántas faltan.</p>
+      </article>
+      <article class="ayuda-card">
+        <span class="ayuda-icon"><i class="bi bi-sign-turn-right"></i></span>
+        <h2>2. Navega con Google Maps</h2>
+        <p>Toca <b>Abrir tramo en Google Maps</b>. Si la ruta es larga viene en tramos: al terminar uno, abre el siguiente. También puedes navegar a una sola parada.</p>
+      </article>
+      <article class="ayuda-card">
+        <span class="ayuda-icon"><i class="bi bi-camera"></i></span>
+        <h2>3. Marca cada entrega</h2>
+        <p>Al llegar, marca <b>Entregado</b> y saca una foto, o <b>No entregado</b> y elige el motivo (local cerrado, no recibió, dirección no encontrada). Tu jefe lo ve al instante.</p>
+      </article>
+      <article class="ayuda-card">
+        <span class="ayuda-icon"><i class="bi bi-bell"></i></span>
+        <h2>4. Revisa tus avisos</h2>
+        <p>La campana te avisa cuando te asignan una ruta nueva. Las rutas de mañana las puedes revisar antes, pero las entregas se marcan el mismo día.</p>
+      </article>
+    </div>
+    <div class="text-center mt-4">
+      <a class="btn btn-primary btn-saas" href="{% url 'chofer_ruta_hoy' %}"><i class="bi bi-signpost-2 me-1"></i> Ir a mi ruta</a>
+    </div>
+
+    {% else %}
+    <!-- ================= DUEÑO / ADMINISTRADOR ================= -->
+    <nav class="ayuda-indice" aria-label="Secciones de la guía">
+      <a href="#primer-dia">Tu primer día</a>
+      <a href="#panel">Panel</a>
+      <a href="#clientes">Clientes</a>
+      <a href="#choferes">Choferes</a>
+      <a href="#pedidos">Pedidos</a>
+      <a href="#rutas">Rutas</a>
+      <a href="#analitica">Analítica</a>
+      <a href="#empresa">Empresa y usuarios</a>
+    </nav>
+
+    <section id="primer-dia" class="ayuda-bloque">
+      <h2 class="ayuda-h2">Tu primer día, en orden</h2>
+      <ol class="ayuda-orden">
+        <li><b>Dirección de salida.</b> En <i>Datos de la empresa</i>, indica desde dónde salen y adonde vuelven las rutas.</li>
+        <li><b>Clientes.</b> Agrégalos con su dirección; LogiVisir los ubica en el mapa.</li>
+        <li><b>Chofer.</b> Créale un usuario y una clave inicial; recibe un correo de bienvenida y al entrar elige su propia clave.</li>
+        <li><b>Pedidos.</b> Anota a qué cliente hay que ir y qué se le lleva.</li>
+        <li><b>Ruta.</b> Crea la ruta del día, agrega los pedidos y presiona <b>Optimizar</b>.</li>
+        <li><b>Seguimiento.</b> El chofer marca cada entrega; tú lo ves en el detalle de la ruta.</li>
+      </ol>
+      <p class="ayuda-nota"><i class="bi bi-lightbulb"></i> En el <a href="{% url 'dashboard' %}">Panel</a> tienes una lista de primeros pasos que se marca sola a medida que avanzas.</p>
+    </section>
+
+    <div class="ayuda-grid">
+      <article class="ayuda-card" id="panel">
+        <span class="ayuda-icon"><i class="bi bi-speedometer2"></i></span>
+        <h2>Panel</h2>
+        <p>Tu resumen del día: clientes y choferes activos, rutas de hoy y cuáles siguen pendientes. Desde aquí creas una ruta nueva con un clic.</p>
+        <a href="{% url 'dashboard' %}">Ir al panel <i class="bi bi-arrow-right"></i></a>
+      </article>
+
+      <article class="ayuda-card" id="clientes">
+        <span class="ayuda-icon"><i class="bi bi-shop"></i></span>
+        <h2>Clientes</h2>
+        <p>Los locales a los que repartes. Al guardar la dirección se ubican solos en el mapa. Si alguno queda <b>sin ubicación</b>, la lista te avisa y puedes corregirlo: en una ruta quedaría al final, sin optimizar.</p>
+        <a href="{% url 'lista_clientes' %}">Ir a clientes <i class="bi bi-arrow-right"></i></a>
+      </article>
+
+      <article class="ayuda-card" id="choferes">
+        <span class="ayuda-icon"><i class="bi bi-person-badge"></i></span>
+        <h2>Choferes</h2>
+        <p>Cada chofer tiene su propio usuario y solo ve sus rutas. Desactivarlo no borra su historial de entregas.</p>
+        <a href="{% url 'lista_choferes' %}">Ir a choferes <i class="bi bi-arrow-right"></i></a>
+      </article>
+
+      <article class="ayuda-card" id="pedidos">
+        <span class="ayuda-icon"><i class="bi bi-box-seam"></i></span>
+        <h2>Pedidos</h2>
+        <p>Qué hay que llevar y a quién (por ejemplo, «10 kg de marraqueta»). LogiVisir no maneja precios. Un pedido se puede editar o cancelar mientras no se entregue.</p>
+        <a href="{% url 'lista_pedidos' %}">Ir a pedidos <i class="bi bi-arrow-right"></i></a>
+      </article>
+
+      <article class="ayuda-card" id="rutas">
+        <span class="ayuda-icon"><i class="bi bi-signpost-split"></i></span>
+        <h2>Rutas</h2>
+        <p>Una ruta es el recorrido de un chofer en una fecha. En su detalle agregas los pedidos pendientes como paradas y presionas <b>Optimizar</b>: verás los kilómetros antes y después. Ahí mismo ves la foto o el motivo de cada entrega.</p>
+        <a href="{% url 'lista_rutas' %}">Ir a rutas <i class="bi bi-arrow-right"></i></a>
+      </article>
+
+      <article class="ayuda-card" id="analitica">
+        <span class="ayuda-icon"><i class="bi bi-bar-chart-line"></i></span>
+        <h2>Analítica</h2>
+        <p>Despachos por mes y por comuna, tus clientes con más entregas y la segmentación automática: <b>VIP</b>, <b>Frecuente</b>, <b>Ocasional</b> y <b>En riesgo</b>. Puedes exportar todo a CSV.</p>
+        <a href="{% url 'analitica' %}">Ir a analítica <i class="bi bi-arrow-right"></i></a>
+      </article>
+
+      <article class="ayuda-card" id="empresa">
+        <span class="ayuda-icon"><i class="bi bi-gear"></i></span>
+        <h2>Empresa y usuarios</h2>
+        <p>Desde el menú con el nombre de tu empresa: <b>Datos de la empresa</b> (dirección de salida){% if USER_ROL == "OWNER" %} y <b>Usuarios</b>, donde el dueño crea administradores, genera claves temporales y desactiva accesos{% endif %}. La campana <i class="bi bi-bell"></i> reúne tus avisos.</p>
+        <a href="{% url 'configurar_empresa' %}">Ir a datos de la empresa <i class="bi bi-arrow-right"></i></a>
+      </article>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

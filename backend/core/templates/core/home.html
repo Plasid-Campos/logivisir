@@ -1,209 +1,235 @@
 {% extends "core/base.html" %}
 {% load static formato %}
 
-{% block title %}Optimización de rutas para pymes | LogiVisir Solutions{% endblock %}
+{% block title %}LogiVisir · Rutas de reparto optimizadas para pymes en Chile{% endblock %}
+
+{% block extra_head %}
+<meta name="description" content="Arma la ruta de reparto del día en un clic, recorre menos kilómetros y ve cada entrega con foto. Para panaderías, distribuidoras y pymes de reparto en Chile. Precio fijo en pesos, sin cobro por chofer.">
+<link rel="stylesheet" href="{% static 'core/css/landing.css' %}?v=1">
+{% endblock %}
 
 {% block content %}
 
 <!-- ===========================
-     HERO SECTION
+     HERO
 ============================ -->
-<section class="hero-section">
+<section class="lv-hero">
   <div class="container">
-    <div class="row align-items-center">
+    <div class="row align-items-center g-5">
 
-      <!-- TEXTO DEL HERO -->
-      <div class="col-lg-6 mb-5 mb-lg-0">
-        <span class="hero-kicker">Software de rutas para pymes de reparto</span>
-
-        <h1 class="hero-title">
-          Tus rutas, ordenadas.<br>
-          Tus entregas, a tiempo.
-        </h1>
-
-        <p class="hero-subtitle">
-          Logivisir reemplaza la planilla y el mapa mental de "quién va primero" por
-          rutas optimizadas automáticamente, choferes con su propio panel y
-          visibilidad completa de cada entrega, todos los días.
+      <div class="col-lg-6">
+        <span class="lv-kicker"><i class="bi bi-truck"></i> Para panaderías, distribuidoras y pymes de reparto</span>
+        <h1 class="lv-hero-title">Arma la ruta del día en un clic.<br><span>Recorre menos kilómetros.</span></h1>
+        <p class="lv-hero-sub">
+          LogiVisir ordena tus entregas por las calles reales, le pasa la ruta al celular
+          de cada chofer y te muestra qué se entregó y qué no. Sin planillas y sin
+          llamadas de «¿dónde vas?».
         </p>
-
-        <div class="hero-actions">
-          <a href="{% url 'solicitar_cuenta' %}" class="btn btn-hero-primary">Comenzar ahora</a>
-          <a href="#como-funciona" class="btn btn-hero-ghost">Ver cómo funciona</a>
+        <div class="lv-hero-actions">
+          <a href="{% url 'solicitar_cuenta' %}" class="btn lv-btn-primary">Solicitar mi cuenta <i class="bi bi-arrow-right"></i></a>
+          <a href="#como-funciona" class="btn lv-btn-ghost">Ver cómo funciona</a>
         </div>
-
-        <p class="hero-note">Sin instalaciones. Tu cuenta queda activa en menos de 24 horas.</p>
+        <ul class="lv-hero-proof">
+          <li><i class="bi bi-check-circle-fill"></i> Precio fijo en pesos, sin cobro por chofer</li>
+          <li><i class="bi bi-check-circle-fill"></i> El chofer no instala nada</li>
+          <li><i class="bi bi-check-circle-fill"></i> Tus datos solo los ves tú</li>
+        </ul>
       </div>
 
-      <!-- PANEL DE PRODUCTO (mock hecho en CSS, no una captura) -->
+      <!-- Prueba visual con datos medidos (no inventados) -->
       <div class="col-lg-6">
-        <div class="product-preview">
-          <div class="product-preview-bar">
-            <span></span><span></span><span></span>
-            <div class="product-preview-url">app.logivisir.com/rutas/hoy</div>
+        <figure class="lv-route-card">
+          <div class="lv-route-head">
+            <div>
+              <span class="lv-route-label">Misma lista de 16 entregas</span>
+              <strong class="lv-route-title">Antes y después de optimizar</strong>
+            </div>
+            <span class="lv-route-badge">−54,7 % km</span>
           </div>
-          <div class="product-preview-body">
-            <div class="pp-row pp-row-head">
-              <span>Ruta de hoy · Manuel C.</span>
-              <span class="pp-chip">En proceso</span>
+          {% include "core/_hero_ruta_svg.html" %}
+          <div class="lv-route-legend">
+            <div class="lv-legend-item">
+              <span class="lv-swatch lv-swatch-antes"></span>
+              <div><small>En el orden en que llegaron los pedidos</small><strong>84,5 km</strong></div>
             </div>
-
-            <div class="pp-stop pp-stop-done">
-              <span class="pp-stop-num"><i class="bi bi-check-lg"></i></span>
-              <div>
-                <div class="pp-stop-name">Coffe &amp; Tea SPA</div>
-                <div class="pp-stop-meta">Entregado · 09:14</div>
-              </div>
-            </div>
-            <div class="pp-stop pp-stop-active">
-              <span class="pp-stop-num">2</span>
-              <div>
-                <div class="pp-stop-name">Todo Coffe</div>
-                <div class="pp-stop-meta">Siguiente parada · 1.2 km</div>
-              </div>
-            </div>
-            <div class="pp-stop">
-              <span class="pp-stop-num">3</span>
-              <div>
-                <div class="pp-stop-name">Marcelo</div>
-                <div class="pp-stop-meta">Pendiente</div>
-              </div>
-            </div>
-
-            <div class="pp-stats">
-              <div class="pp-stat">
-                <div class="pp-stat-value">18%</div>
-                <div class="pp-stat-label">menos km por ruta</div>
-              </div>
-              <div class="pp-stat">
-                <div class="pp-stat-value">3/5</div>
-                <div class="pp-stat-label">entregas de hoy</div>
-              </div>
+            <div class="lv-legend-item">
+              <span class="lv-swatch lv-swatch-despues"></span>
+              <div><small>Ruta calculada por LogiVisir</small><strong>38,3 km</strong></div>
             </div>
           </div>
-        </div>
+          <figcaption>
+            Prueba con 16 direcciones reales de San Miguel y comunas vecinas, saliendo y
+            volviendo al mismo local, con distancias de calle de OpenStreetMap.
+            Tu ahorro depende de cómo planificas hoy.
+          </figcaption>
+        </figure>
       </div>
 
     </div>
   </div>
 </section>
 
-
-<!-- =========================
-     ORIGEN (prueba social honesta, sin logos inventados)
-========================= -->
-<section class="origin-band">
+<!-- ===========================
+     DATOS VERIFICABLES (en vez de logos inventados)
+============================ -->
+<section class="lv-facts" aria-label="Datos de la plataforma">
   <div class="container">
-    <p>
-      <i class="bi bi-quote"></i>
-      Logivisir nació resolviendo el reparto diario de
-      <strong>Panadería Macarrón</strong>, que antes se planificaba a mano.
-      Hoy está construido para que cualquier pyme de reparto pueda usarlo.
-    </p>
+    <ul>
+      <li><i class="bi bi-map"></i><div><strong>Calles reales</strong><span>distancias de OpenStreetMap</span></div></li>
+      <li><i class="bi bi-lightning-charge"></i><div><strong>Menos de 1 segundo</strong><span>para ordenar 50 paradas</span></div></li>
+      <li><i class="bi bi-phone"></i><div><strong>Cualquier celular</strong><span>sin descargar aplicaciones</span></div></li>
+      <li><i class="bi bi-geo-alt"></i><div><strong>Hecho en Chile</strong><span>precios en pesos y soporte en español</span></div></li>
+    </ul>
   </div>
 </section>
 
-
-<!-- ======================================
-     SECCIÓN: ¿Qué soluciona LogiVisir?
-====================================== -->
-<section id="soluciones" class="solutions-section">
+<!-- ===========================
+     ANTES / DESPUÉS
+============================ -->
+<section class="lv-section" id="producto">
   <div class="container">
+    <div class="lv-section-head">
+      <span class="lv-eyebrow">¿Te suena?</span>
+      <h2 class="lv-h2">Lo que hoy te quita la mañana, resuelto</h2>
+    </div>
 
-    <div class="section-head">
-      <h2 class="section-title">Todo lo que hoy haces a mano, en un solo lugar</h2>
-      <p class="section-subtitle">
-        Reemplaza planillas, grupos de WhatsApp y llamadas de "¿dónde vas?" por
-        una operación de reparto que se ve y se controla desde un solo panel.
-      </p>
+    <div class="lv-compare">
+      <div class="lv-compare-col lv-compare-sin">
+        <h3><i class="bi bi-x-circle"></i> Sin LogiVisir</h3>
+        <ul>
+          <li>Armas la ruta de memoria o en una planilla.</li>
+          <li>Llamas al chofer para saber cómo va.</li>
+          <li>Un cliente reclama y no tienes cómo probar la entrega.</li>
+          <li>No sabes qué clientes están dejando de pedir.</li>
+        </ul>
+      </div>
+      <div class="lv-compare-col lv-compare-con">
+        <h3><i class="bi bi-check-circle"></i> Con LogiVisir</h3>
+        <ul>
+          <li>La ruta se ordena sola por el camino más corto.</li>
+          <li>Ves en el panel qué paradas ya se entregaron.</li>
+          <li>Cada entrega queda con foto y hora; si no se pudo, con el motivo.</li>
+          <li>La analítica te muestra quién es VIP y quién está en riesgo.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===========================
+     QUÉ VE CADA PERSONA
+============================ -->
+<section class="lv-section lv-section-soft">
+  <div class="container">
+    <div class="lv-section-head">
+      <span class="lv-eyebrow">Una herramienta, tres pantallas</span>
+      <h2 class="lv-h2">Cada persona ve solo lo que necesita</h2>
+      <p class="lv-lead">Nadie tiene que aprender un sistema complicado: cada rol tiene una pantalla simple, pensada para su trabajo.</p>
     </div>
 
     <div class="row g-4">
-      <div class="col-md-4">
-        <div class="solution-card">
-          <div class="solution-icon icon-1"><i class="bi bi-signpost-split"></i></div>
-          <h5>Rutas que se optimizan solas</h5>
-          <p>
-            Agregas los clientes del día y el sistema calcula el orden que menos
-            kilómetros recorre, saliendo y volviendo desde tu negocio.
-          </p>
-        </div>
+      <div class="col-lg-4">
+        <article class="lv-role">
+          <div class="lv-mock" aria-hidden="true">
+            <div class="lv-mock-top"><span>Reparto 04-11</span><span class="lv-pill lv-pill-blue">Planificada</span></div>
+            <div class="lv-mock-line"><i class="bi bi-geo-alt-fill"></i> 16 paradas · Chofer: Manuel</div>
+            <div class="lv-mock-btn"><i class="bi bi-magic"></i> Optimizar ruta</div>
+            <div class="lv-mock-kpis"><span><b>38,3</b> km</span><span><b>16</b> paradas</span></div>
+          </div>
+          <h3>Dueño y administrador</h3>
+          <p>Cargas clientes y pedidos, creas la ruta, presionas <b>Optimizar</b> y se la asignas a un chofer. Ves el avance del día desde el panel.</p>
+        </article>
       </div>
 
-      <div class="col-md-4">
-        <div class="solution-card">
-          <div class="solution-icon icon-2"><i class="bi bi-person-lines-fill"></i></div>
-          <h5>Choferes con su propio panel</h5>
-          <p>
-            Cada chofer entra desde su celular, ve solo su ruta del día y marca
-            entregado o no entregado con el motivo, sin llamadas de por medio.
-          </p>
-        </div>
+      <div class="col-lg-4">
+        <article class="lv-role">
+          <div class="lv-mock lv-mock-phone" aria-hidden="true">
+            <div class="lv-mock-stop lv-done"><span><i class="bi bi-check-lg"></i></span><div><b>Almacén Doña Rosa</b><small>Entregado con foto</small></div></div>
+            <div class="lv-mock-stop lv-now"><span>2</span><div><b>Minimarket Las Tres T</b><small>Carlos Edwards 1200</small></div></div>
+            <div class="lv-mock-actions"><span class="lv-a-nav"><i class="bi bi-sign-turn-right"></i> Navegar</span><span class="lv-a-ok"><i class="bi bi-camera"></i> Entregado</span></div>
+          </div>
+          <h3>Chofer</h3>
+          <p>Entra desde su celular y ve solo su ruta, en orden. Un toque abre Google Maps; al llegar marca <b>Entregado</b> con foto o <b>No entregado</b> con el motivo.</p>
+        </article>
       </div>
 
-      <div class="col-md-4">
-        <div class="solution-card">
-          <div class="solution-icon icon-3"><i class="bi bi-speedometer2"></i></div>
-          <h5>Visibilidad de toda la operación</h5>
-          <p>
-            Sabes cuántas rutas van hoy, cuáles están pendientes y qué clientes
-            quedaron sin entrega, sin tener que llamar a nadie a preguntar.
-          </p>
-        </div>
+      <div class="col-lg-4">
+        <article class="lv-role">
+          <div class="lv-mock" aria-hidden="true">
+            <div class="lv-mock-top"><span>Tus clientes</span><span class="lv-pill">Según sus despachos</span></div>
+            <div class="lv-seg"><span class="lv-seg-vip">VIP</span><span class="lv-seg-frec">Frecuente</span><span class="lv-seg-oca">Ocasional</span><span class="lv-seg-riesgo">En riesgo</span></div>
+            <div class="lv-mock-line"><i class="bi bi-exclamation-triangle"></i> Minimarket Don Lucho no pide hace 4 meses</div>
+          </div>
+          <h3>Analítica de clientes</h3>
+          <p>A partir de tus despachos, LogiVisir agrupa a tus clientes en VIP, Frecuente, Ocasional y En riesgo, para que sepas a quién cuidar y a quién llamar.</p>
+        </article>
       </div>
     </div>
-
   </div>
 </section>
 
-
-<!-- ======================================
-     SECCIÓN: ¿CÓMO FUNCIONA?
-====================================== -->
-<section id="como-funciona" class="steps-section">
+<!-- ===========================
+     CÓMO FUNCIONA TU DÍA
+============================ -->
+<section class="lv-section" id="como-funciona">
   <div class="container">
-
-    <div class="section-head">
-      <h2 class="section-title">De solicitud a cuenta activa, en 4 pasos</h2>
-      <p class="section-subtitle">Sin contratos eternos ni instalaciones complicadas.</p>
+    <div class="lv-section-head">
+      <span class="lv-eyebrow">Cómo funciona</span>
+      <h2 class="lv-h2">Tu reparto en 3 pasos</h2>
     </div>
-
-    <div class="steps-track">
-      <div class="step-card">
-        <span class="step-number">1</span>
-        <h5>Solicitas tu cuenta</h5>
-        <p>Completa un formulario con los datos de tu negocio y el plan que más te acomoda.</p>
-      </div>
-      <div class="step-card">
-        <span class="step-number">2</span>
-        <h5>Recibes instrucciones de pago</h5>
-        <p>Te mostramos los datos para transferir y un código de referencia único.</p>
-      </div>
-      <div class="step-card">
-        <span class="step-number">3</span>
-        <h5>Validamos tu pago</h5>
-        <p>Confirmamos la transferencia y creamos tu cuenta con tu propio espacio aislado.</p>
-      </div>
-      <div class="step-card">
-        <span class="step-number">4</span>
-        <h5>Recibes tus accesos</h5>
-        <p>Te enviamos usuario y contraseña por correo. Inicias sesión y listo.</p>
-      </div>
-    </div>
-
+    <ol class="lv-steps">
+      <li>
+        <span class="lv-step-n">1</span>
+        <h3>Carga tus clientes</h3>
+        <p>Escribe la dirección y LogiVisir la ubica en el mapa. ¿Tienes una lista en Excel? En los planes Pro y Empresarial la cargamos por ti.</p>
+      </li>
+      <li>
+        <span class="lv-step-n">2</span>
+        <h3>Crea la ruta y optimiza</h3>
+        <p>Elige los pedidos del día, asigna un chofer y presiona <b>Optimizar</b>. El orden sale por las calles reales, saliendo y volviendo a tu local.</p>
+      </li>
+      <li>
+        <span class="lv-step-n">3</span>
+        <h3>El chofer reparte, tú lo ves</h3>
+        <p>Cada entrega queda registrada con foto o motivo. Recibes avisos en la plataforma y por correo, sin tener que llamar a nadie.</p>
+      </li>
+    </ol>
   </div>
 </section>
 
+<!-- ===========================
+     PRIVACIDAD (diferenciador)
+============================ -->
+<section class="lv-privacy" id="privacidad">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-5">
+        <span class="lv-eyebrow lv-eyebrow-light">Privacidad por diseño</span>
+        <h2 class="lv-h2 lv-h2-light">Tus datos son tuyos. Ni nosotros vemos tu operación.</h2>
+        <p class="lv-privacy-text">Tus clientes son tu negocio. Por eso LogiVisir separa cada empresa y limita lo que puede ver nuestro propio equipo.</p>
+      </div>
+      <div class="col-lg-7">
+        <ul class="lv-privacy-list">
+          <li><i class="bi bi-shield-lock"></i><div><b>Cada empresa en su propio espacio</b><span>Tus clientes, choferes y rutas nunca se mezclan con los de otra empresa.</span></div></li>
+          <li><i class="bi bi-eye-slash"></i><div><b>El equipo LogiVisir no ve tu operación</b><span>Solo ve los datos de tu membresía (plan, pagos y usuarios), nunca tus clientes, pedidos ni rutas.</span></div></li>
+          <li><i class="bi bi-cash-coin"></i><div><b>No manejamos tus precios ni ventas</b><span>LogiVisir organiza despachos; lo que cobras a tus clientes queda solo en tu negocio.</span></div></li>
+          <li><i class="bi bi-download"></i><div><b>Te llevas tus datos cuando quieras</b><span>Exporta tus despachos a CSV desde la analítica.</span></div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ======================================
-     SECCIÓN: PLANES Y PRECIOS
+     PLANES Y PRECIOS
 ====================================== -->
 <section id="planes" class="pricing-section">
   <div class="container">
 
     <div class="section-head">
-      <h2 class="section-title">Un plan para cada tamaño de operación</h2>
-      <p class="section-subtitle">Precio mensual por empresa, sin cobro por chofer. Todos los planes incluyen todas las funciones.</p>
+      <span class="lv-eyebrow">Precios</span>
+      <h2 class="section-title">Un precio fijo por empresa</h2>
+      <p class="section-subtitle">Sin cobro por chofer ni por usuario. Todos los planes incluyen todas las funciones; cambian el tamaño sugerido y el soporte.</p>
     </div>
 
     <div class="row g-4 justify-content-center align-items-stretch">
@@ -231,195 +257,89 @@
       </ul>
     </div>
 
-    <p class="pricing-note">* Valores mensuales en pesos chilenos. Se paga por transferencia, por 1, 3, 6 o 12 meses.</p>
-
-  </div>
-</section>
-
-
-<!-- ======================================
-     SECCIÓN: ¿QUIÉNES SOMOS?
-====================================== -->
-<section id="quienes-somos" class="about-section">
-  <div class="container">
-    <div class="row align-items-center g-5">
-
-      <div class="col-lg-6">
-        <h2 class="section-title text-start">Nacimos resolviendo un problema real</h2>
-        <p class="about-text">
-          Logivisir empezó como respuesta a un problema concreto de
-          <strong>Panadería Macarrón</strong>: planificar rutas de reparto a mano,
-          con mapas y memoria, sin visibilidad de qué se entregó y qué no.
-        </p>
-        <p class="about-text">
-          Hoy es una plataforma multiempresa: cada negocio que se suma tiene su
-          propio espacio, sus propios clientes y choferes, completamente aislado
-          del resto.
-        </p>
-      </div>
-
-      <div class="col-lg-6">
-        <div class="about-card">
-          <h6 class="about-card-title">Pensado para reparto diario real</h6>
-          <ul class="about-list">
-            <li>Menos rutas improvisadas, más planificación.</li>
-            <li>Visibilidad de choferes y entregas en un solo panel.</li>
-            <li>Cada empresa con su propio espacio, aislado del resto.</li>
-          </ul>
-          <div class="about-metric-grid">
-            <div class="about-metric">
-              <span class="about-metric-value">+60</span>
-              <span class="about-metric-label">puntos de entrega (ejemplo)</span>
-            </div>
-            <div class="about-metric">
-              <span class="about-metric-value">-25%</span>
-              <span class="about-metric-label">km recorridos en ruta</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div class="lv-hire">
+      <h3>Cómo contratar</h3>
+      <ol>
+        <li><b>Solicitas tu cuenta</b><span>con los datos de tu negocio y el plan.</span></li>
+        <li><b>Transfieres</b><span>con el código de referencia que te damos.</span></li>
+        <li><b>Subes el comprobante</b><span>y validamos el pago.</span></li>
+        <li><b>Recibes tus accesos</b><span>por correo, en menos de 24 horas hábiles.</span></li>
+      </ol>
     </div>
+
+    <p class="pricing-note">* Valores mensuales en pesos chilenos. Se paga por transferencia, por 1, 3, 6 o 12 meses.</p>
   </div>
 </section>
 
+<!-- ===========================
+     ORIGEN
+============================ -->
+<section class="lv-origin">
+  <div class="container">
+    <blockquote>
+      <i class="bi bi-quote"></i>
+      <p>LogiVisir nació resolviendo el reparto diario de <strong>Panadería Macarrón</strong>, que antes se planificaba a mano. Hoy está construido para que cualquier pyme de reparto lo use desde el primer día.</p>
+      <footer>Equipo LogiVisir · ingeniería informática, Santiago de Chile</footer>
+    </blockquote>
+  </div>
+</section>
 
 <!-- ======================================
-     SECCIÓN: PREGUNTAS FRECUENTES
+     PREGUNTAS FRECUENTES
 ====================================== -->
 <section id="faq" class="faq-section">
   <div class="container">
-
     <div class="section-head">
-      <h2 class="section-title">Preguntas frecuentes</h2>
+      <span class="lv-eyebrow">Preguntas frecuentes</span>
+      <h2 class="section-title">Lo que más nos preguntan</h2>
     </div>
 
     <div class="row justify-content-center">
       <div class="col-lg-8">
         <div class="accordion" id="faqAccordion">
-
+          {% for pregunta, respuesta in faqs %}
           <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
-                ¿Cómo pago mi plan?
-              </button>
-            </h2>
-            <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
-              <div class="accordion-body">
-                Al solicitar tu cuenta te mostramos los datos para hacer una transferencia
-                bancaria con un código de referencia único. Cuando confirmamos que el pago
-                llegó, activamos tu cuenta.
-              </div>
+            <h3 class="accordion-header">
+              <button class="accordion-button{% if not forloop.first %} collapsed{% endif %}" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#faq{{ forloop.counter }}"
+                      aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">{{ pregunta }}</button>
+            </h3>
+            <div id="faq{{ forloop.counter }}" class="accordion-collapse collapse{% if forloop.first %} show{% endif %}" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">{{ respuesta }}</div>
             </div>
           </div>
-
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
-                ¿Cuánto demora la activación?
-              </button>
-            </h2>
-            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-              <div class="accordion-body">
-                Validamos los pagos y creamos tu cuenta dentro de 24 horas hábiles.
-                Te enviamos tu usuario y contraseña por correo apenas está lista.
-              </div>
-            </div>
-          </div>
-
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
-                ¿Qué pasa si mi pago no se valida?
-              </button>
-            </h2>
-            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-              <div class="accordion-body">
-                Te contactamos directamente al correo o teléfono que dejaste en la
-                solicitud para resolverlo antes de activar tu cuenta.
-              </div>
-            </div>
-          </div>
-
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
-                ¿Mis datos están separados de los de otras empresas?
-              </button>
-            </h2>
-            <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-              <div class="accordion-body">
-                Sí. Cada empresa tiene su propio espacio aislado: tus clientes, choferes y
-                rutas nunca se mezclan ni son visibles para otras cuentas de la plataforma.
-              </div>
-            </div>
-          </div>
-
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
-                ¿Mis choferes necesitan instalar algo?
-              </button>
-            </h2>
-            <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-              <div class="accordion-body">
-                No. Cada chofer entra desde el navegador de su celular con su propio usuario
-                y ve solo la ruta del día, con navegación directa a Google Maps.
-              </div>
-            </div>
-          </div>
-
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
-                ¿Puedo cambiar de plan más adelante?
-              </button>
-            </h2>
-            <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-              <div class="accordion-body">
-                Sí, escríbenos cuando tu operación crezca y ajustamos tu plan sin perder
-                tu historial de clientes ni de rutas.
-              </div>
-            </div>
-          </div>
-
+          {% endfor %}
         </div>
       </div>
     </div>
-
   </div>
 </section>
-
 
 <!-- ===========================
-     CTA FINAL + CONTACTO
+     CTA FINAL
 ============================ -->
-<section id="contacto" class="final-cta-section">
+<section id="contacto" class="lv-final">
   <div class="container">
-    <div class="final-cta-box">
-      <div class="row align-items-center g-4">
-        <div class="col-lg-7">
-          <span class="final-cta-badge">Empieza hoy</span>
-          <h2 class="final-cta-title">¿Tu negocio todavía planifica rutas a mano?</h2>
-          <p class="final-cta-text">
-            Solicita tu cuenta, valida tu pago y en menos de 24 horas tu equipo
-            ya está repartiendo con rutas optimizadas.
-          </p>
-          <div class="d-flex flex-wrap gap-3 align-items-center">
-            <a href="{% url 'solicitar_cuenta' %}" class="btn btn-hero-primary">Solicitar mi cuenta</a>
-            <a href="{% url 'login' %}" class="final-cta-link">¿Ya tienes cuenta? Inicia sesión</a>
-          </div>
-        </div>
-        <div class="col-lg-5">
-          <ul class="final-cta-contact">
-            <li><i class="bi bi-envelope-fill"></i> contacto@logivisir.com</li>
-            <li><i class="bi bi-whatsapp"></i> +56 9 1234 5678</li>
-            <li><i class="bi bi-geo-alt-fill"></i> Santiago, Chile</li>
-          </ul>
-        </div>
+    <div class="lv-final-box">
+      <h2>Tu próxima ruta puede salir optimizada esta semana</h2>
+      <p>Solicitar tu cuenta toma unos 3 minutos. Si tienes dudas, escríbenos y te ayudamos a elegir el plan.</p>
+      <div class="lv-final-actions">
+        <a href="{% url 'solicitar_cuenta' %}" class="btn lv-btn-primary">Solicitar mi cuenta <i class="bi bi-arrow-right"></i></a>
+        {% if CONTACTO_WHATSAPP %}
+          <a href="https://wa.me/{{ CONTACTO_WHATSAPP }}?text={{ 'Hola, quiero saber más de LogiVisir'|urlencode }}" class="btn lv-btn-light" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Escribir por WhatsApp</a>
+        {% elif CONTACTO_EMAIL %}
+          <a href="mailto:{{ CONTACTO_EMAIL }}" class="btn lv-btn-light"><i class="bi bi-envelope"></i> Escribir un correo</a>
+        {% endif %}
       </div>
+      <a href="{% url 'login' %}" class="lv-final-login">¿Ya tienes cuenta? Inicia sesión</a>
     </div>
   </div>
 </section>
+
+<!-- Barra fija en el teléfono -->
+<div class="lv-sticky-cta">
+  <a href="#planes" class="lv-sticky-prices">Ver precios</a>
+  <a href="{% url 'solicitar_cuenta' %}" class="btn lv-btn-primary">Solicitar cuenta</a>
+</div>
 
 {% endblock %}

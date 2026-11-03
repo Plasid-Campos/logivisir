@@ -74,6 +74,7 @@ urlpatterns = [
     path("cuenta/cambiar-clave/", core_views.CambiarPasswordView.as_view(), name="cambiar_password"),
 
     # --------- NOTIFICACIONES (todos los roles) ---------
+    path("ayuda/", core_views.ayuda_view, name="ayuda"),
     path("notificaciones/", core_views.lista_notificaciones_view, name="lista_notificaciones"),
     path("notificaciones/<int:notificacion_id>/abrir/", core_views.abrir_notificacion_view, name="abrir_notificacion"),
     path("notificaciones/marcar-leidas/", core_views.marcar_notificaciones_leidas_view, name="marcar_notificaciones_leidas"),

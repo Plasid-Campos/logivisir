@@ -24,7 +24,7 @@
 
     <!-- CSS APP (solo post-login) -->
     {% if request.user.is_authenticated %}
-        <link rel="stylesheet" href="{% static 'core/css/app.css' %}?v=5">
+        <link rel="stylesheet" href="{% static 'core/css/app.css' %}?v=6">
     {% endif %}
 
     {% block extra_head %}{% endblock %}
@@ -112,6 +112,9 @@
               {% elif request.user.is_staff %}
                 <li><a class="dropdown-item" href="{% url 'staff_usuarios' %}"><i class="bi bi-people"></i> Usuarios por empresa</a></li>
               {% endif %}
+              {% if not request.user.is_staff %}
+                <li><a class="dropdown-item" href="{% url 'ayuda' %}"><i class="bi bi-life-preserver"></i> Guía de uso</a></li>
+              {% endif %}
               <li><a class="dropdown-item" href="{% url 'cambiar_password' %}"><i class="bi bi-key"></i> Cambiar contraseña</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Cerrar sesión</a></li>
@@ -119,13 +122,13 @@
           </li>
 
         {% else %}
-          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#soluciones">Soluciones</a></li>
+          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#producto">Qué hace</a></li>
           <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#como-funciona">Cómo funciona</a></li>
-          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#planes">Planes</a></li>
-          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#contacto">Contacto</a></li>
+          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#planes">Precios</a></li>
+          <li class="nav-item"><a class="nav-link nav-link-main" href="{% url 'home' %}#faq">Preguntas</a></li>
           <li class="nav-item nav-cta">
             <a href="{% url 'login' %}" class="nav-link nav-link-main">Iniciar sesión</a>
-            <a href="{% url 'solicitar_cuenta' %}" class="btn btn-acceso-clientes">Comenzar ahora</a>
+            <a href="{% url 'solicitar_cuenta' %}" class="btn btn-acceso-clientes">Solicitar cuenta</a>
           </li>
         {% endif %}
       </ul>
@@ -169,8 +172,9 @@
       <div class="col-6 col-md-3">
         <h6 class="footer-title">Plataforma</h6>
         <ul class="list-unstyled footer-links">
-          <li><a href="{% url 'home' %}#soluciones">Soluciones</a></li>
+          <li><a href="{% url 'home' %}#producto">Qué hace</a></li>
           <li><a href="{% url 'home' %}#como-funciona">Cómo funciona</a></li>
+          <li><a href="{% url 'home' %}#privacidad">Privacidad</a></li>
           <li><a href="{% url 'home' %}#planes">Planes y precios</a></li>
           <li><a href="{% url 'home' %}#faq">Preguntas frecuentes</a></li>
         </ul>
@@ -179,8 +183,9 @@
       <div class="col-6 col-md-3">
         <h6 class="footer-title">Contacto</h6>
         <ul class="list-unstyled footer-links">
-          <li><i class="bi bi-envelope me-1"></i> contacto@logivisir.com</li>
-          <li><i class="bi bi-whatsapp me-1"></i> +56 9 1234 5678</li>
+          {% if CONTACTO_EMAIL %}<li><a href="mailto:{{ CONTACTO_EMAIL }}"><i class="bi bi-envelope me-1"></i> {{ CONTACTO_EMAIL }}</a></li>{% endif %}
+          {% if CONTACTO_WHATSAPP %}<li><a href="https://wa.me/{{ CONTACTO_WHATSAPP }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp me-1"></i> WhatsApp</a></li>{% endif %}
+          <li><a href="{% url 'solicitar_cuenta' %}"><i class="bi bi-send me-1"></i> Solicitar una cuenta</a></li>
           <li><i class="bi bi-geo-alt me-1"></i> Santiago, Chile</li>
         </ul>
       </div>

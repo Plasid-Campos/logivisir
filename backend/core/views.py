@@ -49,7 +49,7 @@ from .models import (
     Pago,
 )
 from .tenancy import get_empresa, get_object_or_404_scoped
-from . import membresias
+from . import membresias, primeros_pasos
 
 # =========================================================
 # CONFIG
@@ -63,7 +63,36 @@ def home_view(request):
     return render(request, "core/home.html", {
         "planes": membresias.planes_publicos(),
         "funciones_comunes": membresias.FUNCIONES_TODOS_LOS_PLANES,
+        "faqs": PREGUNTAS_FRECUENTES,
     })
+
+
+# Respuestas honestas a las dudas típicas de quien todavía no nos conoce.
+PREGUNTAS_FRECUENTES = (
+    ("¿Necesito saber de computación para usarlo?",
+     "No. Si usas WhatsApp y Google Maps, puedes usar LogiVisir. Al entrar por primera vez "
+     "te guiamos paso a paso para crear tu primera ruta."),
+    ("¿Cuánto me demoro en empezar?",
+     "Validamos tu pago y creamos tu cuenta en menos de 24 horas hábiles. Con tus clientes "
+     "cargados, tu primera ruta optimizada sale en minutos."),
+    ("¿Mis choferes necesitan instalar algo?",
+     "No. Cada chofer entra desde el navegador de su celular con su propio usuario, ve solo "
+     "su ruta del día y abre cada parada en Google Maps."),
+    ("¿Quién puede ver mis datos?",
+     "Solo las personas de tu empresa. Cada empresa tiene su propio espacio aislado y el "
+     "equipo LogiVisir no ve tus clientes, pedidos ni rutas: solo los datos de tu membresía."),
+    ("¿Cómo pago mi plan?",
+     "Por transferencia bancaria con un código de referencia único. Subes el comprobante, "
+     "lo validamos y activamos tu cuenta. Puedes pagar 1, 3, 6 o 12 meses."),
+    ("¿Funciona fuera de Santiago?",
+     "Sí. Las distancias salen del mapa abierto OpenStreetMap, que cubre todo Chile."),
+    ("¿Avisa a mis clientes cuando va el chofer?",
+     "Todavía no. Hoy los avisos llegan a tu equipo (dueño, administrador y chofer). "
+     "El aviso al cliente final está en nuestro plan de trabajo."),
+    ("¿Puedo cambiar de plan más adelante?",
+     "Sí. Escríbenos cuando tu operación crezca y ajustamos tu plan sin perder tu "
+     "historial de clientes ni de rutas."),
+)
 
 # =========================================================
 # SOLICITUD DE CUENTA (venta del servicio, público)
@@ -362,6 +391,7 @@ def dashboard_view(request):
     return render(request, "core/dashboard.html", {
         "perfil": perfil,
         "empresa": empresa,
+        "guia": primeros_pasos.resumen(empresa),
         "resumen": {
             "clientes_activos": clientes_activos,
             "choferes_activos": choferes_activos,
@@ -369,6 +399,14 @@ def dashboard_view(request):
             "rutas_hoy_pendientes": rutas_pendientes,
         }
     })
+
+@login_required
+def ayuda_view(request):
+    """Guía de uso de las empresas; el equipo LogiVisir tiene su propio panel."""
+    if request.user.is_staff:
+        return redirect("staff_panel")
+    return render(request, "core/ayuda.html")
+
 
 # =========================================================
 # CREAR USUARIO (solo OWNER)
