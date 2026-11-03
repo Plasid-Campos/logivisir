@@ -5,7 +5,7 @@
 
 {% block extra_head %}
 <meta name="description" content="Arma la ruta de reparto del día en un clic, recorre menos kilómetros y ve cada entrega con foto. Para panaderías, distribuidoras y pymes de reparto en Chile. Precio fijo en pesos, sin cobro por chofer.">
-<link rel="stylesheet" href="{% static 'core/css/landing.css' %}?v=1">
+<link rel="stylesheet" href="{% static 'core/css/landing.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
@@ -331,7 +331,7 @@
           <a href="mailto:{{ CONTACTO_EMAIL }}" class="btn lv-btn-light"><i class="bi bi-envelope"></i> Escribir un correo</a>
         {% endif %}
       </div>
-      <a href="{% url 'login' %}" class="lv-final-login">¿Ya tienes cuenta? Inicia sesión</a>
+      <p class="lv-final-chat"><a href="#" data-abrir-chat>¿Tienes dudas? Pregúntale al asistente</a> · <a href="{% url 'login' %}">¿Ya tienes cuenta? Inicia sesión</a></p>
     </div>
   </div>
 </section>
@@ -342,4 +342,5 @@
   <a href="{% url 'solicitar_cuenta' %}" class="btn lv-btn-primary">Solicitar cuenta</a>
 </div>
 
+{% load chat %}{% chat_ayuda_widget %}
 {% endblock %}

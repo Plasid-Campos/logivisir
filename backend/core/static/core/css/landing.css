@@ -256,3 +256,5 @@
   .lv-route-legend { grid-template-columns: 1fr; }
   .lv-hire ol { grid-template-columns: 1fr; }
 }
+.lv-final-chat { margin: 0; font-size: .9rem; }
+.lv-final-chat a { color: #93c5fd; }

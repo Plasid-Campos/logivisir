@@ -1,0 +1,27 @@
+{% load static %}
+{# Chat de ayuda guiado (sin IA): respuestas escritas por el equipo, en core/chat_ayuda.py #}
+<link rel="stylesheet" href="{% static 'core/css/chat.css' %}?v=1">
+<div class="lvc" id="lvc">
+  <button type="button" class="lvc-lanzador" id="lvc-abrir" aria-expanded="false" aria-controls="lvc-ventana">
+    <i class="bi bi-chat-dots-fill"></i><span>¿Dudas? Pregúntame</span>
+  </button>
+
+  <section class="lvc-ventana" id="lvc-ventana" role="dialog" aria-label="Chat de ayuda de LogiVisir" hidden>
+    <header class="lvc-cabecera">
+      <img src="{% static 'core/img/marca/logivisir_icono.png' %}" alt="" width="34" height="34">
+      <div>
+        <strong>Asistente LogiVisir</strong>
+        <small>Respuestas al instante</small>
+      </div>
+      <button type="button" class="lvc-cerrar" id="lvc-cerrar" aria-label="Cerrar chat"><i class="bi bi-x-lg"></i></button>
+    </header>
+    <div class="lvc-mensajes" id="lvc-mensajes" aria-live="polite"></div>
+    <div class="lvc-opciones" id="lvc-opciones"></div>
+    <form class="lvc-escribir" id="lvc-form" autocomplete="off">
+      <input type="text" id="lvc-texto" placeholder="Escribe tu pregunta…" aria-label="Escribe tu pregunta" maxlength="200">
+      <button type="submit" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
+    </form>
+  </section>
+</div>
+{{ datos_chat|json_script:"lvc-datos" }}
+<script src="{% static 'core/js/chat_ayuda.js' %}?v=1" defer></script>
