@@ -2,11 +2,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
+from core import pwa
 from core import views as core_views
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+
+    # --------- APLICACIÓN INSTALABLE (PWA) ---------
+    path("app/", pwa.app_inicio_view, name="app_inicio"),
+    path("manifest.webmanifest", pwa.manifest_view, name="pwa_manifest"),
+    path("sw.js", pwa.service_worker_view, name="pwa_service_worker"),
+    path("offline/", pwa.offline_view, name="pwa_offline"),
 
     # --------- HOME / LANDING PÚBLICA ---------
     path("", core_views.home_view, name="home"),

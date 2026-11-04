@@ -16,6 +16,7 @@
       {% endif %}
     {% endfor %}
 
+    {% include "core/_instalar_app.html" %}
 
     <div class="saas-card p-4 mb-4 driver-hero">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
@@ -82,7 +83,7 @@
               {% endif %}
             </a>
             <small class="text-muted">
-              {% if tramo.sale_de == "panaderia" %}Sale de la panadería{% else %}Sale desde tu ubicación{% endif %}{% if tramo.cantidad_paradas %} · paradas {% for n in tramo.paradas %}#{{ n }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% if tramo.vuelve_a_origen %} · termina en la panadería{% endif %}.
+              {% if tramo.sale_de == "panaderia" %}Ábrelo al salir de la panadería: Google parte desde donde estás{% else %}Sale desde tu ubicación{% endif %}{% if tramo.cantidad_paradas %} · paradas {% for n in tramo.paradas %}#{{ n }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% if tramo.vuelve_a_origen %} · termina en la panadería{% endif %}.
             </small>
           </div>
           {% endwith %}
@@ -94,7 +95,7 @@
           <i class="bi bi-signpost-split me-1"></i>
           Google Maps admite hasta {{ max_waypoints_maps }} paradas intermedias por viaje; si se le
           mandan más, se salta direcciones sin avisar. Por eso lo que te falta va en
-          {{ maps_tramos|length }} tramos: al terminar uno, abre el siguiente.
+          {{ maps_tramos|length }} tramos: al llegar a la última parada de uno, abre el siguiente.
           <div class="d-flex gap-2 flex-wrap mt-2">
             {% for tramo in maps_tramos %}
               <a href="{{ tramo.url }}" target="_blank" rel="noopener" class="btn btn-sm {% if forloop.first %}btn-primary{% else %}btn-outline-primary{% endif %}">

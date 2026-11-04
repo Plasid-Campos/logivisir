@@ -8,10 +8,15 @@ chofer puede saltarse entregas. Por eso la ruta se parte en tramos que nunca
 pasan el limite: cada tramo termina donde empieza el siguiente, y el ultimo
 vuelve a la panaderia.
 
-Ademas, el enlace solo incluye las paradas PENDIENTES: si el chofer ya
-entrego algunas, la navegacion parte desde su ubicacion actual (sin
-`origin`, Google usa "Tu ubicacion") hacia lo que le falta, y termina en la
+Ademas, el enlace solo incluye las paradas PENDIENTES y termina en la
 panaderia.
+
+Los enlaces NUNCA llevan `origin`: Google Maps solo ofrece "Iniciar" (la
+navegacion paso a paso) cuando el viaje parte desde "Tu ubicacion". Con otro
+punto de partida, aunque sea la panaderia donde esta el chofer, en el celular
+solo muestra la vista previa. `dir_action=navigate` le pide abrir directo la
+navegacion. `sale_de` queda solo para explicarle al chofer desde donde abrir
+cada tramo.
 """
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
@@ -35,10 +40,9 @@ class Tramo:
         return len(self.paradas)
 
 
-def _url(origen, destino, intermedias):
-    params = {"destination": destino, "travelmode": "driving"}
-    if origen:
-        params["origin"] = origen
+def url_navegar(destino, intermedias=()):
+    """Enlace que abre Google Maps navegando desde la ubicacion actual."""
+    params = {"destination": destino, "travelmode": "driving", "dir_action": "navigate"}
     if intermedias:
         params["waypoints"] = "|".join(intermedias)
     return f"{BASE_URL}&{urlencode(params)}"
@@ -62,8 +66,7 @@ def armar_tramos(pendientes, origen_empresa=None, desde_origen=True, max_waypoin
     if not puntos:
         return []
 
-    salida = origen_empresa if (desde_origen and origen_empresa) else None
-    sale_de = "panaderia" if salida else "ubicacion"
+    sale_de = "panaderia" if (desde_origen and origen_empresa) else "ubicacion"
 
     tramos = []
     por_enlace = max_waypoints + 1  # intermedias + destino
@@ -72,12 +75,11 @@ def armar_tramos(pendientes, origen_empresa=None, desde_origen=True, max_waypoin
         direcciones = [d for _, d in grupo]
         tramos.append(Tramo(
             numero=len(tramos) + 1,
-            url=_url(salida, direcciones[-1], direcciones[:-1]),
+            url=url_navegar(direcciones[-1], direcciones[:-1]),
             paradas=[orden for orden, _ in grupo if orden is not None],
             sale_de=sale_de,
             vuelve_a_origen=grupo[-1][0] is None,
         ))
-        # el siguiente tramo parte donde termino este
-        salida = direcciones[-1]
+        # el siguiente tramo se abre al llegar a la ultima parada de este
         sale_de = "parada"
     return tramos

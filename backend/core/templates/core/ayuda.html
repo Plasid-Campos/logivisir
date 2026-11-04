@@ -21,6 +21,7 @@
 
     {% if USER_ROL == "CHOFER" %}
     <!-- ================= CHOFER ================= -->
+    {% include "core/_instalar_app.html" %}
     <div class="ayuda-grid">
       <article class="ayuda-card">
         <span class="ayuda-icon"><i class="bi bi-signpost-2"></i></span>
@@ -30,7 +31,7 @@
       <article class="ayuda-card">
         <span class="ayuda-icon"><i class="bi bi-sign-turn-right"></i></span>
         <h2>2. Navega con Google Maps</h2>
-        <p>Toca <b>Abrir tramo en Google Maps</b>. Si la ruta es larga viene en tramos: al terminar uno, abre el siguiente. También puedes navegar a una sola parada.</p>
+        <p>Toca <b>Abrir tramo en Google Maps</b>. Google parte desde donde estás y abre la navegación lista para «Iniciar». Si la ruta es larga viene en tramos: al llegar a la última parada de uno, abre el siguiente. También puedes navegar a una sola parada.</p>
       </article>
       <article class="ayuda-card">
         <span class="ayuda-icon"><i class="bi bi-camera"></i></span>

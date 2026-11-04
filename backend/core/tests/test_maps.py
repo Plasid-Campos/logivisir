@@ -24,8 +24,10 @@ class ArmarTramosTests(TestCase):
         tramos = armar_tramos(pendientes(3), origen_empresa=PANADERIA, desde_origen=True)
         self.assertEqual(len(tramos), 1)
         p = params(tramos[0].url)
-        self.assertEqual(p["origin"], PANADERIA)
+        self.assertNotIn("origin", p)  # solo desde "Tu ubicación" Google ofrece "Iniciar"
+        self.assertEqual(p["dir_action"], "navigate")
         self.assertEqual(p["destination"], PANADERIA)
+        self.assertEqual(tramos[0].sale_de, "panaderia")
         self.assertEqual(p["waypoints"].split("|"), [d for _, d in pendientes(3)])
         self.assertEqual(tramos[0].paradas, [1, 2, 3])
         self.assertTrue(tramos[0].vuelve_a_origen)
@@ -52,11 +54,12 @@ class ArmarTramosTests(TestCase):
         # todas las paradas, en orden, y al final el regreso a la panadería
         self.assertEqual(visitadas, [d for _, d in lista] + [PANADERIA])
 
-    def test_cada_tramo_parte_donde_termino_el_anterior(self):
+    def test_cada_tramo_se_abre_al_terminar_el_anterior(self):
         tramos = armar_tramos(pendientes(15), origen_empresa=PANADERIA, desde_origen=True)
         self.assertEqual(len(tramos), 2)
         fin_primero = params(tramos[0].url)["destination"]
-        self.assertEqual(params(tramos[1].url)["origin"], fin_primero)
+        self.assertNotIn("origin", params(tramos[1].url))
+        self.assertNotEqual(params(tramos[1].url)["destination"], fin_primero)
         self.assertEqual(tramos[1].sale_de, "parada")
         self.assertEqual(tramos[0].paradas, list(range(1, 11)))
         self.assertEqual(tramos[1].paradas, list(range(11, 16)))
@@ -103,12 +106,13 @@ class PanelChoferNavegacionTests(TestCase):
         self.client.login(username="chofer_nav", password="Segura123!")
         return self.client.get(reverse("chofer_ruta_hoy")).context["maps_tramos"]
 
-    def test_antes_de_salir_la_ruta_parte_en_la_panaderia(self):
+    def test_antes_de_salir_la_ruta_vuelve_a_la_panaderia(self):
         self._crear_paradas(3)
         tramos = self._tramos()
         p = params(tramos[0].url)
-        self.assertIn("Salesianos 768", p["origin"])
+        self.assertNotIn("origin", p)
         self.assertIn("Salesianos 768", p["destination"])
+        self.assertEqual(tramos[0].sale_de, "panaderia")
 
     def test_con_entregas_hechas_solo_navega_lo_que_falta(self):
         paradas = self._crear_paradas(10)
@@ -136,3 +140,21 @@ class PanelChoferNavegacionTests(TestCase):
         self.assertEqual(len(tramos), 2)
         self.assertEqual(tramos[0].paradas, list(range(1, 11)))
         self.assertEqual(tramos[1].paradas, [11, 12])
+
+
+class EnlacesNavegablesTests(TestCase):
+    """En el celular, Google Maps solo deja "Iniciar" si el viaje parte desde la ubicación actual."""
+
+    def test_ningun_tramo_fija_origen_y_todos_piden_navegar(self):
+        for desde_origen in (True, False):
+            for tramo in armar_tramos(pendientes(25), origen_empresa=PANADERIA, desde_origen=desde_origen):
+                p = params(tramo.url)
+                self.assertNotIn("origin", p)
+                self.assertEqual(p["dir_action"], "navigate")
+                self.assertEqual(p["travelmode"], "driving")
+
+    def test_boton_de_cada_parada_tambien_navega(self):
+        from core.maps import url_navegar
+        p = params(url_navegar("Calle 9, Santiago, Chile"))
+        self.assertEqual(p, {"api": "1", "destination": "Calle 9, Santiago, Chile",
+                             "travelmode": "driving", "dir_action": "navigate"})

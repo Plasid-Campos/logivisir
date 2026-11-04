@@ -24,10 +24,10 @@ from django.utils.crypto import get_random_string
 from django.utils.text import slugify
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import urlencode
 
 from . import analytics
-from .maps import MAX_WAYPOINTS, armar_tramos
+from .maps import MAX_WAYPOINTS, armar_tramos, url_navegar
 from .geocoding import geocodificar_direccion
 from .notifications import (
     avisar_ruta_actualizada, avisar_ruta_asignada, avisar_ruta_quitada, fecha_legible,
@@ -76,8 +76,9 @@ PREGUNTAS_FRECUENTES = (
      "Validamos tu pago y creamos tu cuenta en menos de 24 horas hábiles. Con tus clientes "
      "cargados, tu primera ruta optimizada sale en minutos."),
     ("¿Mis choferes necesitan instalar algo?",
-     "No. Cada chofer entra desde el navegador de su celular con su propio usuario, ve solo "
-     "su ruta del día y abre cada parada en Google Maps."),
+     "No es obligatorio. Cada chofer entra desde el navegador de su celular con su propio usuario, "
+     "ve solo su ruta del día y abre cada parada en Google Maps. Si quiere, toca «Instalar app» y "
+     "LogiVisir queda en su pantalla de inicio como una aplicación, sin pasar por tiendas."),
     ("¿Quién puede ver mis datos?",
      "Solo las personas de tu empresa. Cada empresa tiene su propio espacio aislado y el "
      "equipo LogiVisir no ve tus clientes, pedidos ni rutas: solo los datos de tu membresía."),
@@ -1214,7 +1215,7 @@ def chofer_ruta_hoy_view(request):
             direccion_completa = ", ".join([x for x in partes if x])
             direcciones.append(direccion_completa)
 
-            maps_to = "https://www.google.com/maps/dir/?api=1&destination=" + quote_plus(direccion_completa)
+            maps_to = url_navegar(direccion_completa)
 
             paradas_ui.append({
                 "parada": p,

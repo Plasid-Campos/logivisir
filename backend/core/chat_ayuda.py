@@ -54,10 +54,10 @@ def temas():
         },
         {
             "id": "chofer",
-            "boton": "¿El chofer instala algo?",
+            "boton": "¿El chofer necesita una app?",
             "claves": ["instalar", "app", "aplicacion", "celular", "telefono", "descargar", "chofer", "conductor", "repartidor", "google maps", "waze"],
             "mensajes": [
-                "No, nada. El chofer entra desde el navegador de su celular con su usuario y clave.",
+                "No necesita tiendas de aplicaciones. Entra desde el navegador de su celular con su usuario y clave, y si quiere toca «Instalar app»: queda el ícono de LogiVisir en su pantalla, como una app.",
                 "Ve sus paradas en orden y con un toque abre Google Maps para navegar. Al llegar marca «Entregado» y saca una foto, o «No entregado» y elige el motivo.",
                 "Crear un chofer te toma menos de un minuto: nombre, apellido y correo. El usuario y la clave temporal se generan solos.",
             ],

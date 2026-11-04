@@ -1,0 +1,23 @@
+{# Tarjeta para instalar LogiVisir como app. Oculta hasta que pwa.js sepa que se puede. #}
+{% load static %}
+<div class="saas-card instalar-app p-3 mb-4" data-instalar-app hidden>
+  <div class="d-flex align-items-start gap-3">
+    <img src="{% static 'core/img/marca/app-icon-192.png' %}" alt="" width="48" height="48" class="rounded-3 flex-shrink-0">
+    <div class="flex-grow-1">
+      <strong class="d-block">Instala LogiVisir en tu teléfono</strong>
+      <span class="text-muted small">Queda un ícono en tu pantalla de inicio y tu ruta se abre a pantalla completa, como una app.</span>
+
+      <div data-modo="boton" class="mt-2">
+        <button type="button" class="btn btn-primary btn-sm" data-instalar-boton>
+          <i class="bi bi-download me-1"></i>Instalar app
+        </button>
+      </div>
+
+      <div data-modo="iphone" class="mt-2 small" hidden>
+        En Safari, toca <i class="bi bi-box-arrow-up" aria-label="Compartir"></i> <strong>Compartir</strong>
+        y luego <strong>«Agregar a inicio»</strong>.
+      </div>
+    </div>
+    <button type="button" class="btn-close" aria-label="Ahora no" title="Ahora no" data-instalar-cerrar></button>
+  </div>
+</div>
