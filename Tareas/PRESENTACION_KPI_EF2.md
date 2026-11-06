@@ -26,5 +26,22 @@ Permite visualizar cuántos pedidos continúan pendientes durante la jornada.
 6. Marcar una entrega.
 7. Visualizar el estado actualizado del pedido.
 
-## Evidencia
-Aplicación publicada en: https://logivisir.pythonanywhere.com
+
+## Checklist de prueba de humo
+
+Se preparó una revisión rápida de las funciones principales de LogiVisir para comprobar que la plataforma se encuentre operativa antes de la entrega final.
+
+- [ ] La página de inicio carga correctamente.
+- [ ] El usuario puede iniciar sesión.
+- [ ] Se visualiza el listado de clientes.
+- [ ] Se puede registrar y consultar un pedido.
+- [ ] Se puede crear una ruta de reparto.
+- [ ] Se puede asignar un chofer a una ruta.
+- [ ] Las paradas aparecen correctamente en el mapa.
+- [ ] Se puede actualizar el estado de una entrega.
+- [ ] Los mensajes de validación se muestran correctamente.
+- [ ] La sesión se puede cerrar sin errores.
+
+### Resultado
+
+Las pruebas se ejecutarán en la versión publicada de LogiVisir. Cada función aprobada será marcada en este checklist y cualquier error encontrado será registrado para su corrección.
