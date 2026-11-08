@@ -76,3 +76,24 @@ Realizar pruebas de humo para verificar que cada usuario pueda acceder únicamen
 ## Resultado esperado
 
 Los permisos deben impedir accesos no autorizados y proteger la información de cada empresa.
+
+## Pruebas de direcciones y mapa
+
+Se realizarán pruebas para comprobar que las direcciones ingresadas sean procesadas correctamente y que las paradas se visualicen en el mapa de LogiVisir.
+
+### Casos de prueba
+
+- [ ] Una dirección válida puede registrarse correctamente.
+- [ ] La dirección registrada aparece asociada al cliente correspondiente.
+- [ ] Una dirección incompleta muestra un mensaje de validación.
+- [ ] La plataforma evita guardar una dirección vacía.
+- [ ] Las direcciones de las paradas aparecen correctamente en el mapa.
+- [ ] Cada marcador del mapa corresponde a una parada de la ruta.
+- [ ] La información del cliente se muestra al seleccionar una parada.
+- [ ] El enlace de navegación utiliza la dirección correcta.
+- [ ] La ruta mantiene el orden establecido de las paradas.
+- [ ] Una dirección no encontrada muestra un mensaje comprensible.
+
+### Resultado esperado
+
+Las direcciones deben registrarse sin errores, relacionarse con el cliente correspondiente y visualizarse correctamente como paradas dentro del mapa.
