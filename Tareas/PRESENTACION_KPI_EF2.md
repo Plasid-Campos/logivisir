@@ -60,3 +60,19 @@ Las pruebas se ejecutarán en la versión publicada de LogiVisir. Cada función 
 - [ ] Una URL inexistente muestra la página de error 404.
 
 Resultado esperado: las funciones principales deben operar sin errores críticos antes de la entrega final.
+
+Realizar pruebas de humo para verificar que cada usuario pueda acceder únicamente a las funciones correspondientes a su rol.
+
+## Casos de prueba
+
+- [ ] El administrador puede acceder al panel administrativo.
+- [ ] El administrador puede consultar clientes, pedidos, rutas y choferes.
+- [ ] El chofer puede visualizar únicamente sus rutas asignadas.
+- [ ] Un usuario sin iniciar sesión es redirigido al inicio de sesión.
+- [ ] Un chofer no puede ingresar al panel administrativo mediante la URL.
+- [ ] Los usuarios de una empresa no pueden visualizar información de otra empresa.
+- [ ] Después de cerrar sesión no se puede volver a una página privada.
+
+## Resultado esperado
+
+Los permisos deben impedir accesos no autorizados y proteger la información de cada empresa.
