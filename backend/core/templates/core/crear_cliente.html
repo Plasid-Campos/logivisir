@@ -8,7 +8,12 @@
 
     <a href="{% url 'lista_clientes' %}" class="link-volver"><i class="bi bi-arrow-left"></i> Clientes</a>
     <h1 class="panel-title mt-2 mb-1">Nuevo cliente</h1>
-    <p class="text-muted mb-4">Con el nombre y la dirección basta: LogiVisir lo ubica en el mapa.</p>
+    <p class="text-muted mb-3">Con el nombre y la dirección basta: LogiVisir lo ubica en el mapa.</p>
+    <a href="{% url 'importar_clientes' %}" class="importar-atajo mb-4">
+      <i class="bi bi-file-earmark-spreadsheet"></i>
+      <span><b>¿Tienes tus clientes en Excel?</b> Impórtalos todos de una vez.</span>
+      <i class="bi bi-chevron-right ms-auto"></i>
+    </a>
 
     {% if recien %}
       <div class="rapido-ultimo {% if recien.ubicado %}ok{% else %}warn{% endif %}">

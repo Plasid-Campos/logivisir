@@ -1,0 +1,98 @@
+{% extends "core/base.html" %}
+
+{% load formato %}
+{% block title %}Clientes importados | LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4" style="max-width: 720px;">
+
+    <a href="{% url 'lista_clientes' %}" class="link-volver"><i class="bi bi-arrow-left"></i> Clientes</a>
+
+    {% if resultado %}
+      <h1 class="panel-title mt-2 mb-1"><i class="bi bi-check-circle-fill text-success me-1"></i>{{ creados|miles }} cliente{{ creados|pluralize }} importado{{ creados|pluralize }}</h1>
+      <p class="text-muted mb-4">
+        Desde «{{ resultado.archivo }}».
+        {% if resultado.repetidos == 1 %}1 repetido se omitió.{% elif resultado.repetidos %}{{ resultado.repetidos|miles }} repetidos se omitieron.{% endif %}
+        {% if resultado.errores == 1 %}1 fila con error no se importó.{% elif resultado.errores %}{{ resultado.errores|miles }} filas con error no se importaron.{% endif %}
+      </p>
+    {% else %}
+      <h1 class="panel-title mt-2 mb-4">Ubicando clientes importados</h1>
+    {% endif %}
+
+    <div class="saas-card rapido-card" id="ubicacion"
+         data-url="{% url 'ubicar_importados' %}" data-pendientes="{{ estado.pendientes }}"
+         data-total="{{ estado.total|default_if_none:'' }}">
+      {% csrf_token %}
+      <h2 class="h6 fw-bold mb-2"><i class="bi bi-geo-alt me-1"></i>Ubicación en el mapa</h2>
+      <div id="ubicando" {% if not estado.pendientes %}hidden{% endif %}>
+        <p class="small text-muted mb-2">
+          Los mapas gratuitos permiten ubicar una dirección por segundo, así que esto toma cerca de <b>{{ minutos }} minuto{{ minutos|pluralize }}</b>.
+          Deja esta página abierta; puedes seguir trabajando en otra pestaña. Si la cierras, se retoma desde Clientes.
+        </p>
+        <div class="progress" role="progressbar" aria-label="Clientes ubicados" style="height: 14px;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" id="barra" style="width: 0%"></div>
+        </div>
+        <p class="small mt-2 mb-0" id="progreso-texto">Quedan {{ estado.pendientes|miles }} por ubicar…</p>
+      </div>
+      <div id="terminado" {% if estado.pendientes %}hidden{% endif %}>
+        <p class="mb-2"><i class="bi bi-check2 text-success me-1"></i><span id="terminado-texto">
+          {% if estado.total %}{{ estado.ubicados|miles }} de {{ estado.total|miles }} quedaron ubicados en el mapa.{% else %}Todos los clientes importados ya pasaron por el mapa.{% endif %}
+        </span></p>
+        <p class="small text-muted mb-0" id="sin-ubicar" {% if not estado.sin_ubicar %}hidden{% endif %}>
+          <span id="sin-ubicar-n">{{ estado.sin_ubicar|default:0 }}</span> no se encontraron (dirección incompleta o con error).
+          <a href="{% url 'lista_clientes' %}?ubicacion=sin&estado=activos">Revisarlos</a>: corrige la dirección o pega sus coordenadas desde Google Maps.
+        </p>
+      </div>
+      <p class="small text-danger mt-2 mb-0" id="error-red" hidden>Se perdió la conexión. Reintentando…</p>
+    </div>
+
+    <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+      <a href="{% url 'lista_clientes' %}" class="btn btn-primary btn-lg flex-fill">Ver mis clientes</a>
+      <a href="{% url 'armar_ruta' %}" class="btn btn-outline-primary btn-lg flex-fill">Armar una ruta</a>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  var caja = document.getElementById("ubicacion");
+  var pendientes = parseInt(caja.dataset.pendientes, 10);
+  if (!pendientes) return;
+  var total = parseInt(caja.dataset.total, 10) || pendientes;
+  var csrf = caja.querySelector("[name=csrfmiddlewaretoken]").value;
+  var barra = document.getElementById("barra"), texto = document.getElementById("progreso-texto"),
+      errorRed = document.getElementById("error-red");
+
+  function n(x) { return Number(x).toLocaleString("es-CL"); }
+  function pintar(d) {
+    var hechos = Math.max(0, total - d.pendientes);
+    barra.style.width = Math.round(100 * hechos / total) + "%";
+    texto.textContent = d.pendientes ? ("Ubicados " + n(hechos) + " de " + n(total) + " · quedan " + n(d.pendientes) + "…") : "Listo.";
+  }
+  function terminar(d) {
+    document.getElementById("ubicando").hidden = true;
+    document.getElementById("terminado").hidden = false;
+    if (d.total) {
+      document.getElementById("terminado-texto").textContent = n(d.ubicados) + " de " + n(d.total) + " quedaron ubicados en el mapa.";
+    }
+    if (d.sin_ubicar) {
+      document.getElementById("sin-ubicar-n").textContent = n(d.sin_ubicar);
+      document.getElementById("sin-ubicar").hidden = false;
+    }
+  }
+  function siguiente() {
+    fetch(caja.dataset.url, { method: "POST", headers: { "X-CSRFToken": csrf }, credentials: "same-origin" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        errorRed.hidden = true;
+        pintar(d);
+        if (!d.pendientes) return terminar(d);
+        setTimeout(siguiente, d.ocupado ? 3000 : 200);
+      })
+      .catch(function () { errorRed.hidden = false; setTimeout(siguiente, 5000); });
+  }
+  siguiente();
+})();
+</script>
+{% endblock %}

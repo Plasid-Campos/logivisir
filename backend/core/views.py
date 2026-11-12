@@ -633,7 +633,9 @@ def lista_clientes_view(request):
         "filtro_estado": estado,
         "filtro_ubicacion": ubicacion,
         "total_filtrado": clientes_qs.count(),
-        "activos_sin_ubicacion": Cliente.objects.filter(empresa=empresa, activo=True).filter(SIN_UBICACION).count(),
+        "activos_sin_ubicacion": Cliente.objects.filter(empresa=empresa, activo=True, ubicacion_pendiente=False)
+        .filter(SIN_UBICACION).count(),
+        "ubicacion_pendiente": Cliente.objects.filter(empresa=empresa, ubicacion_pendiente=True).count(),
         "reubicar_lote": REUBICAR_LOTE,
     })
 
@@ -2557,7 +2559,8 @@ def reubicar_clientes_lote_view(request):
 
     empresa = get_empresa(request)
     pendientes = list(
-        Cliente.objects.filter(empresa=empresa, activo=True).filter(SIN_UBICACION).order_by("id")[:REUBICAR_LOTE]
+        Cliente.objects.filter(empresa=empresa, activo=True, ubicacion_pendiente=False)
+        .filter(SIN_UBICACION).order_by("id")[:REUBICAR_LOTE]
     )
     ubicados = 0
     for i, cliente in enumerate(pendientes):
@@ -2566,7 +2569,7 @@ def reubicar_clientes_lote_view(request):
         if geocodificar_cliente(cliente):
             ubicados += 1
 
-    quedan = Cliente.objects.filter(empresa=empresa, activo=True).filter(SIN_UBICACION).count()
+    quedan = Cliente.objects.filter(empresa=empresa, activo=True, ubicacion_pendiente=False).filter(SIN_UBICACION).count()
     messages.info(
         request,
         f"Se intentó ubicar a {len(pendientes)} cliente(s): {ubicados} quedaron en el mapa. "

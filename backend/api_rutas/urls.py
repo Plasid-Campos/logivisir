@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-from core import pwa
+from core import importar_clientes, pwa
 from core import views as core_views
 from django.contrib.auth import views as auth_views
 
@@ -44,6 +44,10 @@ urlpatterns = [
     # --------- CLIENTES (OWNER + ADMIN) ---------
     path("clientes/", core_views.lista_clientes_view, name="lista_clientes"),
     path("clientes/crear/", core_views.crear_cliente_view, name="crear_cliente"),
+    path("clientes/importar/", importar_clientes.importar_clientes_view, name="importar_clientes"),
+    path("clientes/importar/resultado/", importar_clientes.importar_clientes_resultado_view, name="importar_clientes_resultado"),
+    path("clientes/importar/ubicar/", importar_clientes.ubicar_importados_view, name="ubicar_importados"),
+    path("clientes/importar/plantilla.xlsx", importar_clientes.plantilla_clientes_view, name="plantilla_clientes"),
     path("clientes/<int:cliente_id>/editar/", core_views.editar_cliente_view, name="editar_cliente"),
     path("clientes/<int:cliente_id>/reubicar/", core_views.reubicar_cliente_view, name="reubicar_cliente"),
     path("clientes/reubicar-sin-ubicacion/", core_views.reubicar_clientes_lote_view, name="reubicar_clientes_lote"),

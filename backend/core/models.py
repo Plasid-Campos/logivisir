@@ -171,6 +171,10 @@ class Cliente(models.Model):
     latitud = models.FloatField(blank=True, null=True)
     longitud = models.FloatField(blank=True, null=True)
     geocodificado = models.BooleanField(default=False)
+    # Clientes importados desde Excel que todavía esperan su turno para
+    # ubicarse en el mapa (Nominatim admite 1 consulta por segundo, así que
+    # una importación grande se ubica por lotes después de guardarla).
+    ubicacion_pendiente = models.BooleanField(default=False)
 
     class Meta:
         constraints = [

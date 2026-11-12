@@ -507,3 +507,18 @@
 .pedido-item b { display: block; color: #0f172a; }
 .pedido-item small { color: #64748b; }
 .rapido-card .form-control::placeholder { color: #a3adbb; opacity: 1; }
+
+/* Importar clientes desde Excel */
+.importar-atajo { display: flex; align-items: center; gap: .7rem; padding: .75rem 1rem; border-radius: 12px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; text-decoration: none; font-size: .95rem; }
+.importar-atajo:hover { background: #dbeafe; color: #1e3a8a; }
+.importar-atajo > .bi:first-child { font-size: 1.4rem; color: #2563eb; }
+.importar-zona { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: 2.2rem 1rem; border: 2px dashed #93c5fd; border-radius: 14px; background: #f8fbff; cursor: pointer; text-align: center; transition: background .15s, border-color .15s; }
+.importar-zona .bi { font-size: 2.4rem; color: #2563eb; }
+.importar-zona:hover, .importar-zona.arrastrando { background: #eff6ff; border-color: #2563eb; }
+.importar-zona.lista { border-style: solid; border-color: #16a34a; background: #f0fdf4; }
+.importar-zona.lista .bi { color: #16a34a; }
+.importar-resumen { display: flex; flex-direction: column; gap: .1rem; height: 100%; padding: 1rem 1.1rem; border-radius: 14px; background: #f1f5f9; color: #334155; }
+.importar-resumen .numero { font-size: 1.9rem; font-weight: 800; line-height: 1.1; }
+.importar-resumen small { color: #64748b; }
+.importar-resumen.ok { background: #dcfce7; color: #14532d; }
+.importar-resumen.error { background: #fee2e2; color: #7f1d1d; }

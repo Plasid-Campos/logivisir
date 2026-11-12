@@ -5,3 +5,4 @@ requests==2.32.3
 Pillow==12.3.0
 scikit-learn==1.9.0
 numpy==2.5.1
+openpyxl==3.1.5

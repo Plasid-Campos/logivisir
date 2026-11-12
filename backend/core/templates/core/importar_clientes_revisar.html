@@ -1,0 +1,118 @@
+{% extends "core/base.html" %}
+
+{% load formato %}
+{% block title %}Revisar importación | LogiVisir{% endblock %}
+
+{% block content %}
+<section class="app-section">
+  <div class="container py-4" style="max-width: 1100px;">
+
+    <a href="{% url 'importar_clientes' %}?cancelar=1" class="link-volver"><i class="bi bi-arrow-left"></i> Elegir otro archivo</a>
+    <h1 class="panel-title mt-2 mb-1">Revisa antes de importar</h1>
+    <p class="text-muted mb-4"><i class="bi bi-file-earmark-spreadsheet me-1"></i>{{ archivo }}{% if hojas|length > 1 %} · hoja «{{ hoja }}»{% endif %}{% if con_titulos %} · títulos en la fila {{ fila_titulos }}{% else %} · sin fila de títulos{% endif %}</p>
+
+    <form method="GET" class="saas-card rapido-card mb-4" id="form-columnas">
+      <input type="hidden" name="revisar" value="1">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="h6 fw-bold mb-0"><i class="bi bi-columns-gap me-1"></i>¿Qué columna tiene cada dato?</h2>
+        {% if hojas|length > 1 %}
+          <div class="d-flex align-items-center gap-2">
+            <label for="hoja" class="small fw-semibold">Hoja</label>
+            <select id="hoja" name="hoja" class="form-select form-select-sm" style="width:auto" onchange="document.getElementById('titulos-valor').disabled=true; this.form.querySelectorAll('[name^=col_]').forEach(function(s){s.disabled=true}); this.form.submit()">
+              {% for h in hojas %}<option value="{{ h }}" {% if h == hoja %}selected{% endif %}>{{ h }}</option>{% endfor %}
+            </select>
+          </div>
+        {% else %}
+          <input type="hidden" name="hoja" value="{{ hoja }}">
+        {% endif %}
+      </div>
+      <div class="form-check mb-3">
+        <input type="hidden" name="titulos" value="{% if con_titulos %}si{% else %}no{% endif %}" id="titulos-valor">
+        <input class="form-check-input" type="checkbox" id="sin-titulos" {% if not con_titulos %}checked{% endif %}
+               onchange="document.getElementById('titulos-valor').value=this.checked?'no':'si'; this.form.querySelectorAll('[name^=col_]').forEach(function(s){s.disabled=true}); this.form.submit()">
+        <label class="form-check-label small" for="sin-titulos">Mi planilla no tiene fila de títulos (la primera fila ya es un cliente)</label>
+      </div>
+      <div class="row g-3">
+        {% for campo in campos %}
+          <div class="col-6 col-md-3">
+            <label class="form-label small fw-semibold mb-1" for="col_{{ campo.clave }}">{{ campo.etiqueta }}{% if campo.obligatorio %} <span class="text-danger">*</span>{% endif %}</label>
+            <select id="col_{{ campo.clave }}" name="col_{{ campo.clave }}" class="form-select form-select-sm {% if campo.obligatorio and campo.columna is None %}is-invalid{% endif %}" onchange="this.form.submit()">
+              <option value="">— No está en mi archivo —</option>
+              {% for col in columnas %}
+                <option value="{{ col.indice }}" {% if campo.columna == col.indice %}selected{% endif %}>{{ col.titulo }}{% if col.ejemplo %} (ej.: {{ col.ejemplo|truncatechars:22 }}){% endif %}</option>
+              {% endfor %}
+            </select>
+            {% if campo.por_contenido %}<div class="small text-primary mt-1"><i class="bi bi-magic me-1"></i>Reconocida por su contenido</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <noscript><button class="btn btn-sm btn-outline-primary mt-3">Actualizar vista previa</button></noscript>
+    </form>
+
+    {% if falta %}
+      <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Elige arriba qué columna tiene {{ falta|join:" y " }} del cliente para ver la vista previa.</div>
+    {% else %}
+      <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="importar-resumen ok"><span class="numero">{{ analisis.nuevos|length|miles }}</span><span>cliente{{ analisis.nuevos|length|pluralize }} nuevo{{ analisis.nuevos|length|pluralize }} para importar</span>{% if analisis.avisos %}<small>{{ analisis.avisos }} con algún dato que se deja en blanco</small>{% endif %}</div></div>
+        <div class="col-md-4"><div class="importar-resumen neutro"><span class="numero">{{ analisis.repetidos|length|miles }}</span><span>repetido{{ analisis.repetidos|length|pluralize }}: se omite{{ analisis.repetidos|length|pluralize:"n" }}</span><small>ya estaban en tus clientes o se repiten en el archivo</small></div></div>
+        <div class="col-md-4"><div class="importar-resumen {% if analisis.errores %}error{% else %}neutro{% endif %}"><span class="numero">{{ analisis.errores|length|miles }}</span><span>fila{{ analisis.errores|length|pluralize }} con error: no se importa{{ analisis.errores|length|pluralize:"n" }}</span><small>sin nombre o sin dirección</small></div></div>
+      </div>
+
+      {% if analisis.errores %}
+        <details class="saas-card rapido-card mb-4">
+          <summary class="fw-semibold text-danger">{% if analisis.errores|length == 1 %}Ver la fila con error{% else %}Ver las {{ analisis.errores|length|miles }} filas con error{% endif %}</summary>
+          <p class="small text-muted mt-2 mb-2">Corrígelas en tu archivo y vuelve a subirlo: los clientes ya importados no se duplican.</p>
+          <ul class="small mb-0">
+            {% for r in analisis.errores|slice:":200" %}<li>Fila {{ r.fila }}: {{ r.motivo }}{% if r.nombre %} ({{ r.nombre }}){% endif %}</li>{% endfor %}
+          </ul>
+        </details>
+      {% endif %}
+
+      <div class="saas-card p-3 p-md-4 mb-4">
+        <h2 class="h6 fw-bold mb-3">Vista previa{% if analisis.filas|length > vista_previa|length %} (primeras {{ vista_previa|length }} de {{ analisis.filas|length|miles }} filas){% endif %}</h2>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle small mb-0">
+            <thead><tr><th>Fila</th><th></th><th>Nombre</th><th>Dirección</th><th>Comuna</th><th>Teléfono</th><th>Correo</th><th>RUT</th><th>Tipo</th></tr></thead>
+            <tbody>
+              {% for r in vista_previa %}
+                <tr class="{% if r.estado == 'error' %}table-danger{% elif r.estado == 'repetido' %}text-muted{% endif %}">
+                  <td>{{ r.fila }}</td>
+                  <td class="text-nowrap">
+                    {% if r.estado == "nuevo" %}<span class="badge text-bg-success">Nuevo</span>
+                    {% elif r.estado == "repetido" %}<span class="badge text-bg-secondary" title="{{ r.motivo }}">Repetido</span>
+                    {% else %}<span class="badge text-bg-danger" title="{{ r.motivo }}">Error</span>{% endif %}
+                  </td>
+                  <td>{{ r.nombre|default:"—" }}{% if r.avisos %}<div class="text-warning-emphasis"><i class="bi bi-info-circle me-1"></i>{{ r.avisos|join:"; " }}</div>{% endif %}{% if r.estado != "nuevo" %}<div class="text-muted">{{ r.motivo }}</div>{% endif %}</td>
+                  <td>{{ r.direccion|default:"—" }}</td>
+                  <td>{{ r.comuna }}</td>
+                  <td>{{ r.telefono|default:"" }}</td>
+                  <td>{{ r.email|default:"" }}</td>
+                  <td>{{ r.rut|default:"" }}</td>
+                  <td>{% if r.tipo == "DELIVERY" %}Delivery{% else %}Regular{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <form method="POST" class="d-flex flex-column flex-sm-row gap-2 justify-content-end" id="form-confirmar">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="importar">
+        <input type="hidden" name="hoja" value="{{ hoja }}">
+        <input type="hidden" name="titulos" value="{% if con_titulos %}si{% else %}no{% endif %}">
+        {% for campo in campos %}<input type="hidden" name="col_{{ campo.clave }}" value="{{ campo.columna|default_if_none:'' }}">{% endfor %}
+        <a href="{% url 'importar_clientes' %}?cancelar=1" class="btn btn-outline-secondary btn-lg">Cancelar</a>
+        <button class="btn btn-primary btn-lg" id="btn-confirmar" {% if not analisis.nuevos %}disabled{% endif %}>
+          <i class="bi bi-check2-circle me-1"></i> Importar {{ analisis.nuevos|length|miles }} cliente{{ analisis.nuevos|length|pluralize }}
+        </button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+<script>
+document.getElementById("form-confirmar") && document.getElementById("form-confirmar").addEventListener("submit", function () {
+  var b = document.getElementById("btn-confirmar"); b.disabled = true; b.innerHTML = "Guardando…";
+});
+</script>
+{% endblock %}
