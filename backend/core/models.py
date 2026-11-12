@@ -212,6 +212,10 @@ class Ruta(models.Model):
     km_antes = models.FloatField(blank=True, null=True)
     km_despues = models.FloatField(blank=True, null=True)
     optimizada_en = models.DateTimeField(blank=True, null=True)
+    # True mientras el orden de las paradas sea el que dejo la ultima
+    # optimizacion; pasa a False si despues se agrega una parada. Asi el
+    # detalle de la ruta puede decir si ya esta optimizada o no.
+    orden_optimizado = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.nombre} - {self.fecha} - {self.chofer}"

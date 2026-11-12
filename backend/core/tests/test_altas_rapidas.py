@@ -122,6 +122,44 @@ class ArmarRutaTests(TestCase):
         self.assertEqual(Pedido.objects.get(id=self.pedidos[2].id).estado, "PENDIENTE")
         self.assertTrue(Notificacion.objects.filter(usuario=self.chofer.perfil.user).exists())
 
+    def test_detalle_dice_que_ya_esta_optimizada(self):
+        self._armar(self.pedidos)
+        ruta = Ruta.objects.get(empresa=self.empresa)
+        self.assertTrue(ruta.orden_optimizado)
+        resp = self.client.get(reverse("detalle_ruta", args=[ruta.id]))
+        self.assertContains(resp, "Ruta optimizada.")
+        self.assertContains(resp, "Volver a optimizar")
+        self.assertNotContains(resp, "aún no está optimizada")
+
+    def test_agregar_parada_pide_optimizar_de_nuevo(self):
+        self._armar(self.pedidos[:2])
+        ruta = Ruta.objects.get(empresa=self.empresa)
+        olvidado = Cliente.objects.create(
+            empresa=self.empresa, nombre="Olvidado", direccion="Calle 9", latitud=-33.49, longitud=-70.63,
+        )
+        self.client.post(reverse("agregar_parada", args=[ruta.id]), {"cliente_id": olvidado.id})
+        ruta.refresh_from_db()
+        self.assertFalse(ruta.orden_optimizado)
+        self.assertContains(
+            self.client.get(reverse("detalle_ruta", args=[ruta.id])), "Agregaste paradas después de optimizar"
+        )
+
+        self.client.post(reverse("optimizar_ruta", args=[ruta.id]))
+        ruta.refresh_from_db()
+        self.assertTrue(ruta.orden_optimizado)
+
+    def test_volver_a_optimizar_no_cambia_una_ruta_ya_optimizada(self):
+        self._armar(self.pedidos)
+        ruta = Ruta.objects.get(empresa=self.empresa)
+        orden = list(ruta.paradas.order_by("orden").values_list("cliente_id", flat=True))
+        km = ruta.km_despues
+
+        resp = self.client.post(reverse("optimizar_ruta", args=[ruta.id]), follow=True)
+        ruta.refresh_from_db()
+        self.assertEqual(list(ruta.paradas.order_by("orden").values_list("cliente_id", flat=True)), orden)
+        self.assertEqual(ruta.km_despues, km)
+        self.assertContains(resp, "ya tenía el orden más corto")
+
     def test_no_acepta_pedidos_ni_choferes_de_otra_empresa(self):
         otra = crear_empresa("Otra SpA", "dueno_otra")
         ajeno = crear_chofer(otra, "chofer_otra")

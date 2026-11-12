@@ -938,10 +938,7 @@ def armar_ruta_view(request):
             resultado = optimizar_paradas(ruta)
             partes = [f"Ruta creada con {len(clientes_vistos)} paradas."]
             if resultado.get("optimizado"):
-                ruta.km_antes = resultado["km_antes"]
-                ruta.km_despues = resultado["km_despues"]
-                ruta.optimizada_en = timezone.now()
-                ruta.save(update_fields=["km_antes", "km_despues", "optimizada_en"])
+                _guardar_optimizacion(ruta, resultado)
                 if resultado.get("ahorro_km") is not None:
                     partes.append(
                         f"Optimizada: {resultado['km_antes']} km → {resultado['km_despues']} km "
@@ -979,6 +976,21 @@ def armar_ruta_view(request):
     })
 
 
+def _guardar_optimizacion(ruta, resultado):
+    ruta.km_antes = resultado["km_antes"]
+    ruta.km_despues = resultado["km_despues"]
+    ruta.optimizada_en = timezone.now()
+    ruta.orden_optimizado = True
+    ruta.save(update_fields=["km_antes", "km_despues", "optimizada_en", "orden_optimizado"])
+
+
+def _marcar_sin_optimizar(ruta):
+    """Una parada nueva queda al final: el orden ya no es el optimizado."""
+    if ruta.orden_optimizado:
+        ruta.orden_optimizado = False
+        ruta.save(update_fields=["orden_optimizado"])
+
+
 @user_passes_test(es_admin_o_owner)
 def agregar_parada_view(request, ruta_id):
     empresa = get_empresa(request)
@@ -1007,6 +1019,7 @@ def agregar_parada_view(request, ruta_id):
             orden=orden,
             comentario=comentario,
         )
+        _marcar_sin_optimizar(ruta)
         avisar_ruta_actualizada(ruta, f"se agregó {cliente.nombre}.")
 
     return redirect("detalle_ruta", ruta_id=ruta.id)
@@ -1085,14 +1098,13 @@ def optimizar_ruta_view(request, ruta_id):
     resultado = optimizar_paradas(ruta)
 
     if resultado.get("optimizado"):
-        ruta.km_antes = resultado["km_antes"]
-        ruta.km_despues = resultado["km_despues"]
-        ruta.optimizada_en = timezone.now()
-        ruta.save(update_fields=["km_antes", "km_despues", "optimizada_en"])
+        _guardar_optimizacion(ruta, resultado)
         avisar_ruta_actualizada(ruta, "se reordenaron las paradas.")
         fuente = "distancia real de calle" if resultado.get("por_red_vial") else "línea recta (sin conexión a OSRM)"
         mensaje = f"Ruta optimizada: {resultado['cantidad']} paradas reordenadas (usando {fuente})."
-        if resultado.get("ahorro_km") is not None:
+        if not resultado.get("ahorro_km"):
+            mensaje = "La ruta ya tenía el orden más corto: no hubo cambios."
+        elif resultado.get("ahorro_km") is not None:
             mensaje += (
                 f" Recorrido estimado: {resultado['km_antes']} km → {resultado['km_despues']} km "
                 f"(-{resultado['ahorro_km']} km, {resultado['ahorro_pct']}% menos)."
@@ -1540,6 +1552,7 @@ def agregar_pedido_a_ruta_view(request, ruta_id):
     ParadaRuta.objects.create(ruta=ruta, cliente=pedido.cliente, orden=orden, pedido=pedido)
     pedido.estado = "ASIGNADO"
     pedido.save(update_fields=["estado"])
+    _marcar_sin_optimizar(ruta)
     avisar_ruta_actualizada(ruta, f"se agregó el pedido de {pedido.cliente.nombre}.")
 
     return redirect("detalle_ruta", ruta_id=ruta.id)

@@ -236,6 +236,12 @@ def optimizar_paradas(ruta):
     km_antes = _distancia_total(origen, puntos, orden_original, distancia_fn)
     km_despues = _distancia_total(origen, puntos, orden_optimizado, distancia_fn)
 
+    # Volver a optimizar una ruta ya optimizada nunca debe empeorarla: la
+    # heuristica arranca de cero y podria llegar a un orden algo peor que el
+    # actual. En ese caso se deja el orden que ya tenia.
+    if km_despues > km_antes:
+        orden_optimizado, km_despues = orden_original, km_antes
+
     paradas_por_id = {p.id: p for p in con_coordenadas}
     secuencia_final = [paradas_por_id[pid] for pid in orden_optimizado] + sin_coordenadas
 
