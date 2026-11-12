@@ -23,7 +23,8 @@ class CrearPedidoTests(TestCase):
             "cliente_id": self.cliente.id, "nota": "10 kg marraqueta, 2 bandejas de empanadas",
         })
         pedido = Pedido.objects.get(cliente=self.cliente)
-        self.assertRedirects(resp, reverse("detalle_pedido", args=[pedido.id]))
+        # «Guardar y agregar otro» (el botón principal) deja el formulario listo para el siguiente.
+        self.assertRedirects(resp, reverse("crear_pedido"))
         self.assertEqual(pedido.estado, "PENDIENTE")
         self.assertEqual(pedido.nota, "10 kg marraqueta, 2 bandejas de empanadas")
         self.assertEqual(pedido.creado_por, self.owner)
@@ -31,6 +32,11 @@ class CrearPedidoTests(TestCase):
         detalle = self.client.get(reverse("detalle_pedido", args=[pedido.id]))
         self.assertContains(detalle, "10 kg marraqueta")
         self.assertNotContains(detalle, "$")
+
+    def test_guardar_y_armar_ruta_lleva_a_armar_ruta(self):
+        resp = self.client.post(reverse("crear_pedido"), {"cliente_id": self.cliente.id, "accion": "ruta"})
+        self.assertRedirects(resp, reverse("armar_ruta"), fetch_redirect_response=False)
+        self.assertTrue(Pedido.objects.filter(cliente=self.cliente, estado="PENDIENTE").exists())
 
     def test_no_se_puede_crear_pedido_sin_cliente(self):
         resp = self.client.post(reverse("crear_pedido"), {"nota": "algo"})

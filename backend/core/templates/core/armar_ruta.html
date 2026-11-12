@@ -8,7 +8,7 @@
 
     <a href="{% url 'lista_rutas' %}" class="link-volver"><i class="bi bi-arrow-left"></i> Rutas</a>
     <h1 class="panel-title mt-2 mb-1">Armar ruta</h1>
-    <p class="text-muted mb-4">Elige el chofer, marca los pedidos y listo: creamos las paradas, las ordenamos por el camino más corto y le avisamos al chofer.</p>
+    <p class="text-muted mb-4">Elige el chofer, agrega los clientes que visitará y listo: creamos las paradas, las ordenamos por el camino más corto y le avisamos al chofer.</p>
 
     {% if sin_origen %}
       <div class="alert alert-warning d-flex gap-2 align-items-start">
@@ -25,14 +25,6 @@
         <h2 class="h5 mt-2">Primero crea un chofer</h2>
         <p class="text-muted">La ruta necesita a alguien que la haga. Toma menos de un minuto.</p>
         <a href="{% url 'crear_chofer' %}" class="btn btn-primary btn-saas">Crear chofer</a>
-      </div>
-    {% elif not pendientes %}
-      <div class="saas-card rapido-card text-center">
-        <i class="bi bi-box-seam fs-1 text-primary"></i>
-        <h2 class="h5 mt-2">No hay pedidos pendientes</h2>
-        <p class="text-muted">Registra los pedidos del día y vuelve aquí para armar la ruta.</p>
-        <a href="{% url 'crear_pedido' %}" class="btn btn-primary btn-saas">Nuevo pedido</a>
-        <a href="{% url 'crear_ruta' %}" class="btn btn-link">Crear una ruta vacía</a>
       </div>
     {% else %}
     <form method="POST" class="saas-card rapido-card" id="form-armar">
@@ -60,21 +52,50 @@
       </div>
 
       <div class="d-flex justify-content-between align-items-end mt-4 mb-2">
-        <span class="fw-semibold">Pedidos pendientes <span class="text-muted fw-normal">(<span id="cuenta">{{ elegidos|length }}</span> de {{ pendientes|length }} marcados)</span></span>
-        <button type="button" class="btn btn-sm btn-link p-0" id="todos">Marcar / desmarcar todos</button>
+        <span class="fw-semibold">Clientes de la ruta <span class="text-muted fw-normal">(<span id="cuenta">0</span>)</span></span>
+        {% if pendientes|length > 1 %}<button type="button" class="btn btn-sm btn-link p-0" id="todos">Marcar / desmarcar pedidos</button>{% endif %}
       </div>
 
-      <div class="pedidos-check">
+      <div class="buscador-cliente-wrapper mb-2">
+        <label class="visually-hidden" for="buscar-cliente-ruta">Agregar cliente</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+          <input type="text" id="buscar-cliente-ruta" class="form-control form-control-lg" autocomplete="off"
+                 placeholder="Buscar cliente para agregar">
+        </div>
+        <div id="dropdown-cliente-ruta" class="buscador-cliente-dropdown"></div>
+      </div>
+      <p class="small text-muted mb-2">Agrega todos los clientes que visitará el chofer, en cualquier orden: LogiVisir los ordena por el camino más corto.
+        ¿No está en la lista? <a href="{% url 'crear_cliente' %}" target="_blank" rel="noopener">Crea el cliente</a> y vuelve a cargar esta página.</p>
+
+      <div class="pedidos-check" id="lista-ruta">
+        {% for item in agregados %}
+          <div class="pedido-item agregado" data-cliente="{{ item.cliente.id }}">
+            <input type="hidden" name="agregar" value="{{ item.cliente.id }}">
+            <i class="bi bi-geo-alt-fill text-primary fs-5"></i>
+            <div>
+              <b>{{ item.cliente.nombre }}</b>
+              <small>{{ item.cliente.direccion }}{% if item.cliente.comuna %}, {{ item.cliente.comuna }}{% endif %}</small>
+              <input type="text" name="lleva_{{ item.cliente.id }}" class="form-control form-control-sm mt-1" maxlength="500" value="{{ item.lleva }}" placeholder="Qué lleva (opcional)">
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary quitar" title="Quitar de la ruta" aria-label="Quitar {{ item.cliente.nombre }} de la ruta"><i class="bi bi-x-lg"></i></button>
+          </div>
+        {% endfor %}
         {% for p in pendientes %}
-          <label class="pedido-item">
+          <label class="pedido-item" data-cliente="{{ p.cliente_id }}">
             <input type="checkbox" class="form-check-input" name="pedidos" value="{{ p.id }}" {% if p.id in elegidos %}checked{% endif %}>
             <div>
               <b>{{ p.cliente.nombre }}</b>
               <small>{{ p.cliente.direccion }}{% if p.cliente.comuna %}, {{ p.cliente.comuna }}{% endif %}{% if p.nota %} · {{ p.nota|truncatechars:60 }}{% endif %}</small>
+              <small class="d-block text-primary"><i class="bi bi-box-seam me-1"></i>Pedido registrado</small>
             </div>
             {% if p.cliente.latitud is None %}<span class="badge text-bg-warning" title="Sin ubicación: quedará al final de la ruta">Sin mapa</span>{% endif %}
           </label>
         {% endfor %}
+        <div class="text-center text-muted py-4" id="lista-vacia" {% if agregados or pendientes %}hidden{% endif %}>
+          <i class="bi bi-signpost-split fs-2 d-block mb-1"></i>
+          Busca arriba y agrega los clientes que visitará el chofer.
+        </div>
       </div>
 
       <details class="mas-datos mt-3" {% if nombre %}open{% endif %}>
@@ -82,8 +103,9 @@
         <input type="text" name="nombre" class="form-control mt-2" value="{{ nombre }}" placeholder="Reparto {{ hoy|date:'d-m' }}">
       </details>
 
-      <button class="btn btn-primary btn-lg w-100 mt-4"><i class="bi bi-magic me-1"></i> Crear y optimizar ruta</button>
+      <button class="btn btn-primary btn-lg w-100 mt-4" id="btn-armar"><i class="bi bi-magic me-1"></i> Crear y optimizar ruta</button>
     </form>
+    {{ clientes_json|json_script:"data-clientes-ruta" }}
     {% endif %}
   </div>
 </section>
@@ -92,18 +114,112 @@
   (function () {
     const form = document.getElementById("form-armar");
     if (!form) return;
+    const lista = document.getElementById("lista-ruta");
+    const vacia = document.getElementById("lista-vacia");
+    const input = document.getElementById("buscar-cliente-ruta");
+    const dropdown = document.getElementById("dropdown-cliente-ruta");
+    const norm = (t) => (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const clientes = JSON.parse(document.getElementById("data-clientes-ruta").textContent)
+      .map((c) => Object.assign(c, { buscable: norm(c.nombre + " " + c.direccion + " " + c.comuna) }));
+
     const cajas = () => Array.from(form.querySelectorAll('input[name="pedidos"]'));
-    const contar = () => { document.getElementById("cuenta").textContent = cajas().filter(c => c.checked).length; };
+    function contar() {
+      const n = cajas().filter((c) => c.checked).length + lista.querySelectorAll(".agregado").length;
+      document.getElementById("cuenta").textContent = n;
+      vacia.hidden = lista.querySelectorAll(".pedido-item").length > 0;
+    }
+    // Siempre texto, nunca HTML: los nombres pueden venir de una planilla importada.
+    function el(tag, clase, texto) {
+      const e = document.createElement(tag);
+      if (clase) e.className = clase;
+      if (texto) e.textContent = texto;
+      return e;
+    }
+    function resaltar(item) {
+      item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      item.classList.remove("destello"); void item.offsetWidth; item.classList.add("destello");
+    }
+    function cerrar() { dropdown.innerHTML = ""; dropdown.classList.remove("show"); }
+    function agregar(c) {
+      const existente = lista.querySelector('.pedido-item[data-cliente="' + c.id + '"]');
+      if (existente) {
+        // Ya tiene un pedido registrado (o ya se agregó): se marca, no se duplica.
+        const caja = existente.querySelector('input[name="pedidos"]');
+        if (caja) caja.checked = true;
+        resaltar(existente);
+      } else {
+        const item = el("div", "pedido-item agregado");
+        item.dataset.cliente = c.id;
+        const oculto = el("input"); oculto.type = "hidden"; oculto.name = "agregar"; oculto.value = c.id;
+        const datos = el("div");
+        datos.append(el("b", "", c.nombre), el("small", "", c.direccion + (c.comuna ? ", " + c.comuna : "")));
+        const lleva = el("input", "form-control form-control-sm mt-1");
+        lleva.type = "text"; lleva.name = "lleva_" + c.id; lleva.maxLength = 500; lleva.placeholder = "Qué lleva (opcional)";
+        datos.append(lleva);
+        item.append(oculto, el("i", "bi bi-geo-alt-fill text-primary fs-5"), datos);
+        if (c.sin_mapa) {
+          const b = el("span", "badge text-bg-warning", "Sin mapa");
+          b.title = "Sin ubicación: quedará al final de la ruta";
+          item.append(b);
+        }
+        const quitar = el("button", "btn btn-sm btn-outline-secondary quitar");
+        quitar.type = "button"; quitar.title = "Quitar de la ruta";
+        quitar.setAttribute("aria-label", "Quitar " + c.nombre + " de la ruta");
+        quitar.append(el("i", "bi bi-x-lg"));
+        item.append(quitar);
+        lista.prepend(item);
+        resaltar(item);
+      }
+      input.value = "";
+      cerrar();
+      input.focus();
+      contar();
+    }
+    function pintar() {
+      const termino = norm(input.value.trim());
+      dropdown.innerHTML = "";
+      if (!termino) return cerrar();
+      const resultados = clientes.filter((c) => c.buscable.indexOf(termino) !== -1).slice(0, 12);
+      if (!resultados.length) dropdown.append(el("div", "buscador-cliente-empty", "No hay clientes con ese nombre o dirección."));
+      resultados.forEach((c) => {
+        const b = el("button", "buscador-cliente-item");
+        b.type = "button";
+        b.append(el("span", "buscador-cliente-nombre", c.nombre), el("span", "buscador-cliente-comuna", c.direccion + (c.comuna ? ", " + c.comuna : "")));
+        if (lista.querySelector('.pedido-item[data-cliente="' + c.id + '"]')) b.append(el("span", "buscador-cliente-badge regular", "En la lista"));
+        b.addEventListener("click", () => agregar(c));
+        dropdown.append(b);
+      });
+      dropdown.classList.add("show");
+    }
+    input.addEventListener("input", pintar);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") cerrar();
+      if (e.key === "Enter") {
+        e.preventDefault();   // Enter agrega el primer resultado; no envía la ruta
+        const primero = dropdown.querySelector(".buscador-cliente-item");
+        if (primero) primero.click();
+      }
+    });
+    document.addEventListener("click", (e) => { if (e.target !== input && !dropdown.contains(e.target)) cerrar(); });
+    lista.addEventListener("click", (e) => {
+      const q = e.target.closest(".quitar");
+      if (q) { q.closest(".pedido-item").remove(); contar(); }
+    });
+    lista.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target.matches('input[type="text"]')) e.preventDefault();
+    });
     form.addEventListener("change", contar);
-    document.getElementById("todos").addEventListener("click", function () {
-      const marcar = cajas().some(c => !c.checked);
-      cajas().forEach(c => { c.checked = marcar; });
+    const todos = document.getElementById("todos");
+    if (todos) todos.addEventListener("click", function () {
+      const marcar = cajas().some((c) => !c.checked);
+      cajas().forEach((c) => { c.checked = marcar; });
       contar();
     });
     form.addEventListener("submit", function () {
-      const b = form.querySelector('button.btn-lg');
+      const b = document.getElementById("btn-armar");
       b.disabled = true; b.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Calculando la mejor ruta…';
     });
+    contar();
   })();
 </script>
 {% endblock %}

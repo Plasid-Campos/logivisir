@@ -27,12 +27,6 @@ function initBuscadorCliente(config) {
 
   if (!input || !hidden || !dropdown || !dataEl) return;
 
-  // Se busca en cada llamada (no se cachea): el boton submit puede estar
-  // mas abajo en el HTML y todavia no existir cuando este script corre.
-  function getSubmitBtn() {
-    return config.submitSelector ? document.querySelector(config.submitSelector) : null;
-  }
-
   const clientes = JSON.parse(dataEl.textContent).map(function (c) {
     return {
       id: c.id,
@@ -44,8 +38,9 @@ function initBuscadorCliente(config) {
   });
 
   function actualizarSubmit() {
-    const submitBtn = getSubmitBtn();
-    if (submitBtn) submitBtn.disabled = !hidden.value;
+    // El selector puede apuntar a varios botones («Guardar y agregar otro» y «Guardar y armar ruta»).
+    if (!config.submitSelector) return;
+    document.querySelectorAll(config.submitSelector).forEach(function (b) { b.disabled = !hidden.value; });
   }
 
   function cerrarDropdown() {
@@ -82,11 +77,20 @@ function initBuscadorCliente(config) {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "buscador-cliente-item";
-      item.innerHTML =
-        '<span class="buscador-cliente-nombre">' + c.nombre + "</span>" +
-        (c.comuna ? '<span class="buscador-cliente-comuna">' + c.comuna + "</span>" : "") +
-        '<span class="buscador-cliente-badge ' + (c.tipo === "DELIVERY" ? "delivery" : "regular") + '">' +
-        (c.tipo === "DELIVERY" ? "Delivery" : "Regular") + "</span>";
+      // Con textContent, nunca innerHTML: los nombres pueden venir de una
+      // planilla importada y no deben interpretarse como HTML.
+      function span(clase, texto) {
+        const s = document.createElement("span");
+        s.className = clase;
+        s.textContent = texto;
+        return s;
+      }
+      item.appendChild(span("buscador-cliente-nombre", c.nombre));
+      if (c.comuna) item.appendChild(span("buscador-cliente-comuna", c.comuna));
+      item.appendChild(span(
+        "buscador-cliente-badge " + (c.tipo === "DELIVERY" ? "delivery" : "regular"),
+        c.tipo === "DELIVERY" ? "Delivery" : "Regular"
+      ));
       item.addEventListener("click", function () {
         seleccionar(c);
       });

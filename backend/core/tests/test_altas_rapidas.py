@@ -137,8 +137,57 @@ class ArmarRutaTests(TestCase):
 
     def test_sin_pedidos_marcados_no_crea_ruta(self):
         resp = self._armar([])
-        self.assertContains(resp, "Marca al menos un pedido")
+        self.assertContains(resp, "Agrega al menos un cliente")
         self.assertFalse(Ruta.objects.exists())
+
+    def test_agregar_clientes_sin_pedido_crea_sus_pedidos_y_paradas(self):
+        sueltos = [
+            Cliente.objects.create(empresa=self.empresa, nombre="Kiosko Azul", direccion="Pio Nono 235", latitud=-33.43, longitud=-70.63),
+            Cliente.objects.create(empresa=self.empresa, nombre="Almacén Sur", direccion="Gran Avenida 4400", latitud=-33.50, longitud=-70.65),
+        ]
+        resp = self._armar(self.pedidos[:1], agregar=[c.id for c in sueltos], **{f"lleva_{sueltos[0].id}": "2 bandejas de pan"})
+        ruta = Ruta.objects.get(empresa=self.empresa)
+        self.assertRedirects(resp, reverse("detalle_ruta", args=[ruta.id]))
+        self.assertEqual(set(ruta.paradas.values_list("cliente__nombre", flat=True)), {"Cliente 0", "Kiosko Azul", "Almacén Sur"})
+        nuevo = Pedido.objects.get(cliente=sueltos[0])
+        self.assertEqual((nuevo.estado, nuevo.nota), ("ASIGNADO", "2 bandejas de pan"))
+        self.assertEqual(ruta.paradas.get(cliente=sueltos[0]).pedido, nuevo)
+
+    def test_solo_clientes_agregados_sin_pedidos_previos(self):
+        Pedido.objects.all().delete()
+        resp = self.client.get(reverse("armar_ruta"))
+        self.assertContains(resp, "Agregar cliente")          # ya no bloquea con «No hay pedidos pendientes»
+        c = Cliente.objects.get(nombre="Cliente 1")
+        self._armar([], agregar=[c.id])
+        self.assertEqual(Ruta.objects.get().paradas.count(), 1)
+
+    def test_cliente_agregado_que_ya_tiene_pedido_no_se_duplica(self):
+        cliente = self.pedidos[0].cliente
+        self._armar(self.pedidos[:1], agregar=[cliente.id, cliente.id])
+        self.assertEqual(Pedido.objects.filter(cliente=cliente).count(), 1)
+        self.assertEqual(Ruta.objects.get().paradas.count(), 1)
+
+    def test_no_agrega_clientes_de_otra_empresa_ni_inactivos(self):
+        otra = crear_empresa("Otra SpA", "dueno_otra2")
+        ajeno = Cliente.objects.create(empresa=otra, nombre="Ajeno", direccion="X 1")
+        inactivo = Cliente.objects.create(empresa=self.empresa, nombre="Cerrado", direccion="Y 2", activo=False)
+        resp = self._armar([], agregar=[ajeno.id, inactivo.id])
+        self.assertContains(resp, "Agrega al menos un cliente")
+        self.assertFalse(Ruta.objects.exists())
+        self.assertFalse(Pedido.objects.filter(cliente__in=[ajeno, inactivo]).exists())
+
+    def test_si_falta_el_chofer_conserva_los_clientes_agregados(self):
+        c = Cliente.objects.create(empresa=self.empresa, nombre="Kiosko Rojo", direccion="Matta 820")
+        resp = self._armar([], chofer_id="", agregar=[c.id], **{f"lleva_{c.id}": "pan amasado"})
+        self.assertContains(resp, "Elige el chofer")
+        self.assertContains(resp, "Kiosko Rojo")
+        self.assertContains(resp, 'value="pan amasado"')
+        self.assertFalse(Pedido.objects.filter(cliente=c).exists())
+
+    def test_la_lista_de_clientes_para_buscar_escapa_el_html(self):
+        Cliente.objects.create(empresa=self.empresa, nombre="<script>alert(1)</script>", direccion="Z 3")
+        resp = self.client.get(reverse("armar_ruta"))
+        self.assertNotContains(resp, "<script>alert(1)</script>")
 
     def test_fecha_pasada_no_se_acepta(self):
         self._armar(self.pedidos, fecha=(self.hoy - timedelta(days=1)).isoformat())

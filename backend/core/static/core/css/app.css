@@ -522,3 +522,11 @@
 .importar-resumen small { color: #64748b; }
 .importar-resumen.ok { background: #dcfce7; color: #14532d; }
 .importar-resumen.error { background: #fee2e2; color: #7f1d1d; }
+
+/* Armar ruta: clientes agregados con el buscador */
+.pedido-item.agregado { border-color: #93c5fd; background: #eff6ff; cursor: default; align-items: flex-start; }
+.pedido-item.agregado > .bi { margin-top: .15rem; }
+.pedido-item .quitar { flex: none; }
+.pedido-item.destello { animation: destello 1.2s ease-out; }
+@keyframes destello { 0% { box-shadow: 0 0 0 4px rgba(37, 99, 235, .45); } 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); } }
+#lista-ruta .buscador-cliente-comuna { white-space: normal; }

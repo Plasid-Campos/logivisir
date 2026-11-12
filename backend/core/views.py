@@ -861,11 +861,14 @@ def detalle_ruta_view(request, ruta_id):
 @user_passes_test(es_admin_o_owner)
 def armar_ruta_view(request):
     """
-    La ruta del día en una sola pantalla: chofer, fecha y pedidos pendientes
-    marcados. Al guardar crea las paradas, optimiza y avisa al chofer.
+    La ruta del día en una sola pantalla: chofer, fecha y los clientes a
+    visitar. Los pedidos pendientes aparecen marcados y, con el buscador, se
+    agregan más clientes sin salir de la pantalla (LogiVisir les crea el
+    pedido por detrás). Al guardar crea las paradas, optimiza y avisa al chofer.
     """
     empresa = get_empresa(request)
     hoy = timezone.localdate()
+    clientes_activos = Cliente.objects.filter(empresa=empresa, activo=True)
     choferes = list(
         Chofer.objects.filter(perfil__empresa=empresa, activo=True).select_related("perfil__user")
         .order_by("perfil__user__first_name")
@@ -879,12 +882,19 @@ def armar_ruta_view(request):
     fecha_txt = hoy.isoformat()
     chofer_id = str(choferes[0].id) if len(choferes) == 1 else ""
     nombre = ""
+    agregados = []
 
     if request.method == "POST":
         chofer_id = request.POST.get("chofer_id") or ""
         fecha_txt = request.POST.get("fecha") or ""
         nombre = (request.POST.get("nombre") or "").strip()
         elegidos = {int(x) for x in request.POST.getlist("pedidos") if x.isdigit()}
+        ids_agregados = list(dict.fromkeys(int(x) for x in request.POST.getlist("agregar") if x.isdigit()))
+        por_id = clientes_activos.in_bulk(ids_agregados)
+        agregados = [
+            {"cliente": por_id[i], "lleva": (request.POST.get(f"lleva_{i}") or "").strip()[:NOTA_PEDIDO_MAX]}
+            for i in ids_agregados if i in por_id
+        ]
         chofer = next((c for c in choferes if str(c.id) == chofer_id), None)
         try:
             fecha = date.fromisoformat(fecha_txt)
@@ -896,10 +906,20 @@ def armar_ruta_view(request):
             error = "Elige el chofer que hará la ruta."
         elif fecha is None or fecha < hoy:
             error = "Elige una fecha de hoy en adelante."
-        elif not seleccion:
-            error = "Marca al menos un pedido para la ruta."
+        elif not seleccion and not agregados:
+            error = "Agrega al menos un cliente a la ruta."
         else:
             with transaction.atomic():
+                # Clientes agregados con el buscador: si ya tienen un pedido
+                # marcado se usa ese; si no, se les crea uno ahora.
+                ya_en_ruta = {p.cliente_id for p in seleccion}
+                for item in agregados:
+                    if item["cliente"].id in ya_en_ruta:
+                        continue
+                    seleccion.append(Pedido.objects.create(
+                        empresa=empresa, cliente=item["cliente"], nota=item["lleva"], creado_por=request.user,
+                    ))
+                    ya_en_ruta.add(item["cliente"].id)
                 ruta = Ruta.objects.create(
                     empresa=empresa, chofer=chofer, fecha=fecha,
                     nombre=nombre or f"Reparto {fecha.strftime('%d-%m')}",
@@ -943,7 +963,16 @@ def armar_ruta_view(request):
             return redirect("detalle_ruta", ruta_id=ruta.id)
 
     return render(request, "core/armar_ruta.html", {
-        "choferes": choferes, "pendientes": pendientes, "elegidos": elegidos,
+        "choferes": choferes, "pendientes": pendientes, "elegidos": elegidos, "agregados": agregados,
+        "clientes_json": [
+            {
+                "id": c["id"], "nombre": c["nombre"], "direccion": c["direccion"], "comuna": c["comuna"] or "",
+                "sin_mapa": c["latitud"] is None or c["longitud"] is None or not c["geocodificado"],
+            }
+            for c in clientes_activos.order_by("nombre").values(
+                "id", "nombre", "direccion", "comuna", "latitud", "longitud", "geocodificado",
+            )
+        ],
         "fecha": fecha_txt, "hoy": hoy, "manana": hoy + timedelta(days=1),
         "chofer_id": chofer_id, "nombre": nombre, "error": error,
         "sin_origen": empresa.latitud_origen is None,
@@ -1353,8 +1382,11 @@ def crear_pedido_view(request):
             pedido = Pedido.objects.create(
                 empresa=empresa, cliente=cliente, nota=nota, creado_por=request.user,
             )
-            messages.success(request, f"Pedido #{pedido.id} creado para {cliente.nombre}.")
-            return redirect("detalle_pedido", pedido_id=pedido.id)
+            if request.POST.get("accion") == "ruta":
+                messages.success(request, f"Pedido de {cliente.nombre} guardado. Ya está marcado para la ruta.")
+                return redirect("armar_ruta")
+            messages.success(request, f"Pedido de {cliente.nombre} guardado. Puedes agregar el siguiente.")
+            return redirect("crear_pedido")
 
     return render(request, "core/crear_pedido.html", {
         "clientes_json": list(clientes.values("id", "nombre", "comuna", "tipo_cliente")),
