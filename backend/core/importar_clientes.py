@@ -227,11 +227,24 @@ def detectar_encabezado(filas):
     """
     mejor, mejor_puntaje = None, 0
     for i, fila in enumerate(filas[:10]):
-        puntaje = sum(
-            1 for campo in SINONIMOS if any(_puntaje_columna(celda, campo) is not None for celda in fila)
-        )
-        # Un cliente cuyo tipo dice «Cliente regular» no convierte su fila en títulos.
-        if puntaje > mejor_puntaje and sum(1 for c in fila if _parece_dato(c)) < puntaje:
+        # Los títulos van antes que los clientes: al llegar a la primera fila
+        # con datos (una dirección, un correo, un teléfono) se deja de buscar.
+        # Así un cliente llamado «Sin dirección» no se toma por fila de títulos.
+        if _es_fila_de_datos(fila):
+            break
+        puntajes = [
+            min(p for p in (_puntaje_columna(celda, campo) for celda in fila) if p is not None)
+            for campo in SINONIMOS
+            if any(_puntaje_columna(celda, campo) is not None for celda in fila)
+        ]
+        puntaje = len(puntajes)
+        exactos = sum(1 for p in puntajes if p < 100)
+        # Un solo título parecido («Cliente regular») no basta: hace falta uno
+        # exacto o al menos dos reconocidos, y más títulos que datos.
+        if (
+            puntaje > mejor_puntaje and (exactos or puntaje >= 2)
+            and sum(1 for c in fila if _parece_dato(c)) < puntaje
+        ):
             mejor, mejor_puntaje = i, puntaje
     if mejor is not None:
         return mejor
@@ -239,6 +252,15 @@ def detectar_encabezado(filas):
     if primera is None or any(_parece_direccion(c) or "@" in c for c in filas[primera]):
         return None  # sin títulos: la primera fila ya es un cliente
     return primera     # títulos que no reconocemos («Cod», «Local», «Ubicación»...)
+
+
+def _es_fila_de_datos(fila):
+    llenas = [c for c in fila if c]
+    return len(llenas) >= 2 and any(
+        (_parece_direccion(c) or "@" in c or _parece_telefono(c))
+        and not any(_puntaje_columna(c, campo) is not None for campo in SINONIMOS)  # «Dirección 2» es un título
+        for c in llenas
+    )
 
 
 def _primera_fila_con_datos(filas):

@@ -86,6 +86,18 @@ class PlanillasSinTitulosTests(TestCase):
         filas = [f[:2] + ["Cliente regular"] for f in self.FILAS]
         self.assertIsNone(imp.detectar_encabezado(filas))
 
+    def test_un_cliente_llamado_sin_direccion_no_es_fila_de_titulos(self):
+        filas = [f[:3] for f in self.FILAS] + [["Sin direccion", "", "Santiago"]]
+        est = imp.estructura(filas)
+        self.assertIsNone(est["fila_titulos"])
+        self.assertEqual(est["inicio"], 0)
+
+    def test_titulos_con_numero_siguen_siendo_titulos(self):
+        filas = [["Nombre", "Dirección 2", "Teléfono 1"]] + [f[:2] + [f[3]] for f in self.FILAS]
+        est = imp.estructura(filas)
+        self.assertEqual(est["fila_titulos"], 0)
+        self.assertEqual((est["mapeo"]["nombre"], est["mapeo"]["direccion"]), (0, 1))
+
     def test_titulos_desconocidos_siguen_siendo_titulos(self):
         filas = [["Cod", "Local", "Ubicación"]] + [[str(i), f[0], f[1]] for i, f in enumerate(self.FILAS, 1)]
         est = imp.estructura(filas)
